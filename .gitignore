@@ -1,0 +1,15 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+
+# Editors
+.vscode/
+.idea/
+
+# Source pitch decks (not part of the web prototype)
+*.pptx
+
+# Node (if you add tooling later)
+node_modules/
