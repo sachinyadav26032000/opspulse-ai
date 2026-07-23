@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OpsPulse AI — The Intelligence Layer for Customer Operations</title>
+<meta name="description" content="OpsPulse AI is the AI Operations Copilot that unifies tickets, calls, QA & feedback into one decision feed — detecting risks before they escalate." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2334d399'/><path d='M5 17h5l3-8 4 14 3-9 2 3h5' stroke='%23041' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="index.html">
+      <span class="logo">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2.2-6 3.4 12 2.6-8 1.6 4H22" stroke="#04120c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      OpsPulse<span style="opacity:.55;font-weight:600"> AI</span>
+    </a>
+    <div class="nav-links">
+      <a href="#problem">Problem</a>
+      <a href="#solution">Solution</a>
+      <a href="#product">Product</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#roadmap">Roadmap</a>
+    </div>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="app.html">Live Demo</a>
+      <a class="btn btn-primary" href="app.html">Launch Copilot →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow"><span class="dot-live"></span> AI Operations Copilot</span>
+      <h1>The <span class="grad-text">intelligence layer</span> for customer operations.</h1>
+      <p class="lead">OpsPulse AI unifies tickets, call transcripts, QA and feedback into a single decision feed — detecting churn risk, SLA breaches and coaching gaps <strong>before</strong> they escalate.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="app.html">Explore the live dashboard →</a>
+        <a class="btn btn-ghost" href="#product">See how it works</a>
+      </div>
+      <div class="hero-note">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        No rip-and-replace — integrates with the stack you already run.
+      </div>
+    </div>
+
+    <!-- Hero dashboard mock -->
+    <div class="hero-visual">
+      <div class="mock reveal">
+        <div class="mock-bar">
+          <span class="mock-dot" style="background:#fb7185"></span>
+          <span class="mock-dot" style="background:#fbbf24"></span>
+          <span class="mock-dot" style="background:#34d399"></span>
+          <span class="mock-title">Ops Copilot · Decision Feed</span>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:.72rem;color:#737f9e"><span class="dot-live"></span>Live</span>
+        </div>
+        <div class="mock-body">
+          <div class="mock-row">
+            <div class="mini-card">
+              <div class="k">Org Health</div>
+              <div class="v up" id="hHealth">82</div>
+            </div>
+            <div class="mini-card">
+              <div class="k">CSAT · 24h</div>
+              <div class="v down" id="hCsat">−4.2%</div>
+            </div>
+          </div>
+          <svg class="pulse-strip" viewBox="0 0 320 46" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="pg" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#34d399"/>
+              </linearGradient>
+            </defs>
+            <polyline id="pulseLine" fill="none" stroke="url(#pg)" stroke-width="2.2"
+              points="0,30 26,30 40,10 54,42 70,22 92,30 130,30 146,6 160,40 176,24 210,30 250,30 264,14 278,38 296,26 320,30" />
+          </svg>
+          <div class="alert-row">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="#fb7185" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="#fb7185" stroke-width="2" stroke-linecap="round"/></svg>
+            <div class="txt">Churn risk spike — Enterprise tier<small>Root cause: onboarding SLA missed 3× this week</small></div>
+            <span class="pill high">High</span>
+          </div>
+          <div class="alert-row warn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#fbbf24" stroke-width="2"/><path d="M12 8v4M12 16h.01" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/></svg>
+            <div class="txt">Agent coaching gap — Team B<small>QA scores down 11% on refund handling</small></div>
+            <span class="pill med">Medium</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trust bar -->
+  <div class="wrap trust reveal">
+    <p>Purpose-built for the teams behind every great customer experience</p>
+    <div class="trust-row">
+      <span>◆ SaaS Support</span>
+      <span>◆ Customer Success</span>
+      <span>◆ BPO Operations</span>
+      <span>◆ Quality Assurance</span>
+      <span>◆ Ops Excellence</span>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="wrap stats">
+    <div class="stat reveal"><div class="n grad-text">6+</div><div class="l">Signal sources unified into one feed</div></div>
+    <div class="stat reveal"><div class="n grad-text">−73%</div><div class="l">Time managers spend hunting data</div></div>
+    <div class="stat reveal"><div class="n grad-text">4×</div><div class="l">Faster root-cause to resolution</div></div>
+    <div class="stat reveal"><div class="n grad-text">24/7</div><div class="l">Real-time organizational health</div></div>
+  </div>
+</header>
+
+<!-- ============ PROBLEM ============ -->
+<section class="block" id="problem">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="color:var(--rose);border-color:rgba(251,113,133,.25);background:rgba(251,113,133,.06)">The Problem</span>
+      <h2>Customer operations run blind — reacting to problems they should have prevented.</h2>
+      <p class="lead">Critical signals are scattered across half a dozen tools. By the time a manager connects the dots, the customer is already gone.</p>
+    </div>
+    <div class="grid g4">
+      <div class="card problem reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v4H4zM14 13h6v6h-6z" stroke="currentColor" stroke-width="1.8"/></svg></div>
+        <h3>Fragmented data</h3>
+        <p>Customer signals are scattered across ticketing, telephony, QA and survey tools — nobody sees the full picture.</p>
+      </div>
+      <div class="card problem reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/></svg></div>
+        <h3>Reactive decisions</h3>
+        <p>Managers respond to fires late because today's systems surface problems only after they've blown up.</p>
+      </div>
+      <div class="card problem reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 15l3-4 3 3 4-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h3>Manual analysis</h3>
+        <p>Hours in spreadsheets produce error-prone, inconsistent answers that are stale the moment they're finished.</p>
+      </div>
+      <div class="card problem reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" stroke="currentColor" stroke-width="1.8"/><path d="m4 4 16 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>No real-time view</h3>
+        <p>Without live visibility into root causes, the same problems recur unresolved — quietly driving churn.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SOLUTION ============ -->
+<section class="block" id="solution" style="background:linear-gradient(180deg,transparent,rgba(52,211,153,.03),transparent)">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="eyebrow">The Solution</span>
+      <h2 style="margin:14px 0 16px">An AI copilot that turns noise into <span class="grad-text">the next right action.</span></h2>
+      <p class="lead">OpsPulse ingests every operational signal, learns what "normal" looks like, and hands managers a ranked feed of what needs attention — with the reason and the fix attached.</p>
+      <div class="feature-list">
+        <div class="fitem">
+          <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <div><h4>Unified data integration</h4><p>Tickets, call transcripts, QA assessments and feedback flow into one intelligent platform.</p></div>
+        </div>
+        <div class="fitem">
+          <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <div><h4>Proactive insights & alerts</h4><p>Prioritized alerts and recommendations cut manager cognitive load to what matters now.</p></div>
+        </div>
+        <div class="fitem">
+          <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <div><h4>Advanced pattern detection</h4><p>ML models surface hidden anomalies and patterns beyond what manual analysis can reach.</p></div>
+        </div>
+        <div class="fitem">
+          <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <div><h4>Seamless integration</h4><p>Plugs into your existing tools — smarter decisions without changing how your team works.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flow diagram -->
+    <div class="flow reveal">
+      <div class="flow-stage">
+        <span class="bub"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Z" stroke="currentColor" stroke-width="1.8"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7" stroke="currentColor" stroke-width="1.8"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" stroke="currentColor" stroke-width="1.8"/></svg></span>
+        <div><h4>Signal Aggregator</h4><p>Tickets · Calls · QA · Feedback</p></div>
+      </div>
+      <div class="flow-conn"><span class="line"></span></div>
+      <div class="flow-stage">
+        <span class="bub"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.8"/></svg></span>
+        <div><h4>Intelligence Engine</h4><p>Patterns · Anomalies · Root cause</p></div>
+      </div>
+      <div class="flow-conn"><span class="line"></span></div>
+      <div class="flow-stage">
+        <span class="bub"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M7 20h10M12 18v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+        <div><h4>Ops Copilot Dashboard</h4><p>Ranked decision feed</p></div>
+      </div>
+      <div class="flow-conn"><span class="line"></span></div>
+      <div class="flow-stage">
+        <span class="bub" style="color:var(--emerald)"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+        <div><h4>Recommendation Engine</h4><p>Coach · Fix workflow · Escalate</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRODUCT / MODULES ============ -->
+<section class="block" id="product">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Product Overview</span>
+      <h2>Four modules. One closed loop from <span class="grad-text">signal to action.</span></h2>
+      <p class="lead">Every part of OpsPulse is built to move a manager from "something's wrong" to "here's the fix" in seconds.</p>
+    </div>
+    <div class="grid g4">
+      <div class="card c reveal"><span class="num">01</span>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Z" stroke="currentColor" stroke-width="1.8"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7" stroke="currentColor" stroke-width="1.8"/></svg></div>
+        <h3>Signal Aggregator</h3>
+        <p>Collects data from ticketing, call transcripts, QA and feedback platforms to unify operational data in one place.</p>
+      </div>
+      <div class="card reveal"><span class="num">02</span>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>Intelligence Engine</h3>
+        <p>Processes data with advanced algorithms to identify patterns, anomalies and perform automated root-cause analysis.</p>
+      </div>
+      <div class="card c reveal"><span class="num">03</span>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M7 9h4M7 13h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>Ops Copilot Dashboard</h3>
+        <p>Delivers insights through a decision feed that highlights critical issues and the recommended action for each.</p>
+      </div>
+      <div class="card v reveal"><span class="num">04</span>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+        <h3>Recommendation Engine</h3>
+        <p>Suggests interventions — workflow changes, agent coaching and product improvements — to optimize operations.</p>
+      </div>
+    </div>
+    <div class="center" style="margin-top:40px">
+      <a class="btn btn-primary reveal" href="app.html">Try the interactive dashboard →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ USE CASE ============ -->
+<section class="block" id="usecase" style="background:linear-gradient(180deg,transparent,rgba(34,211,238,.03),transparent)">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="eyebrow">A Day in the Life</span>
+      <h2 style="margin:14px 0 16px">The daily manager workflow, <span class="grad-text">reimagined.</span></h2>
+      <p class="lead">OpsPulse collapses hours of scattered analysis into a focused, prioritized morning routine — so managers lead instead of dig.</p>
+      <div class="hero-cta" style="margin-top:26px">
+        <a class="btn btn-ghost" href="app.html">Walk through it live →</a>
+      </div>
+    </div>
+    <div class="steps reveal">
+      <div class="step"><span class="idx"></span><div><h4>Prioritized risk identification</h4><p>Open to a dashboard ranking today's risks — CSAT drops, agent performance, SLA exposure — worst first.</p></div></div>
+      <div class="step"><span class="idx"></span><div><h4>Detailed insight exploration</h4><p>Click any alert to reveal root-cause analysis and the recommended actions for a swift resolution.</p></div></div>
+      <div class="step"><span class="idx"></span><div><h4>Action & progress tracking</h4><p>Assign tasks, initiate coaching, escalate issues, and track intervention outcomes in one place.</p></div></div>
+      <div class="step"><span class="idx"></span><div><h4>Empowered strategic focus</h4><p>With the busywork gone, managers spend their attention on strategy and better team outcomes.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VALUE PROP ============ -->
+<section class="block">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Value Proposition</span>
+      <h2>From raw data to <span class="grad-text">business decisions.</span></h2>
+    </div>
+    <div class="grid g4">
+      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><h3>Data → decisions</h3><p>Convert raw operational data into clear, actionable decisions that drive business outcomes.</p></div>
+      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3a9 9 0 1 0 9 9h-9V3Z" stroke="currentColor" stroke-width="1.8"/></svg></div><h3>Decision engine</h3><p>Identifies critical issues and provides the recommendations to resolve them efficiently.</p></div>
+      <div class="card v reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Predictive risk</h3><p>Anticipate churn and SLA breaches early, enabling preventive action before impact.</p></div>
+      <div class="card c reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-4.5-7-10a7 7 0 0 1 14 0c0 5.5-7 10-7 10Z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="11" r="2.5" stroke="currentColor" stroke-width="1.8"/></svg></div><h3>Business value</h3><p>Higher satisfaction, lower costs and greater productivity — insight aligned to action.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRICING ============ -->
+<section class="block" id="pricing" style="background:linear-gradient(180deg,transparent,rgba(139,92,246,.04),transparent)">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Business Model</span>
+      <h2>Scalable SaaS pricing that <span class="grad-text">grows with your team.</span></h2>
+      <p class="lead">Predictable per-seat subscriptions, with premium analytics and bespoke enterprise options.</p>
+    </div>
+    <div class="price-grid">
+      <div class="price reveal">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Team</span></div>
+        <div class="amt">$29<small> / seat / mo</small></div>
+        <p class="desc">For growing support & success teams getting started with unified insights.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Signal Aggregator (core sources)</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Ops Copilot decision feed</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Root-cause analysis</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Email support</li>
+        </ul>
+        <a class="btn btn-ghost" href="app.html">Start free trial</a>
+      </div>
+      <div class="price featured reveal">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Growth</span><span class="badge">Most popular</span></div>
+        <div class="amt">$59<small> / seat / mo</small></div>
+        <p class="desc">Predictive analytics and automation for scaling operations.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Team</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Predictive risk & churn scoring</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Recommendation Engine + automations</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Custom integrations · priority support</li>
+        </ul>
+        <a class="btn btn-primary" href="app.html">Launch Copilot →</a>
+      </div>
+      <div class="price reveal">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Enterprise</span></div>
+        <div class="amt">Custom</div>
+        <p class="desc">Bespoke solutions with dedicated support and enhanced security.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Growth</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>SSO, SOC 2 & advanced security</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Dedicated success manager</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Custom models & SLAs</li>
+        </ul>
+        <a class="btn btn-ghost" href="app.html">Talk to sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ROADMAP ============ -->
+<section class="block" id="roadmap">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Roadmap</span>
+      <h2>From validation to a global <span class="grad-text">intelligence layer.</span></h2>
+    </div>
+    <div class="timeline">
+      <div class="tl-item reveal">
+        <div class="tl-phase"><span class="tag">Phase 1</span><span class="when">Now</span></div>
+        <div class="tl-body"><h4>Problem validation</h4><p>Engage target users to identify pain points and validate the key use cases that guide development.</p></div>
+      </div>
+      <div class="tl-item reveal">
+        <div class="tl-phase"><span class="tag">Phase 2</span><span class="when">In progress</span></div>
+        <div class="tl-body"><h4>Prototype development</h4><p>Build a working prototype demonstrating core features — data aggregation and insight generation. <em style="color:var(--cyan);font-style:normal">← you're looking at it.</em></p></div>
+      </div>
+      <div class="tl-item reveal">
+        <div class="tl-phase"><span class="tag">Phase 3</span><span class="when">Next</span></div>
+        <div class="tl-body"><h4>Pilot testing</h4><p>Deploy the prototype in controlled environments to gather feedback and refine the product.</p></div>
+      </div>
+      <div class="tl-item reveal">
+        <div class="tl-phase"><span class="tag">Phase 4</span><span class="when">Launch</span></div>
+        <div class="tl-body"><h4>Productization & launch</h4><p>Scalable architecture, polished UI and a go-to-market motion for customer acquisition.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VISION / CTA ============ -->
+<section class="block" id="vision">
+  <div class="wrap">
+    <div class="cta-band reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Our Vision</span>
+      <h2>Become the core intelligence layer for<br/><span class="grad-text">customer operations, everywhere.</span></h2>
+      <p>Predictive and prescriptive analytics, an expanding integration ecosystem, and ever-sharper AI insight — so every operations team makes the right call, in real time.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="app.html">Launch the live Copilot →</a>
+        <a class="btn btn-ghost" href="#product">Review the product</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap foot">
+    <div>
+      <a class="brand" href="index.html">
+        <span class="logo"><svg viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2.2-6 3.4 12 2.6-8 1.6 4H22" stroke="#04120c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        OpsPulse AI
+      </a>
+      <p style="margin-top:10px">The intelligence layer for customer operations.</p>
+    </div>
+    <div class="foot-links">
+      <a href="#problem">Problem</a>
+      <a href="#solution">Solution</a>
+      <a href="#pricing">Pricing</a>
+      <a href="app.html">Live Demo</a>
+    </div>
+  </div>
+  <div class="wrap"><p class="dim" style="margin-top:24px;font-size:.8rem">© 2026 OpsPulse AI · Prototype demo. All data shown is simulated.</p></div>
+</footer>
+
+<script src="assets/landing.js"></script>
+</body>
+</html>

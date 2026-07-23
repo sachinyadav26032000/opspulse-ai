@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OpsPulse AI — Ops Copilot Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2334d399'/><path d='M5 17h5l3-8 4 14 3-9 2 3h5' stroke='%23041' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+</head>
+<body class="app">
+
+<div class="shell">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="side">
+    <a class="brand" href="index.html">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2.2-6 3.4 12 2.6-8 1.6 4H22" stroke="#04120c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      OpsPulse<span style="opacity:.55;font-weight:600"> AI</span>
+    </a>
+
+    <div class="side-label">Workspace</div>
+    <div class="nav-item active" data-view="feed">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Decision Feed
+      <span class="badge-n" id="navBadge">0</span>
+    </div>
+    <div class="nav-item" data-view="signals">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M3 12h3l2-7 4 14 3-9 2 4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Signals
+    </div>
+    <div class="nav-item" data-view="analytics">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M10 20V4M16 20v-7M20 20H2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Analytics
+    </div>
+    <div class="nav-item" data-view="team">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.5a3 3 0 0 1 0 5M21 20c0-2.5-1.5-4.6-3.6-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Team
+    </div>
+
+    <div class="side-label">Configure</div>
+    <div class="nav-item" data-view="integrations">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M10 3v4M14 3v4M7 7h10v4a5 5 0 0 1-10 0V7ZM12 16v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Integrations
+    </div>
+    <div class="nav-item" data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.5-2.4 1a7 7 0 0 0-2.3-1.3L13.8 2h-3.6l-.4 2.4a7 7 0 0 0-2.3 1.3l-2.4-1-2 3.5 2 1.5A7 7 0 0 0 5 12c0 .5 0 .9.1 1.3l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 2.3 1.3l.4 2.4h3.6l.4-2.4a7 7 0 0 0 2.3-1.3l2.4 1 2-3.5-2-1.5c.1-.4.1-.8.1-1.3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      Settings
+    </div>
+
+    <div class="side-foot">
+      <a class="back-link" href="index.html">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m15 6-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Back to site
+      </a>
+      <div class="org" style="margin-top:8px">
+        <span class="av">NC</span>
+        <div class="meta"><strong>Northwind Cloud</strong><small>Support · 142 agents</small></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="viewTitle">Decision Feed</h1>
+        <div class="sub" id="viewSub">Prioritized risks across your operation · <span id="today"></span></div>
+      </div>
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#737f9e" stroke-width="1.8"/><path d="m20 20-3-3" stroke="#737f9e" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <input id="searchBox" placeholder="Search risks, agents, signals…" />
+      </div>
+      <div class="top-live"><span class="dot-live"></span> Live · syncing</div>
+    </div>
+
+    <div class="content">
+      <div class="mobile-note">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Best viewed on a wider screen — this is a live product prototype.
+      </div>
+
+    <div id="view-feed">
+      <!-- KPI ROW -->
+      <div class="kpis" id="kpis"></div>
+
+      <!-- MAIN COLUMNS -->
+      <div class="cols">
+        <!-- LEFT: feed + detail -->
+        <div class="stack">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Decision Feed</h3>
+              <div class="tabs" id="tabs">
+                <span class="tab active" data-filter="all">All</span>
+                <span class="tab" data-filter="high">High</span>
+                <span class="tab" data-filter="medium">Medium</span>
+                <span class="tab" data-filter="resolved">Resolved</span>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="rank-bar">
+                <span class="rank-by">Ranked by</span>
+                <div class="seg-sort">
+                  <button class="on" data-sort="priority">Priority</button>
+                  <button data-sort="severity">Severity</button>
+                </div>
+                <span class="rank-note" id="rankNote">impact × confidence × urgency — what to fix first, not just what's loudest</span>
+              </div>
+              <div class="feed" id="feed"></div>
+            </div>
+          </div>
+
+          <div class="panel" id="detailPanel">
+            <div class="panel-head"><h3>Insight Explorer</h3><span class="hint">Select a risk to drill in</span></div>
+            <div class="panel-body" id="detail">
+              <div class="detail-empty">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                <div>Pick a risk from the feed to see root-cause analysis and recommended actions.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: widgets -->
+        <div class="stack">
+          <!-- Org health gauge -->
+          <div class="panel">
+            <div class="panel-head"><h3>Organizational Health</h3><span class="hint">real-time</span></div>
+            <div class="panel-body">
+              <div class="gauge">
+                <svg viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="9"/>
+                  <circle id="gaugeArc" cx="50" cy="50" r="42" fill="none" stroke="url(#gg)" stroke-width="9"
+                    stroke-linecap="round" transform="rotate(-90 50 50)" stroke-dasharray="264" stroke-dashoffset="60"/>
+                  <defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#34d399"/></linearGradient></defs>
+                </svg>
+                <div>
+                  <div class="g-num grad-text" id="gaugeNum">82</div>
+                  <div class="g-lbl">Composite health index</div>
+                  <div class="d up" id="gaugeDelta" style="font-size:.8rem;margin-top:4px;color:var(--ok)"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Signal aggregator -->
+          <div class="panel">
+            <div class="panel-head"><h3>Signal Aggregator</h3><span class="hint">connected sources</span></div>
+            <div class="panel-body"><div class="src-list" id="sources"></div></div>
+          </div>
+
+          <!-- Live ingest -->
+          <div class="panel">
+            <div class="panel-head"><h3>Live Ingest</h3><span class="hint" style="display:flex;align-items:center;gap:6px"><span class="dot-live"></span>streaming</span></div>
+            <div class="panel-body"><div class="ticker" id="ticker"></div></div>
+          </div>
+
+          <!-- QA by team -->
+          <div class="panel">
+            <div class="panel-head"><h3>QA Score by Team</h3><span class="hint">last 7 days</span></div>
+            <div class="panel-body"><div class="qa-team" id="qaTeam"></div></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /view-feed -->
+
+      <!-- ============ ANALYTICS VIEW ============ -->
+      <div id="view-analytics" hidden></div>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+<div class="chart-tip" id="chartTip" hidden></div>
+
+<script src="assets/analytics.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
