@@ -39,9 +39,15 @@ const ago = (ms) => {
 };
 const shortStatus = (s) => (s === 'Pending Customer Response' ? 'Pending' : s);
 
-export function mountServiceDesk(root, store, { compact = false } = {}) {
-  root.classList.add('sd-root');
-  root.innerHTML = '';
+export function mountServiceDesk(container, store, { compact = false } = {}) {
+  /* Mount into an element we own, rather than decorating the host container.
+     Host pages size their app with `#app > * { flex: 1 }`; appending the
+     toolbar and the layout as siblings there made the TOOLBAR a flex child
+     too, so it grew to half the viewport with its contents centred in the
+     empty band. One root child = one thing for the host page to size. */
+  container.innerHTML = '';
+  const root = el('div', 'sd-root');
+  container.appendChild(root);
 
   const state = { view: 'open', q: '', page: 0, selected: null, freshIds: new Set() };
 
@@ -86,9 +92,9 @@ export function mountServiceDesk(root, store, { compact = false } = {}) {
     { id: 'all', group: 'Tickets', label: 'All tickets', icon: IC.inbox, count: (d) => d.tickets.length },
     { id: 'breached', group: 'Tickets', label: 'SLA breached', icon: IC.fire, count: (d) => d.tickets.filter((t) => !t.resolved_at && t.sla_breached).length },
     { id: 'aged', group: 'Tickets', label: 'Aged > 72h', icon: IC.fire, count: (d, now) => d.tickets.filter((t) => !t.resolved_at && (now - t.created_at) / 3600000 > 72).length },
-    { id: 'escalations', group: 'Escalations', label: 'Escalation board', icon: IC.fire, count: (d) => d.escalations.filter((e) => e.status !== 'Closed').length },
+    { id: 'escalations', group: 'Escalations', label: 'Escalations', icon: IC.fire, count: (d) => d.escalations.filter((e) => e.status !== 'Closed').length },
     { id: 'qa', group: 'Quality', label: 'QA reviews', icon: IC.qa, count: (d) => d.qa.length },
-    { id: 'nps', group: 'Voice of customer', label: 'NPS inbox', icon: IC.star, count: (d) => d.nps.length },
+    { id: 'nps', group: 'Feedback', label: 'NPS inbox', icon: IC.star, count: (d) => d.nps.length },
     { id: 'agents', group: 'Team', label: 'Agent roster', icon: IC.users, count: (d) => d.agents.length },
   ];
 
@@ -98,7 +104,8 @@ export function mountServiceDesk(root, store, { compact = false } = {}) {
     let group = null;
     for (const v of VIEWS) {
       if (v.group !== group) { group = v.group; side.appendChild(el('div', 'lbl', esc(group))); }
-      const b = el('button', state.view === v.id ? 'on' : '', `${v.icon}<span>${esc(v.label)}</span><span class="n">${fmt.int(v.count(d, now))}</span>`);
+      const b = el('button', state.view === v.id ? 'on' : '', `${v.icon}<span class="t">${esc(v.label)}</span><span class="n">${fmt.int(v.count(d, now))}</span>`);
+      b.title = `${v.label} · ${fmt.int(v.count(d, now))}`;
       b.addEventListener('click', () => { state.view = v.id; state.page = 0; state.selected = null; detail.hidden = true; render(); });
       side.appendChild(b);
     }
@@ -147,7 +154,18 @@ export function mountServiceDesk(root, store, { compact = false } = {}) {
     nps: ['ID', 'Account', 'Score', 'Segment', 'Driver', 'Verbatim', 'Received'],
     agents: ['ID', 'Agent', 'Team', 'Role', 'Tenure', 'Tickets handled', 'QA avg'],
   };
+  /* Which columns drop away as the pane narrows. Side by side with OpsPulse
+     there is not room for all eight, and a column cut off mid-pill reads worse
+     than a column that is honestly not shown. Ranked least-useful first. */
+  const DROP = {
+    ticket: { 5: 'c-md', 7: 'c-md', 2: 'c-sm' },
+    escalations: { 5: 'c-md', 6: 'c-md' },
+    qa: { 2: 'c-md', 7: 'c-md', 5: 'c-sm' },
+    nps: { 6: 'c-md', 4: 'c-sm' },
+    agents: { 3: 'c-md', 4: 'c-md' },
+  };
   const headerFor = (v) => HEADERS[v] || HEADERS.ticket;
+  const dropFor = (v) => DROP[v] || DROP.ticket;
 
   function cellsFor(v, r, now, agentName) {
     if (v === 'escalations') return [
@@ -199,9 +217,36 @@ export function mountServiceDesk(root, store, { compact = false } = {}) {
       `<span class="pill ${r.ticket_priority}">${r.ticket_priority}</span>`,
       `<span class="pill ${shortStatus(r.ticket_status)}">${esc(shortStatus(r.ticket_status))}</span>${r.escalated ? ' <span class="pill Critical">ESC</span>' : ''}`,
       `<span class="co">${esc(agentName(r.agent_id))}</span>`,
-      `<span class="co">${r.resolved_at ? fmt.hrs(r.time_to_resolution_hrs) : ago(r.created_at)}</span>`,
+      `<span class="co nw">${r.resolved_at ? fmt.hrs(r.time_to_resolution_hrs) : ago(r.created_at)}</span>`,
       r.sla_breached ? '<span class="warnflag">breached</span>' : `<span class="co">${Math.round(r.sla_target_hrs)}h</span>`,
     ];
+  }
+
+  /** Offset of a row from the top of the scroll box, in scroll coordinates. */
+  function rowOffset(tr) {
+    return tr.getBoundingClientRect().top - scroll.getBoundingClientRect().top + scroll.scrollTop;
+  }
+
+  /** Which row is at the top of the viewport, and how far above the fold. */
+  function captureAnchor() {
+    const top = scroll.scrollTop;
+    if (top <= 0) return null;                       // already at the top: nothing to hold
+    for (const tr of scroll.querySelectorAll('tbody tr[data-id]')) {
+      const o = rowOffset(tr);
+      if (o + tr.offsetHeight > top) return { id: tr.dataset.id, delta: o - top, top };
+    }
+    return { id: null, delta: 0, top };
+  }
+
+  function restoreAnchor(a) {
+    if (!a) return;
+    if (a.id) {
+      const tr = [...scroll.querySelectorAll('tbody tr[data-id]')].find((x) => x.dataset.id === a.id);
+      // The anchor row can legitimately vanish — resolved, filtered out, or
+      // pushed onto another page. Fall back to the raw offset in that case.
+      if (tr) { scroll.scrollTop = Math.max(0, rowOffset(tr) - a.delta); return; }
+    }
+    scroll.scrollTop = a.top;
   }
 
   function render() {
@@ -218,25 +263,30 @@ export function mountServiceDesk(root, store, { compact = false } = {}) {
     root.querySelector('#sdCount').textContent = `${fmt.int(list.length)} records`;
 
     const head = headerFor(state.view);
+    const drop = dropFor(state.view);
     const table = el('table', 'sd-table');
-    table.innerHTML = `<thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>`;
+    table.innerHTML = `<thead><tr>${head.map((h, i) => `<th class="${drop[i] || ''}">${esc(h)}</th>`).join('')}</tr></thead>`;
     const tb = el('tbody');
     for (const r of page) {
       const id = r.ticket_id || r.escalation_id || r.qa_id || r.response_id || r.agent_id;
       const tr = el('tr', state.freshIds.has(id) ? 'fresh' : '');
-      tr.innerHTML = cellsFor(state.view, r, now, agentName).map((c) => `<td>${c}</td>`).join('');
+      tr.dataset.id = id;
+      tr.innerHTML = cellsFor(state.view, r, now, agentName).map((c, i) => `<td class="${drop[i] || ''}">${c}</td>`).join('');
       tr.addEventListener('click', () => { state.selected = r; renderDetail(); });
       tb.appendChild(tr);
     }
     table.appendChild(tb);
-    // The live feed re-renders every few seconds. Replacing the table resets
-    // scrollTop, which would yank a viewer back to the top of the queue mid-read
-    // — so the position is restored across the swap.
-    const keepScroll = scroll.scrollTop;
+
+    /* SCROLL ANCHORING.
+       The feed re-renders every few seconds and new tickets sort to the TOP,
+       so restoring scrollTop alone is not enough — the rows underneath would
+       still slide down by however many arrived. Instead, remember which row
+       the reader was looking at and put THAT row back where it was. */
+    const anchor = captureAnchor();
     scroll.innerHTML = '';
     if (!page.length) scroll.appendChild(el('div', 'empty', 'No records match this view.'));
     else scroll.appendChild(table);
-    scroll.scrollTop = keepScroll;
+    restoreAnchor(anchor);
 
     pager.innerHTML = '';
     const prev = el('button', 'lv-btn', '← Prev'); prev.disabled = state.page === 0;
@@ -342,5 +392,5 @@ export function mountServiceDesk(root, store, { compact = false } = {}) {
 
   render();
   refreshLiveChrome();
-  return { destroy: () => { unsub(); root.innerHTML = ''; } };
+  return { destroy: () => { unsub(); container.innerHTML = ''; } };
 }

@@ -252,7 +252,21 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
   const day0 = todayStart.getTime() - (DAYS - 1) * DAY_MS;
   const dayMs = (d) => day0 + d * DAY_MS;
   const dayDow = (d) => new Date(dayMs(d)).getDay();
-  const elapsedToday = Math.max(0.22, (nowMs - todayStart.getTime()) / DAY_MS);
+  /* Two different jobs, deliberately separated.
+     `elapsedToday` floors today's ticket COUNT so the last bar of every chart
+     isn't a stub. But timestamps must be spread over the time that has
+     ACTUALLY elapsed — using the floored fraction to place them put tickets
+     hours into the future when the app was opened early in the day, and every
+     row in the queue then read "0s ago". */
+  // Today is genuinely partial and the data says so. Flooring either of these
+  // harder produces the failure you can see instantly at 00:05 — a dozen
+  // tickets all stamped the same second, every row reading "8s ago".
+  const elapsedToday = Math.max(0.02, (nowMs - todayStart.getTime()) / DAY_MS);
+  const todaySpanMs = Math.max(60000, nowMs - todayStart.getTime());
+  /** Creation instant for a ticket on day d, never later than "now". */
+  const stamp = (d, offsetMs) => (d === DAYS - 1
+    ? Math.min(nowMs - 1000, day0 + d * DAY_MS + (offsetMs / DAY_MS) * todaySpanMs)
+    : day0 + d * DAY_MS + offsetMs);
 
   /* ---- 1. Agents ------------------------------------------------------- */
   const agents = [];
@@ -347,7 +361,7 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
       const pool = agentsByTeam[cfg.team];
       const agent = rnd.weighted(pool.map((a) => [a.agent_id, a.weight]));
 
-      const created = dayMs(d) + hourOffset(rnd) * (d === DAYS - 1 ? elapsedToday : 1);
+      const created = stamp(d, hourOffset(rnd));
       // Causal honesty: nobody complains about a policy change or a new setup
       // wizard BEFORE it ships. Pre-release those tags are a rare trickle, so
       // the root-cause decomposition finds a real fingerprint rather than one
@@ -678,8 +692,13 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
     // ramp produces occasional negative-NPS draws that read as a broken demo
     // rather than a bad quarter. This lands the drop at roughly 18 points on
     // every seed and every calendar position.
+    // Reach the depressed floor by mid-window (day 82) and HOLD it, rather than
+    // bottoming out on day 89. Weekends are low-volume, so a ramp that hits its
+    // low only at the very end gets that low underweighted whenever the window
+    // happens to end on a Sunday — which made the drop vanish on exactly those
+    // calendar positions. A held floor makes the recent window uniformly low.
     const mix = recent
-      ? { promoter: ramp(d, RECENT_FROM, DAYS - 1, 0.53, 0.40), passive: 0.26, detractor: 0 }
+      ? { promoter: ramp(d, RECENT_FROM, RECENT_FROM + 6, 0.52, 0.38), passive: 0.26, detractor: 0 }
       : { promoter: 0.55, passive: 0.25, detractor: 0.20 };
     mix.detractor = 1 - mix.promoter - mix.passive;
 
@@ -692,7 +711,7 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
       const driver = seg === 'detractor' ? rnd.weighted(recent ? NPS_DRIVERS_RECENT : NPS_DRIVERS_BASE) : null;
       nps.push({
         response_id: 'NPS' + pad(++nid, 4),
-        submitted_at: dayMs(d) + hourOffset(rnd) * (d === DAYS - 1 ? elapsedToday : 1),
+        submitted_at: stamp(d, hourOffset(rnd)),
         day_index: d,
         account_id: acct.account_id,
         company: acct.company,
@@ -899,7 +918,7 @@ export function makeLiveEscalation(ds, rnd, atMs) {
 
 /** A survey response, drawn from the CURRENT (depressed) sentiment mix. */
 export function makeLiveNps(ds, rnd, atMs) {
-  const seg = rnd.weighted({ promoter: 0.40, passive: 0.26, detractor: 0.34 });
+  const seg = rnd.weighted({ promoter: 0.37, passive: 0.26, detractor: 0.37 });
   const acct = rnd.pick(ds.accounts);
   const score = seg === 'promoter' ? rnd.int(9, 10) : seg === 'passive' ? rnd.int(7, 8)
     : Number(rnd.weighted({ 0: 0.06, 1: 0.05, 2: 0.07, 3: 0.11, 4: 0.14, 5: 0.2, 6: 0.37 }));

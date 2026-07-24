@@ -18,20 +18,28 @@
   #app > * { flex: 1; min-width: 0; }
   .boot { display: grid; place-items: center; height: 100vh; color: var(--text-dim); font-size: .9rem; gap: 10px; text-align: center; padding: 20px; }
   .boot code { color: var(--cyan); }
-  .backlink { position: fixed; right: 14px; bottom: 12px; z-index: 50; font-size: .76rem; color: var(--text-dim); background: rgba(9,13,24,.9); border: 1px solid var(--line); padding: 5px 10px; border-radius: 8px; text-decoration: none; }
-  .backlink:hover { color: var(--text); }
 </style>
 </head>
 <body>
 <div id="app"><div class="boot">Loading the service desk…</div></div>
-<a class="backlink" href="demo.html">← Live Ops Floor (side-by-side with OpsPulse)</a>
 <noscript><p style="padding:40px;text-align:center">This app requires JavaScript.</p></noscript>
 
 <script type="module">
   import { createStore } from './data/store.js';
   import { mountServiceDesk } from './assets/servicedesk.js';
+  const app = document.getElementById('app');
   const store = createStore();
-  mountServiceDesk(document.getElementById('app'), store);
+  mountServiceDesk(app, store);
+
+  // Put the cross-link in the toolbar rather than floating it over the page —
+  // as a fixed overlay it sat on top of the pager controls.
+  const link = document.createElement('a');
+  link.className = 'lv-btn';
+  link.href = 'demo.html';
+  link.textContent = '↔ Live Ops Floor';
+  link.title = 'Open side-by-side with OpsPulse';
+  app.querySelector('.lv-top').appendChild(link);
+
   window.__opspulse = store;
 </script>
 <script>

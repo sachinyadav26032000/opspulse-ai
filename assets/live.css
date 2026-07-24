@@ -7,7 +7,10 @@
    split "Live Ops Floor" without a second stylesheet.
    ========================================================================== */
 
-.op-root, .sd-root { container-type: inline-size; display: flex; flex-direction: column; min-width: 0; height: 100%; }
+.op-root, .sd-root { container-type: inline-size; display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; }
+/* The toolbar is a fixed band, never a flex child that grows. Stating it here
+   means a host page's own `> *` sizing rule can't stretch it. */
+.op-root > .lv-top, .sd-root > .lv-top { flex: 0 0 auto; }
 
 /* ── Shared chrome ───────────────────────────────────────────────────────── */
 .lv-top {
@@ -270,20 +273,34 @@
 
 /* ── ServiceDesk ────────────────────────────────────────────────────────── */
 .sd-root { background: #0a0f1c; }
-.sd-layout { display: grid; grid-template-columns: 178px 1fr; flex: 1; min-height: 0; }
+/* `grid-template-rows: minmax(0,1fr)` plus min-height:0 on the items is what
+   lets the inner scrollers actually scroll: grid items default to
+   min-height:auto, so without this the table refuses to shrink below its full
+   10,000-row height and pushes the whole layout out of the viewport. */
+.sd-layout { display: grid; grid-template-columns: 198px 1fr; grid-template-rows: minmax(0, 1fr); flex: 1; min-height: 0; }
+.sd-side, .sd-main { min-height: 0; }
 .sd-side { border-right: 1px solid var(--line); padding: 12px 10px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
-.sd-side .lbl { font-size: .62rem; text-transform: uppercase; letter-spacing: .12em; color: var(--text-dim); padding: 12px 9px 5px; }
+.sd-side .lbl { font-size: .62rem; text-transform: uppercase; letter-spacing: .12em; color: var(--text-dim); padding: 12px 9px 5px; white-space: nowrap; }
 .sd-side button {
   display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
   background: transparent; border: 0; color: var(--text-soft); font: inherit; font-size: .82rem;
-  padding: 7px 9px; border-radius: 7px; cursor: pointer;
+  padding: 7px 9px; border-radius: 7px; cursor: pointer; min-width: 0;
 }
+/* Sizing these is not optional. An unconstrained inline SVG in a flex row
+   takes its intrinsic size, which rendered the rail icons enormous and forced
+   every label onto two or three lines. */
+.sd-side button svg { width: 16px; height: 16px; flex: none; }
+.sd-side button .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sd-side button:hover { background: rgba(255,255,255,.05); color: var(--text); }
 .sd-side button.on { background: rgba(57,135,229,.14); color: #9ec5f4; }
-.sd-side button .n { margin-left: auto; font-size: .7rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.sd-side button .n { flex: none; font-size: .7rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .sd-main { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 .sd-tools { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.sd-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+/* overflow-x matters in the split view: the pane is narrower than the table,
+   and without it the right-hand columns are silently clipped rather than
+   reachable. min-width keeps the columns from crushing into each other. */
+.sd-scroll { flex: 1; overflow-y: auto; overflow-x: auto; min-height: 0; }
+.sd-scroll .sd-table { min-width: 560px; }
 
 .sd-table { width: 100%; border-collapse: collapse; font-size: .79rem; }
 .sd-table th {
@@ -291,14 +308,19 @@
   font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); font-weight: 600;
   border-bottom: 1px solid var(--line); white-space: nowrap;
 }
-.sd-table td { padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,.045); vertical-align: top; }
+/* Kept tight on purpose: a queue is scanned, not read. Loosening these by a
+   few pixels costs two visible tickets per screen. */
+.sd-table td { padding: 6px 12px; border-bottom: 1px solid rgba(255,255,255,.045); vertical-align: top; line-height: 1.4; }
 .sd-table tr { cursor: pointer; }
 .sd-table tbody tr:hover { background: rgba(255,255,255,.035); }
 .sd-table tr.fresh { animation: flashrow 2.4s ease; }
 @keyframes flashrow { 0% { background: rgba(52,211,153,.18); } 100% { background: transparent; } }
 .sd-table .id { font-family: ui-monospace, Menlo, monospace; font-size: .73rem; color: var(--text-dim); white-space: nowrap; }
 .sd-table .subj { color: var(--text); font-weight: 500; display: block; max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sd-table .co { color: var(--text-dim); font-size: .73rem; }
+.sd-table .co { color: var(--text-dim); font-size: .72rem; display: block; line-height: 1.35; }
+/* Relative ages must never wrap — "0s ago" on two lines makes every row in the
+   queue taller than it needs to be. */
+.sd-table .nw { white-space: nowrap; }
 .pill { display: inline-block; font-size: .66rem; font-weight: 700; padding: 2px 7px; border-radius: 5px; white-space: nowrap; }
 .pill.Critical { background: rgba(208,59,59,.2); color: #ff9c9c; }
 .pill.High { background: rgba(236,131,90,.2); color: #f5b394; }
@@ -315,7 +337,7 @@
 .pager { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: .78rem; color: var(--text-dim); }
 .pager .lv-btn { padding: 3px 9px; font-size: .74rem; }
 
-.sd-detail { border-top: 1px solid var(--line); background: var(--panel); padding: 14px 16px; max-height: 46%; overflow-y: auto; }
+.sd-detail { border-top: 1px solid var(--line); background: var(--panel); padding: 14px 16px; max-height: 46%; overflow-y: auto; flex: none; }
 .sd-detail h4 { margin: 0 0 2px; font-size: .95rem; }
 .sd-detail .meta { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 12px; }
 .sd-detail .desc { font-size: .84rem; color: var(--text-soft); line-height: 1.6; background: rgba(255,255,255,.025); border-left: 2px solid var(--line-strong); padding: 9px 12px; border-radius: 0 8px 8px 0; }
@@ -411,7 +433,16 @@
   .dim-grid { grid-template-columns: 1fr; }
   .radar-wrap { grid-template-columns: 1fr; justify-items: center; }
   .src-grid { grid-template-columns: 1fr; }
-  .sd-layout { grid-template-columns: 132px 1fr; }
+  /* Side-by-side: the rail must still fit "SLA breached" plus its count on one
+     line, so it gets slightly tighter type rather than an ellipsis. */
+  .sd-layout { grid-template-columns: 174px 1fr; }
+  .sd-side button { font-size: .77rem; padding: 6px 8px; gap: 7px; }
+  .sd-side button .n { font-size: .67rem; }
+  .sd-table .c-md { display: none; }
+  /* Subject is the widest cell; without trimming it here the table still
+     overruns the pane even after two columns are dropped. */
+  .sd-table .subj { max-width: 24ch; }
+  .sd-table td, .sd-table th { padding-left: 9px; padding-right: 9px; }
   .lv-body { padding: 14px 13px 50px; }
   .lv-top { padding: 10px 13px; }
   .op-hero { grid-template-columns: 1fr; }
@@ -421,5 +452,6 @@
   .kpi-strip { grid-template-columns: repeat(2, 1fr); }
   .sd-layout { grid-template-columns: 1fr; }
   .sd-side { display: none; }
+  .sd-table .c-sm { display: none; }
   .drill-kpis { grid-template-columns: 1fr 1fr; }
 }

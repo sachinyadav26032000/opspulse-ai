@@ -49,9 +49,13 @@ const moneyRange = (i) => {
   return `${fmt.usdK(e.range_low_usd)} – ${fmt.usdK(e.range_high_usd)}`;
 };
 
-export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
-  root.classList.add('op-root');
-  root.innerHTML = '';
+export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
+  /* One root child, for the same reason as the service desk: host pages size
+     the app with `#app > * { flex: 1 }`, and appending the toolbar as a
+     sibling of the body made the toolbar grow to half the viewport. */
+  container.innerHTML = '';
+  const root = el('div', 'op-root');
+  container.appendChild(root);
 
   const state = { view: 'dash', filter: 'all', q: '', selected: null, chat: [], lastUpload: null };
 
@@ -1238,7 +1242,7 @@ export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
   });
 
   render();
-  return { destroy: () => { unsub(); modal.remove(); toasts.remove(); root.innerHTML = ''; } };
+  return { destroy: () => { unsub(); modal.remove(); toasts.remove(); container.innerHTML = ''; } };
 }
 
 /* ── local helpers ───────────────────────────────────────────────────────── */

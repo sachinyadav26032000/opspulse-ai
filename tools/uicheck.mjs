@@ -69,6 +69,17 @@ const navTo = (label) => [...pulseEl.querySelectorAll('#opNav button')].find((b)
 console.log('— Mount —');
 run('ServiceDesk mounts', () => { mountServiceDesk(deskEl, store); return deskEl.querySelectorAll('.sd-table tbody tr').length + ' rows'; });
 run('OpsPulse mounts', () => { mountOpsPulse(pulseEl, store); return pulseEl.querySelectorAll('.risk-card').length + ' top-3 cards'; });
+
+/* Host pages size their app with `#app > * { flex: 1 }`. If a mount appends
+   more than one child there, the TOOLBAR becomes a flex child too and grows to
+   half the viewport — which is exactly the bug that shipped. jsdom does no
+   layout so the blank band is invisible, but the structural cause is not. */
+ok('ServiceDesk mounts exactly one root child', deskEl.children.length === 1, `${deskEl.children.length} children`);
+ok('OpsPulse mounts exactly one root child', pulseEl.children.length === 1, `${pulseEl.children.length} children`);
+ok('ServiceDesk root carries .sd-root', deskEl.firstElementChild?.classList.contains('sd-root'));
+ok('OpsPulse root carries .op-root', pulseEl.firstElementChild?.classList.contains('op-root'));
+ok('toolbar is nested inside the app root, not a sibling',
+  !!deskEl.querySelector('.sd-root > .lv-top') && !!pulseEl.querySelector('.op-root > .lv-top'));
 ok('dashboard leads with the top-3 headline',
   /top \d+ operational risks/i.test(pulseEl.querySelector('.op-hero h2')?.textContent || ''),
   pulseEl.querySelector('.op-hero h2')?.textContent.trim());
@@ -199,7 +210,7 @@ ok('unrecognised CSV rejected with a reason', !bad.ok, bad.error);
 ok('engine still contract-valid over uploaded data', store.engine.run.contract_valid);
 
 console.log('\n— ServiceDesk —');
-for (const label of ['All tickets', 'SLA breached', 'Escalation board', 'QA reviews', 'NPS inbox', 'Agent roster', 'Open queue']) {
+for (const label of ['All tickets', 'SLA breached', 'Escalations', 'QA reviews', 'NPS inbox', 'Agent roster', 'Open queue']) {
   run(`view: ${label}`, () => {
     [...deskEl.querySelectorAll('.sd-side button')].find((b) => b.textContent.includes(label)).click();
     const rows = deskEl.querySelectorAll('.sd-table tbody tr').length;
