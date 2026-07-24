@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OpsPulse AI — Operations Decision Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/live.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2334d399'/><path d='M5 17h5l3-8 4 14 3-9 2 3h5' stroke='%23041' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; overflow: hidden; background: var(--bg); }
+  body::before { content: none; }
+  #app { height: 100vh; display: flex; }
+  #app > * { flex: 1; min-width: 0; }
+  .boot { display: grid; place-items: center; height: 100vh; color: var(--text-dim); font-size: .9rem; gap: 10px; text-align: center; padding: 20px; }
+  .boot code { color: var(--cyan); }
+</style>
+</head>
+<body>
+<div id="app"><div class="boot">Generating 90 days of operations data…</div></div>
+<noscript><p style="padding:40px;text-align:center">This app requires JavaScript.</p></noscript>
+
+<script type="module">
+  import { createStore } from './data/store.js';
+  import { mountOpsPulse } from './assets/opspulse.js';
+  const store = createStore();
+  mountOpsPulse(document.getElementById('app'), store);
+  window.__opspulse = store;
+</script>
+<script>
+  // ES modules require http(s). Opened from the filesystem, nothing would load
+  // and the page would sit blank — say so instead.
+  if (location.protocol === 'file:') {
+    document.getElementById('app').innerHTML =
+      '<div class="boot"><strong style="color:var(--text);font-size:1.05rem">Serve this over http, not file://</strong>' +
+      '<span>ES modules are blocked on the <code>file://</code> protocol.</span>' +
+      '<span>Run <code>python -m http.server 5500</code> in this folder, then open <code>http://localhost:5500/opspulse.html</code></span></div>';
+  }
+</script>
+</body>
+</html>

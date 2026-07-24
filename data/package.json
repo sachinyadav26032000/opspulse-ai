@@ -1,0 +1,6 @@
+{
+  "name": "opspulse-data",
+  "private": true,
+  "type": "module",
+  "description": "ESM scope marker so Node treats these browser modules as ES modules."
+}

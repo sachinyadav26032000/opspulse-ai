@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NorthDesk — Service Cloud</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/live.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%233987e5'/><path d='M5 16h6l2 3h6l2-3h6M5 16l3-8h16l3 8v9H5v-9Z' stroke='%23fff' stroke-width='2' fill='none' stroke-linejoin='round'/></svg>" />
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; overflow: hidden; background: #0a0f1c; }
+  body::before { content: none; }
+  #app { height: 100vh; display: flex; }
+  #app > * { flex: 1; min-width: 0; }
+  .boot { display: grid; place-items: center; height: 100vh; color: var(--text-dim); font-size: .9rem; gap: 10px; text-align: center; padding: 20px; }
+  .boot code { color: var(--cyan); }
+  .backlink { position: fixed; right: 14px; bottom: 12px; z-index: 50; font-size: .76rem; color: var(--text-dim); background: rgba(9,13,24,.9); border: 1px solid var(--line); padding: 5px 10px; border-radius: 8px; text-decoration: none; }
+  .backlink:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div id="app"><div class="boot">Loading the service desk…</div></div>
+<a class="backlink" href="demo.html">← Live Ops Floor (side-by-side with OpsPulse)</a>
+<noscript><p style="padding:40px;text-align:center">This app requires JavaScript.</p></noscript>
+
+<script type="module">
+  import { createStore } from './data/store.js';
+  import { mountServiceDesk } from './assets/servicedesk.js';
+  const store = createStore();
+  mountServiceDesk(document.getElementById('app'), store);
+  window.__opspulse = store;
+</script>
+<script>
+  if (location.protocol === 'file:') {
+    document.getElementById('app').innerHTML =
+      '<div class="boot"><strong style="color:var(--text);font-size:1.05rem">Serve this over http, not file://</strong>' +
+      '<span>ES modules are blocked on the <code>file://</code> protocol.</span>' +
+      '<span>Run <code>python -m http.server 5500</code> in this folder, then open <code>http://localhost:5500/servicedesk.html</code></span></div>';
+  }
+</script>
+</body>
+</html>

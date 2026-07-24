@@ -1,0 +1,6 @@
+{
+  "name": "opspulse-engine-web",
+  "private": true,
+  "type": "module",
+  "description": "ESM scope marker — the browser decision engine, also runnable under Node for the verification harness."
+}

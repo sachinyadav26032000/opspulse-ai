@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Live Ops Floor — NorthDesk × OpsPulse AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/live.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2334d399'/><path d='M5 17h5l3-8 4 14 3-9 2 3h5' stroke='%23041' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body { margin: 0; background: var(--bg); }
+  body::before { content: none; }
+
+  .floor { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+
+  .floor-bar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 9px 18px; border-bottom: 1px solid var(--line);
+    background: rgba(6, 9, 17, .96); font-size: .82rem;
+  }
+  .floor-bar .t { font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 9px; }
+  .floor-bar .t svg { width: 18px; height: 18px; }
+  .floor-bar .arrow { color: var(--emerald); font-size: 1.05rem; }
+  .floor-bar .exp { color: var(--text-dim); font-size: .78rem; max-width: 62ch; line-height: 1.45; }
+  .floor-bar a { color: var(--text-soft); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
+  .floor-bar a:hover { color: var(--text); }
+
+  .panes { display: grid; grid-template-columns: 1fr 1fr; min-height: 0; }
+  .pane { min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .pane + .pane { border-left: 2px solid var(--line-strong); }
+  .pane-tag {
+    font-size: .62rem; text-transform: uppercase; letter-spacing: .14em; font-weight: 800;
+    padding: 5px 18px; border-bottom: 1px solid var(--line); color: var(--text-dim);
+    display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.02);
+  }
+  .pane-tag .n { width: 16px; height: 16px; border-radius: 4px; display: grid; place-items: center; color: #04120c; font-size: 10px; }
+  .pane-host { flex: 1; min-height: 0; display: flex; }
+  .pane-host > * { flex: 1; min-width: 0; }
+
+  #split { display: none; }
+  @media (max-width: 1180px) {
+    .panes { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+    .pane + .pane { border-left: 0; border-top: 2px solid var(--line-strong); }
+  }
+</style>
+</head>
+<body>
+
+<div class="floor">
+  <div class="floor-bar">
+    <span class="t">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2.2-6 3.4 12 2.6-8 1.6 4H22" stroke="#34d399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Live Ops Floor
+    </span>
+    <span class="exp">
+      One dataset, two views. Tickets arriving in <strong>NorthDesk</strong> on the left are the same objects
+      <strong>OpsPulse</strong> is counting on the right — there is no sync step, because there is only one store.
+    </span>
+    <span style="margin-left:auto"></span>
+    <a href="servicedesk.html">NorthDesk alone ↗</a>
+    <a href="opspulse.html">OpsPulse alone ↗</a>
+    <a href="index.html">Site ↗</a>
+  </div>
+
+  <div class="panes">
+    <section class="pane">
+      <div class="pane-tag"><span class="n" style="background:#3987e5">1</span> Source system — the service desk your team works in</div>
+      <div class="pane-host" id="deskHost"></div>
+    </section>
+    <section class="pane">
+      <div class="pane-tag"><span class="n" style="background:#34d399">2</span> Intelligence layer — what a director should do about it</div>
+      <div class="pane-host" id="pulseHost"></div>
+    </section>
+  </div>
+</div>
+
+<noscript><p style="padding:40px;text-align:center">This demo requires JavaScript.</p></noscript>
+
+<script type="module">
+  import { createStore } from './data/store.js';
+  import { mountServiceDesk } from './assets/servicedesk.js';
+  import { mountOpsPulse } from './assets/opspulse.js';
+
+  /* ONE store. Both apps read the same objects, so they cannot disagree and
+     there is nothing to keep in sync. */
+  const store = createStore();
+  mountServiceDesk(document.getElementById('deskHost'), store);
+  mountOpsPulse(document.getElementById('pulseHost'), store);
+
+  window.__opspulse = store;   // handy in the console: __opspulse.dataset / .engine
+</script>
+</body>
+</html>
