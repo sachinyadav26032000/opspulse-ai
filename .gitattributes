@@ -1,0 +1,42 @@
+# ============================================================================
+#  Line endings.
+#
+#  Without this file, each clone's line endings depend on that machine's
+#  core.autocrlf setting. Two people with different settings will produce
+#  whole-file diffs the moment either one saves — every line "changed", with
+#  the real edit buried somewhere inside it.
+#
+#  Store LF in the repository, always. What lands in the working tree is a
+#  per-platform decision made below, not an accident of local config.
+# ============================================================================
+
+* text=auto eol=lf
+
+# Windows batch files are the exception, and not a cosmetic one: cmd.exe parses
+# them line by line and mis-handles LF-only files around `goto` labels and
+# parenthesised if/else blocks. serve.cmd uses both, so it must arrive as CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Shell scripts must be LF even when checked out on Windows — a CRLF shebang
+# makes the interpreter path end in \r, and the error ("bad interpreter") names
+# a file that looks perfectly correct on screen.
+*.sh  text eol=lf
+
+# Anything binary must never be touched. Nothing here is binary today; these
+# are declared so that adding a screenshot later cannot corrupt it silently.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.pptx binary
+*.xlsx binary
+*.woff  binary
+*.woff2 binary
+
+# Generated/vendored paths shouldn't skew language stats or clutter diffs.
+*.min.js  -diff
+*.min.css -diff
