@@ -15,7 +15,11 @@ echo.
 echo     Live Ops Floor  (start here)   http://localhost:%PORT%/demo.html
 echo     OpsPulse alone                 http://localhost:%PORT%/opspulse.html
 echo     NorthDesk alone                http://localhost:%PORT%/servicedesk.html
+echo     Ops Copilot                    http://localhost:%PORT%/app.html
 echo     Marketing site                 http://localhost:%PORT%/index.html
+echo     Roadmap                        http://localhost:%PORT%/roadmap.html
+echo.
+echo   Open several at once — they all show the same live operation.
 echo.
 echo   Press Ctrl+C to stop.
 echo.

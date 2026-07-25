@@ -20,11 +20,27 @@ window.Analytics = (function () {
     return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
   }
 
-  var state = { range: 30, mounted: false, tables: {} };
+  /* `range` is a trailing day count (7/30/90). `custom` overrides it with an
+     explicit {from,to} of day indices when the user picks dates; `span` is how
+     many days that works out to, which the labels and the window caption need. */
+  var state = { range: 30, custom: null, span: 30, mounted: false, tables: {} };
+  var bounds = null;                 // {days, minDate, maxDate} — set by the host
   var tip = null;
 
   /* ---------------- data ---------------- */
+  /* Every chart below is fed by exactly one function, which is what makes this
+     view swappable: app.js injects a provider that computes the same object
+     from the live dataset. The simulated version stays as the fallback so the
+     file still runs standalone, but nothing wired to a store ever reaches it. */
+  var provider = null;
+
+  /** The window currently selected, in whatever form the provider understands. */
+  function currentRange() { return state.custom || state.range; }
+
   function genData(days) {
+    if (provider) return provider(currentRange());
+    // Fallback path (analytics.js standalone) only understands a day count.
+    days = state.span;
     var rng = makeRng(days === 7 ? 11 : days === 90 ? 91 : 30);
     var labels = [], csat = [], nps = [], sla = [], handle = [];
     var channels = { Tickets: [], Calls: [], Chat: [], Survey: [], QA: [] };
@@ -321,8 +337,9 @@ window.Analytics = (function () {
         '<div class="seg" id="rangeSeg">' +
           seg("7", "7d") + seg("30", "30d") + seg("90", "90d") +
         '</div>' +
+        datePicker() +
         '<div class="grow"></div>' +
-        '<div class="updated"><span class="dot-live"></span>Live · simulated data · ' + state.range + '-day window</div>' +
+        '<div class="updated"><span class="dot-live"></span>Live · simulated data · ' + windowLabel() + '</div>' +
       '</div>' +
 
       /* summary tiles */
@@ -374,10 +391,39 @@ window.Analytics = (function () {
 
     mount.innerHTML = html;
 
-    // segmented range control
+    // segmented range control — a preset always clears a custom window
     $$("#rangeSeg button").forEach(function (b) {
-      b.classList.toggle("on", +b.getAttribute("data-v") === state.range);
-      b.addEventListener("click", function () { state.range = +b.getAttribute("data-v"); render(mount); });
+      b.classList.toggle("on", !state.custom && +b.getAttribute("data-v") === state.range);
+      b.addEventListener("click", function () {
+        state.range = +b.getAttribute("data-v");
+        state.custom = null;
+        state.span = state.range;
+        render(mount);
+      });
+    });
+
+    // custom range
+    var applyBtn = $("#anApply");
+    if (applyBtn) {
+      applyBtn.addEventListener("click", function () {
+        var f = dayOfIso($("#anFrom").value), t = dayOfIso($("#anTo").value);
+        if (f == null || t == null) return;
+        if (f > t) { var tmp = f; f = t; t = tmp; }        // picked back-to-front
+        state.custom = { from: f, to: t };
+        state.span = t - f + 1;
+        render(mount);
+      });
+    }
+    var clearBtn = $("#anClear");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", function () {
+        state.custom = null; state.span = state.range; render(mount);
+      });
+    }
+    // Enter in either field applies, so the range can be set without reaching
+    // for the button.
+    $$("#anDates input").forEach(function (inp) {
+      inp.addEventListener("keydown", function (e) { if (e.key === "Enter" && applyBtn) applyBtn.click(); });
     });
     // table toggles
     $$("[data-table-toggle]", mount).forEach(function (btn) {
@@ -447,6 +493,50 @@ window.Analytics = (function () {
 
   /* ---------------- small builders ---------------- */
   function seg(v, lbl) { return '<button data-v="' + v + '">' + lbl + '</button>'; }
+
+  /* ---------------- custom date range ----------------
+     The presets answer "how have the last N days gone". A custom window answers
+     "what happened around the policy change on the 14th", which is the question
+     someone actually opens this screen with. Both inputs are clamped to the
+     dataset: offering dates outside it would just draw an empty chart. */
+  /* Local components, not toISOString(): the inputs, the labels and the bounds
+     all have to name the same day, and UTC formatting shifts it east of GMT. */
+  function isoAt(dayIdx) {
+    if (!bounds) return '';
+    var d = new Date(Date.parse(bounds.minDate + 'T00:00:00') + dayIdx * 86400000);
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  function dayOfIso(iso) {
+    if (!bounds || !iso) return null;
+    var d = Math.round((Date.parse(iso + 'T00:00:00') - Date.parse(bounds.minDate + 'T00:00:00')) / 86400000);
+    if (isNaN(d)) return null;
+    return Math.max(0, Math.min(bounds.days - 1, d));
+  }
+  function currentWindow() {
+    if (state.custom) return state.custom;
+    var to = bounds ? bounds.days - 1 : state.range - 1;
+    return { from: Math.max(0, to - state.range + 1), to: to };
+  }
+  function windowLabel() {
+    var w = currentWindow();
+    if (!state.custom) return state.range + '-day window';
+    var f = new Date(Date.parse(isoAt(w.from) + 'T00:00:00'));
+    var t = new Date(Date.parse(isoAt(w.to) + 'T00:00:00'));
+    var opt = { month: 'short', day: 'numeric' };
+    return f.toLocaleDateString(undefined, opt) + ' → ' + t.toLocaleDateString(undefined, opt) +
+      ' · ' + state.span + ' days';
+  }
+  function datePicker() {
+    if (!bounds) return '';                 // standalone: presets only
+    var w = currentWindow();
+    return '<div class="an-dates" id="anDates">' +
+      '<input type="date" id="anFrom" value="' + isoAt(w.from) + '" min="' + bounds.minDate + '" max="' + bounds.maxDate + '" aria-label="Range start"/>' +
+      '<span class="sep">→</span>' +
+      '<input type="date" id="anTo" value="' + isoAt(w.to) + '" min="' + bounds.minDate + '" max="' + bounds.maxDate + '" aria-label="Range end"/>' +
+      '<button class="an-date-btn" id="anApply">Apply</button>' +
+      (state.custom ? '<button class="an-date-btn" id="anClear">Clear</button>' : '') +
+      '</div>';
+  }
   function tile(k, v, d, sparkSvg) {
     return '<div class="kpi an-stat"><div class="k">' + k + '</div><div class="v">' + v + '</div>' +
       '<div class="d ' + (d.up ? "up" : "down") + '"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="' +
@@ -525,5 +615,11 @@ window.Analytics = (function () {
     return { up: up, txt: (diff >= 0 ? "+" : "") + pct.toFixed(1) + "% vs prior" };
   }
 
-  return { render: render };
+  return {
+    render: render,
+    /** @param fn (range) => data — range is a day count or {from,to} day indices.
+     *  @param b  {days,minDate,maxDate} — enables the custom date picker. */
+    setProvider: function (fn, b) { provider = fn; if (b) bounds = b; },
+    setBounds: function (b) { bounds = b; },
+  };
 })();

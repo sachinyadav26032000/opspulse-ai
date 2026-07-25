@@ -67,6 +67,15 @@ export function makeRng(seed) {
   /** n distinct items from arr */
   rnd.sample = (arr, n) => rnd.shuffle(arr.slice()).slice(0, n);
 
+  /* mulberry32's entire state is one uint32, which makes the live simulator
+     resumable: a tab that inherits leadership can pick the sequence up exactly
+     where the previous leader left it instead of replaying draws already made
+     (see data/sync.js). Serialising a PRNG is only safe because this one has
+     no hidden state — Box–Muller here is stateless, it draws two fresh values
+     rather than caching the second variate. */
+  rnd.state = () => a >>> 0;
+  rnd.setState = (v) => { a = v >>> 0; };
+
   return rnd;
 }
 

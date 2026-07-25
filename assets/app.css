@@ -397,6 +397,30 @@ body.app::before { position: fixed; }
   transition: all 0.15s var(--ease);
 }
 .an-toolbar .seg button.on { background: var(--grad); color: #04120c; }
+/* Custom date range — sits beside the presets and borrows their pill shape so
+   the toolbar still reads as one control group. */
+.an-dates {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 100px; padding: 3px 6px;
+}
+.an-dates input[type="date"] {
+  background: none; border: none; color: var(--text-soft);
+  font: inherit; font-size: 0.8rem; font-weight: 600;
+  padding: 4px 6px; border-radius: 100px; cursor: pointer;
+  color-scheme: dark;                       /* so the native picker matches the surface */
+}
+.an-dates input[type="date"]:hover { color: var(--text); background: var(--panel-3); }
+.an-dates input[type="date"]:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.an-dates .sep { color: var(--text-dim); font-size: 0.78rem; }
+.an-date-btn {
+  border: none; background: var(--panel-3); color: var(--text-soft);
+  font-size: 0.78rem; font-weight: 600; padding: 5px 12px;
+  border-radius: 100px; cursor: pointer; transition: all 0.15s var(--ease);
+}
+.an-date-btn:hover { background: var(--grad); color: #04120c; }
+@media (max-width: 720px) { .an-dates { flex-wrap: wrap; border-radius: 14px; } }
+
 .an-toolbar .grow { margin-left: auto; }
 .an-toolbar .updated { color: var(--text-dim); font-size: 0.8rem; display: flex; align-items: center; gap: 7px; }
 

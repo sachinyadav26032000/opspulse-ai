@@ -14,6 +14,10 @@ This repo contains two applications sharing one live dataset:
 | **NorthDesk** | `servicedesk.html` | The CSM / service-desk tool — ticket queue, escalation board, QA reviews, NPS inbox, agent roster. **The source system.** |
 | **OpsPulse** | `opspulse.html` | The decision engine — Dashboard, Decision Feed, Risk Radar, Executive Copilot, Data Upload. |
 | **Live Ops Floor** | `demo.html` | Both, side by side, off **one shared store.** Start here. |
+| **Ops Copilot** | `app.html` | The original single-screen dashboard — decision feed, insight explorer, analytics. Reads the same store. |
+
+Open any combination of them, in any number of tabs. They all show the same
+operation — see **One operation, every tab** below.
 
 ---
 
@@ -46,7 +50,44 @@ in sync, and therefore nothing that can drift.
 Watch it for thirty seconds: tickets stream into the queue on the left, the ingest ticker on
 the right moves with them, and every ~9 seconds the nine detectors re-run over the combined
 dataset. Ticks are cheap; the full engine pass is throttled, so the top-3 never flickers
-while someone is reading it.
+while someone is reading it — but the **KPI numbers refresh on every tick**, because those
+are the figures NorthDesk is also showing and the two panes must never disagree mid-read.
+
+---
+
+## One operation, every tab
+
+Sharing an object graph solves the split screen. It does nothing for the second window.
+Opening NorthDesk and OpsPulse in separate tabs used to give you the same 90 days of history
+— both rebuild it from the persisted seed — and **two different live tails**, because each
+tab ran its own simulator.
+
+`data/sync.js` fixes that with one writer and many readers:
+
+- Exactly one tab runs the simulator. It **broadcasts the records it created**, and every
+  other tab applies them. Replaying a seeded PRNG per tab would send less, but it makes each
+  tab's correctness depend on every tab walking an identical code path — one dropped message
+  and they diverge silently and permanently. Shipping records means a follower's state is a
+  function of what it *received*, which is inspectable.
+- Followers re-run the engine against the **leader's `as_of`**, not their own clock, so a
+  window boundary can never put two tabs on opposite sides of a day.
+- A tab opened later asks for a snapshot and catches up — live records, plus the patches for
+  history the simulator reached back and mutated.
+- Pause, reseed and CSV upload work from **any** tab; a follower asks the writer to do it.
+
+Two roles, deliberately separated:
+
+| | |
+|---|---|
+| **Lock holder** | Decided by `navigator.locks` — an exclusive lock that is never released, so the browser hands it on when that tab closes. Failover with no heartbeat and no tie-break. |
+| **Writer** | Who is actually ticking. It can move without the lock moving, because **browsers throttle timers in hidden tabs** to roughly one a minute. Leave the writer in a tab you are not looking at and every tab you *are* looking at goes quiet, so a hidden writer hands off to a visible one. |
+
+Splitting them is what keeps the handoff safe: delegation is a favour the lock holder grants
+and can reclaim, and only the lock holder runs the watchdog — so there is never a moment when
+two tabs both believe they should be writing.
+
+Without `BroadcastChannel` or `navigator.locks` — Node, jsdom, older browsers — the whole
+layer is a no-op and each tab is its own writer, exactly as before.
 
 ---
 
@@ -125,8 +166,12 @@ take two of the three slots. A director needs three different problems, not one 
 Both harnesses are the acceptance test, not decoration.
 
 ```bash
-node tools/verify.mjs                                    # 67 checks — the engine
-npm install --no-save jsdom && node tools/uicheck.mjs    # 73 checks — the UI
+node tools/verify.mjs                 # 67 checks — the engine finds the patterns
+npm install --no-save jsdom
+node tools/uicheck.mjs                # 78 checks — the UI renders them
+node tools/synccheck.mjs              # 36 checks — every tab shows the same operation
+node tools/appcheck.mjs               # 34 checks — app.html reads the store, not a mock
+node tools/browsercheck.mjs           # 29 checks — the real navigator.locks path, both directions
 ```
 
 `verify.mjs` asserts that all four injected patterns are found, root-caused to the *correct*
@@ -140,6 +185,32 @@ empty render, or `undefined`/`NaN` leaking into user-facing text. It is what cau
 real bugs in CSV ingestion: day-index rounding silently dropping half of any same-day import,
 and uploaded categories crashing the live simulator.
 
+`synccheck.mjs` runs three stores in one process on a real `BroadcastChannel`, standing in
+for three tabs. Row counts are not the assertion — two stores can hold 10,042 tickets each
+and disagree about every one of them — so it compares ids, timestamps, the fields a live
+resolution writes, the id counters a tab would need if it inherited the simulator, and
+finally the numbers rendered in two different tabs' DOMs. It caught two real bugs: a live
+ticket resolved in a *later* tick never had its patch broadcast, so followers held the open
+version forever; and the leader ignored CSV uploads, which are the one message that travels
+follower→leader because the file only exists in the tab it was dropped on.
+
+`appcheck.mjs` guards `app.html` against regressing to hard-coded data — the ids on its
+cards must be engine insight ids, its connector counts must equal real record counts, and
+the NPS decline must be legible in the trend line rather than lost in noise.
+
+`browsercheck.mjs` exists because `synccheck` **injects** leadership, so it never executes
+the branch a browser actually takes: `navigator.locks.request` resolves *asynchronously*,
+after `createStore` has returned and already sent its `hello`. That gap is not cosmetic —
+under injection tab A is the writer before tab B exists, whereas in Chrome both tabs can be
+alive, both can have asked for a snapshot, and neither is yet the writer. So this harness
+gives Node a spec-shaped Web Locks manager and removes every injection point: real
+`BroadcastChannel`, real async election, real handshake, releasing a lock standing in for
+closing a tab. It then mounts NorthDesk and OpsPulse in two separate tabs and asserts the
+requirement literally — **the numbers on the two screens match, and an action on either
+screen reaches the other**: pause from the OpsPulse toolbar stops NorthDesk (and NorthDesk's
+own button flips to "Resume"), a CSV dropped on OpsPulse appears in NorthDesk's queue, and
+"New data" on either rebuilds both.
+
 ---
 
 ## Data Upload is real
@@ -152,6 +223,24 @@ screen shows you exactly which of your columns mapped to which field.
 **`.xlsx` is not supported** and the UI says so plainly rather than failing quietly: a real
 Excel file is a zipped XML package and parsing it needs a library this dependency-free
 prototype does not ship. Export as CSV and it ingests fully.
+
+---
+
+## Analytics ranges
+
+Presets are 7 / 30 / 90 days. Alongside them is a **custom window**: two date
+fields, clamped to the dataset, that recompute every chart over exactly that span.
+The presets answer *"how have the last N days gone"*; a custom window answers
+*"what happened around the refund policy change"*, which is the question someone
+actually opens the screen with. Picking the dates back-to-front is silently
+corrected rather than rejected.
+
+Two things the date handling has to get right, and both were wrong first:
+dates are formatted from **local** components, because `toISOString()` is UTC and
+east of Greenwich that made the latest selectable date a day earlier than the last
+point on the chart; and a date maps to its day index by **rounding**, because across
+a DST change two midnights are 23 or 25 hours apart and flooring drops a day.
+`appcheck.mjs` round-trips all 90 days to keep both honest.
 
 ---
 
@@ -171,14 +260,15 @@ grounding layer is the part that matters.)
 demo.html               Live Ops Floor — both apps, one store  ← start here
 opspulse.html           OpsPulse standalone
 servicedesk.html        NorthDesk standalone
+app.html                Ops Copilot — the original single-screen dashboard, now store-backed
 index.html              Marketing site
 roadmap.html            Technical roadmap
-app.html                Earlier static-mock demo (superseded by opspulse.html)
 
 data/
   rng.js                Seeded PRNG — the whole dataset rebuilds from one integer
   generator.js          90 days of history + the four injected patterns + live factories
   store.js              One store, two clocks (cheap tick / throttled engine pass)
+  sync.js               One writer, many tabs — leader election + visibility handoff
   csv.js                CSV parse, tolerant column mapping, ingestion
 
 engine/web/
@@ -195,10 +285,16 @@ assets/
   charts.js             Hand-rendered SVG charts (no chart library)
   opspulse.js           The five screens + BI drill-downs + copilot
   servicedesk.js        The CSM tool
+  app.js                Ops Copilot renderers (unchanged) over store-backed data
+  app-data.js           Insight objects → the shapes app.js and analytics.js render
+  analytics.js          The charts view; its one data function is now injectable
   live.css              Both apps (container queries, so the split view needs no second sheet)
 tools/
   verify.mjs            Engine acceptance test
   uicheck.mjs           Headless UI test (needs jsdom)
+  synccheck.mjs         Cross-tab sync test (needs jsdom)
+  appcheck.mjs          app.html data-provenance test (needs jsdom)
+  browsercheck.mjs      Real navigator.locks path, both directions (needs jsdom)
 ```
 
 ---
@@ -212,7 +308,15 @@ tools/
 - **Performance:** 10,000+ tickets are never put in the DOM — the queue paginates at 50 rows.
   A full engine pass over the whole dataset runs in ~100ms.
 - **Persistence:** only the seed and the as-of instant are stored; the dataset rebuilds
-  deterministically. Storing 11,600 records would blow the ~5MB localStorage quota.
+  deterministically. Storing 11,600 records would blow the ~5MB localStorage quota. The live
+  tail is not persisted — it travels between open tabs over `BroadcastChannel`, and a full
+  reload starts a fresh one.
+- **Statistics:** time-to-resolve is generated lognormal and behaves like it — across the
+  dataset the mean is ~49h and the median ~3h — so every resolution-time figure is a median.
+  Outcome metrics (SLA, CSAT) are bucketed by the day a ticket **closed**, not the day it
+  opened: bucketing on creation looks natural and quietly flatters the recent end, because of
+  tickets opened yesterday only the already-closed ones have an outcome, and those are the
+  fast ones.
 - **"New data"** in the OpsPulse toolbar reseeds the whole operation — different companies,
   agents, tickets and numbers, with the same four patterns still detectable.
 - All data is simulated. This is a prototype.

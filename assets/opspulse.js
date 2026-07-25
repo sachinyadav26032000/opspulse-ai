@@ -138,6 +138,45 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
   /* ── Shared data helpers ──────────────────────────────────────────────── */
   const ds = () => store.dataset;
   const eng = () => store.engine;
+
+  /* The KPI strip, as data.
+     ------------------------------------------------------------------------
+     Pulled out of the dashboard renderer because it is now read twice: once
+     when the screen is built, and again on every ~3.2s tick to refresh the
+     numbers in place. Those numbers are the ones NorthDesk also shows, and a
+     full re-render was reserved for the ~9s engine pass so the top-3 cannot
+     flicker under a reader — which meant the two panes sat up to nine seconds
+     apart on the same metric. Recomputing the strip alone is cheap and touches
+     no card, so both apps now move together without reintroducing the flicker. */
+  function kpiModel(d) {
+    const rec = d.tickets.filter((t) => t.day_index >= d.meta.recent_from);
+    const open = openTickets(d);
+    const npsRec = npsOf(d.nps.filter((r) => r.day_index >= d.meta.recent_from));
+    const csatRec = csatOf(rec);
+    return [
+      { key: 'tickets', k: 'Tickets / day', v: fmt.one(rec.length / (d.meta.days - d.meta.recent_from)), spark: rolling(countByDay(d.tickets, d.meta.days), 7).slice(-30) },
+      { key: 'backlog', k: 'Open backlog', v: fmt.int(open.length), spark: d.meta.series.backlog.slice(-30), bad: true },
+      { key: 'escalations', k: 'Open escalations', v: fmt.int(d.escalations.filter((x) => x.status !== 'Closed').length), spark: rolling(countByDay(d.escalations, d.meta.days), 7).slice(-30), bad: true },
+      { key: 'nps', k: 'NPS', v: fmt.nps(npsRec.nps), spark: null, bad: npsRec.nps < 25 },
+      { key: 'csat', k: 'CSAT', v: fmt.stars(csatRec.avg), spark: rolling(meanByDay(d.tickets, d.meta.days, (t) => t.customer_satisfaction_rating), 7).slice(-30) },
+      { key: 'qa', k: 'QA average', v: fmt.one(mean(d.qa.map((q) => q.overall_score))), spark: rolling(meanByDay(d.qa, d.meta.days, (q) => q.overall_score), 14).slice(-30) },
+    ];
+  }
+
+  /** Repaint the strip's values without rebuilding it — no flicker, no lost hover. */
+  function refreshKpis() {
+    const strip = body.querySelector('.kpi-strip');
+    if (!strip) return;                       // not on the dashboard
+    for (const k of kpiModel(ds())) {
+      const v = strip.querySelector(`.kpi[data-kpi="${k.key}"] .v`);
+      if (!v) continue;
+      const next = String(k.v);
+      if (v.textContent !== next) v.textContent = next;
+      const colour = k.bad ? STATUS.warning : '';
+      if (v.style.color !== colour) v.style.color = colour;
+    }
+  }
+
   const labelsFor = (from, to) => { const d = ds(); const out = []; for (let i = from; i <= to; i++) out.push(dayLabel(d, i)); return out; };
   const win = (n) => { const d = ds(); const to = d.meta.days - 1; return { from: Math.max(0, to - n + 1), to }; };
   const releaseMarkers = (from) => ds().meta.releases.filter((r) => r.day >= from).map((r) => ({ i: r.day - from, label: r.kind === 'policy' ? 'policy' : r.kind === 'org' ? 'new hires' : 'release' }));
@@ -676,21 +715,10 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     wrap.appendChild(t3);
 
     /* KPI strip — secondary by design, but every tile opens real BI */
-    const rec = d.tickets.filter((t) => t.day_index >= d.meta.recent_from);
-    const open = openTickets(d);
-    const npsRec = npsOf(d.nps.filter((r) => r.day_index >= d.meta.recent_from));
-    const csatRec = csatOf(rec);
-    const kpis = [
-      { key: 'tickets', k: 'Tickets / day', v: fmt.one(rec.length / (d.meta.days - d.meta.recent_from)), spark: rolling(countByDay(d.tickets, d.meta.days), 7).slice(-30) },
-      { key: 'backlog', k: 'Open backlog', v: fmt.int(open.length), spark: d.meta.series.backlog.slice(-30), bad: true },
-      { key: 'escalations', k: 'Open escalations', v: fmt.int(d.escalations.filter((x) => x.status !== 'Closed').length), spark: rolling(countByDay(d.escalations, d.meta.days), 7).slice(-30), bad: true },
-      { key: 'nps', k: 'NPS', v: fmt.nps(npsRec.nps), spark: null, bad: npsRec.nps < 25 },
-      { key: 'csat', k: 'CSAT', v: fmt.stars(csatRec.avg), spark: rolling(meanByDay(d.tickets, d.meta.days, (t) => t.customer_satisfaction_rating), 7).slice(-30) },
-      { key: 'qa', k: 'QA average', v: fmt.one(mean(d.qa.map((q) => q.overall_score))), spark: rolling(meanByDay(d.qa, d.meta.days, (q) => q.overall_score), 14).slice(-30) },
-    ];
     const strip = el('div', 'kpi-strip');
-    for (const k of kpis) {
+    for (const k of kpiModel(d)) {
       const c = el('div', 'kpi', `<div class="k">${esc(k.k)}</div><div class="v" ${k.bad ? `style="color:${STATUS.warning}"` : ''}>${esc(k.v)}</div>${k.spark ? sparkline(k.spark, { color: k.bad ? STATUS.serious : SERIES[0] }) : '<div style="height:26px"></div>'}`);
+      c.dataset.kpi = k.key;                  // so the tick refresh can find its tile
       c.addEventListener('click', () => openDrill(KPI_DRILLS[k.key]()));
       strip.appendChild(c);
     }
@@ -1226,6 +1254,9 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       // after they are done, so the page never sits on stale insights.
       if (dirty && !busy) { dirty = false; render(); return; }
       if (!busy) {
+        // The KPI numbers are the ones NorthDesk also shows, so they track the
+        // tick; the cards behind them still wait for the engine pass.
+        refreshKpis();
         const tk = body.querySelector('.ticker');
         if (tk) tk.replaceWith(tickerPanel().querySelector('.ticker'));
       }

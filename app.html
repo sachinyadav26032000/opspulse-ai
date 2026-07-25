@@ -178,7 +178,21 @@
 <div class="toast-wrap" id="toasts"></div>
 <div class="chart-tip" id="chartTip" hidden></div>
 
+<!-- analytics.js stays a classic script so it can keep exposing window.Analytics;
+     app.js is a module because it now imports the shared store. Module scripts
+     are deferred, so window.Analytics is already defined by the time it runs. -->
 <script src="assets/analytics.js"></script>
-<script src="assets/app.js"></script>
+<script type="module" src="assets/app.js"></script>
+<script>
+  // Modules need http(s). Opened from the filesystem this page would sit on its
+  // loading state with nothing in the console to explain why.
+  if (location.protocol === 'file:') {
+    document.body.innerHTML =
+      '<div style="display:grid;place-items:center;height:100vh;gap:10px;text-align:center;padding:20px;color:#8b93a7;font:400 .9rem Inter,system-ui,sans-serif">' +
+      '<strong style="color:#e8ecf4;font-size:1.05rem">Serve this over http, not file://</strong>' +
+      '<span>This page reads the shared live store, and ES modules are blocked on <code>file://</code>.</span>' +
+      '<span>Run <code>python -m http.server 5500</code> in this folder, then open <code>http://localhost:5500/app.html</code></span></div>';
+  }
+</script>
 </body>
 </html>

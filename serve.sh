@@ -16,7 +16,11 @@ cat <<EOF
     Live Ops Floor  (start here)   http://localhost:$PORT/demo.html
     OpsPulse alone                 http://localhost:$PORT/opspulse.html
     NorthDesk alone                http://localhost:$PORT/servicedesk.html
+    Ops Copilot                    http://localhost:$PORT/app.html
     Marketing site                 http://localhost:$PORT/index.html
+    Roadmap                        http://localhost:$PORT/roadmap.html
+
+  Open several at once — they all show the same live operation.
 
   Press Ctrl+C to stop.
 

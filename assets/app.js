@@ -1,9 +1,29 @@
 /* ==========================================================================
    OpsPulse AI — Ops Copilot Dashboard engine
-   Simulated real-time operations intelligence. All data is mock.
+   --------------------------------------------------------------------------
+   This screen used to run on its own PRNG and five hand-written risk cards, so
+   it agreed with nothing else in the repo. It now reads the SAME store as
+   NorthDesk and OpsPulse — which means it also joins the cross-tab sync, and a
+   ticket arriving here is the ticket the service desk is showing.
+
+   Every renderer below is unchanged. What changed is where `risks`, `kpis`,
+   `sources` and `teams` come from: assets/app-data.js maps the engine's
+   insight objects onto the shapes these functions already expected.
    ========================================================================== */
+import { createStore } from '../data/store.js';
+import { buildModel, buildAnalytics, analyticsBounds, tickRows } from './app-data.js';
+
 (function () {
   "use strict";
+
+  var store = createStore();
+  var model = null;
+
+  /* Local, per-insight UI state — who you assigned it to, whether you cleared
+     it. Held outside the model because the model is rebuilt on every engine
+     pass; without this, dismissing a card would un-dismiss it nine seconds
+     later. Keyed by insight_id, so it survives a rebuild but not a reseed. */
+  var uiState = {};
 
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -41,7 +61,7 @@
     coin: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v10M14.6 9.2c0-1-1.2-1.7-2.6-1.7s-2.6.7-2.6 1.7 1.2 1.7 2.6 1.7 2.6.7 2.6 1.9-1.2 1.7-2.6 1.7-2.6-.7-2.6-1.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
   };
 
-  /* ---------- mock data ---------- */
+  /* ---------- view state ---------- */
   var state = {
     filter: "all",
     sort: "priority",   // "priority" (impact × confidence × urgency) | "severity"
@@ -52,182 +72,26 @@
 
   /* Each risk is a full insight object — the four questions (what / why / worth /
      do) every downstream agent contributes to. The feed row shows the same shape;
-     the Insight Explorer renders the richer object behind it. */
-  var risks = [
-    {
-      id: "r1", iid: "ins_9f2a", sev: "high", score: 94, title: "Enterprise churn risk — 6 accounts",
-      owner: "Unassigned", team: "Customer Success", age: "12m ago",
-      metric: "$180–340k at risk",
-      whatHappened: "6 enterprise accounts show a composite health decline of <b>>15 pts</b> over the last 7 days.",
-      why: {
-        confidence: 0.82,
-        hypothesis: "Most likely driven by onboarding SLA breaches on the new provisioning flow — breached <b>3×</b> this week and closely correlated with a last-touch sentiment drop (<b>+0.4 → −0.6</b>). 4 of 6 accounts also carry a P1 open >48h.",
-        note: "Correlation, not a confirmed cause — verify before it drives an executive action."
-      },
-      impact: {
-        costed: true, value: "$180k – $340k", type: "Churn prevention", horizon: "14-day window",
-        formula: "6 accounts · $520k combined ARR × 34–65% modeled churn probability"
-      },
-      rec: { owner: "CS Manager", playbook: "pb_churn_escalation_v2" },
-      priority: { annualK: 260, urgencyDays: 14, impactLabel: "$260k/yr", urgencyLabel: "14-day window",
-        rationale: "Biggest single event — $180–340k ARR at 82% confidence, near-term. It's severity's #1, but annualized it sits just under the billing leak." },
-      signals: [
-        { src: "Tickets", label: "P1 open >48h across 4 accounts", w: 88 },
-        { src: "Calls", label: "Negative sentiment in 5 recent calls", w: 74 },
-        { src: "Survey", label: "2 detractor NPS responses (score ≤ 3)", w: 62 }
-      ],
-      actions: [
-        { ic: "esc", t: "Escalate to CS leadership", s: "Loop in the VP of Success + assign a save-play", rec: true },
-        { ic: "assign", t: "Assign recovery owner", s: "Route the 6 accounts to a senior CSM" },
-        { ic: "flow", t: "Fix onboarding SLA rule", s: "Auto-page on-call when provisioning >24h" }
-      ]
-    },
-    {
-      id: "r2", iid: "ins_7c14", sev: "high", score: 87, title: "CSAT drop — Billing queue",
-      owner: "Unassigned", team: "Support · Billing", age: "27m ago",
-      metric: "$40–70k/mo leakage",
-      whatHappened: "Billing-queue CSAT fell <b>78% → 71%</b> in 24h while refund-ticket volume rose <b>41%</b>.",
-      why: {
-        confidence: 0.88,
-        hypothesis: "Correlates tightly with the pricing-page change shipped Tuesday, which preceded the refund spike. Handle time is up 22% and first-contact resolution fell to <b>58%</b> — consistent with agents lacking a refund policy for the new plans.",
-        note: "Correlation, not a confirmed cause — verify before it drives an executive action."
-      },
-      impact: {
-        costed: true, value: "$40k – $70k / mo", type: "Margin leakage", horizon: "30-day run-rate",
-        formula: "≈220 incremental refunds/mo × $180–320 average refund value"
-      },
-      rec: { owner: "Billing Lead", playbook: "pb_refund_policy_v1" },
-      priority: { annualK: 660, urgencyDays: 30, impactLabel: "$660k/yr", urgencyLabel: "30-day run-rate",
-        rationale: "Largest annualized exposure ($660k/yr) at the highest confidence (88%). Severity ranks the churn higher — but this bleeds more money per year. Fix it first." },
-      signals: [
-        { src: "Tickets", label: "+41% refund ticket volume", w: 91 },
-        { src: "QA", label: "Refund-handling score down 11%", w: 70 },
-        { src: "Chat", label: "'confusing pricing' mentioned 63×", w: 55 }
-      ],
-      actions: [
-        { ic: "flow", t: "Publish refund macro + policy", s: "Ship a canned response for new plans", rec: true },
-        { ic: "coach", t: "Coach Billing team on refunds", s: "15-min huddle + updated playbook" },
-        { ic: "assign", t: "Assign to Billing lead", s: "Owner: track resolution to green" }
-      ]
-    },
-    {
-      id: "r3", iid: "ins_5b83", sev: "medium", score: 68, title: "Agent coaching gap — Team B",
-      owner: "Unassigned", team: "Support · Tier 1", age: "44m ago",
-      metric: "$8–15k/mo rework",
-      whatHappened: "3 agents on Team B are running <b>>10 pts</b> below the QA baseline on technical scenarios.",
-      why: {
-        confidence: 0.71,
-        hypothesis: "Pattern points to a knowledge gap rather than a behavior issue: the three agents' escalation rate is <b>2.1×</b> the team median and concentrated in technical troubleshooting.",
-        note: "Likely, not confirmed — a coaching review will settle it."
-      },
-      impact: {
-        costed: true, value: "$8k – $15k / mo", type: "Efficiency loss", horizon: "30-day run-rate",
-        formula: "≈140 excess escalations/mo × $55–105 loaded handling cost"
-      },
-      rec: { owner: "Team B Lead", playbook: "pb_targeted_coaching_v3" },
-      priority: { annualK: 138, urgencyDays: 30, impactLabel: "$138k/yr", urgencyLabel: "30-day run-rate",
-        rationale: "Steady $138k/yr efficiency drag at moderate confidence, no deadline — schedule it, don't scramble." },
-      signals: [
-        { src: "QA", label: "3 agents below 75% on tech scenarios", w: 79 },
-        { src: "Tickets", label: "Escalation rate 2.1× median", w: 66 },
-        { src: "Calls", label: "Longer hold times on tech calls", w: 48 }
-      ],
-      actions: [
-        { ic: "coach", t: "Schedule targeted coaching", s: "Technical troubleshooting module", rec: true },
-        { ic: "assign", t: "Pair with senior mentor", s: "Buddy system for 2 weeks" },
-        { ic: "flow", t: "Surface top KB articles", s: "Pin fixes to agent workspace" }
-      ]
-    },
-    {
-      id: "r4", iid: "ins_3e61", sev: "medium", score: 61, title: "SLA breach risk — EMEA night shift",
-      owner: "Unassigned", team: "Support · EMEA", age: "1h ago",
-      metric: "$13–25k SLA credits",
-      whatHappened: "EMEA inbound in the <b>22:00–02:00</b> window is up <b>18%</b> week-over-week with staffing flat.",
-      why: {
-        confidence: 0.64,
-        hypothesis: "Projected from the current trajectory — inbound is rising faster than the flat night-shift roster can absorb, so modeled SLA compliance dips below the 90% threshold within ~3 days.",
-        note: "Forecast from current trend — not yet an observed breach."
-      },
-      impact: {
-        costed: true, value: "$13k – $25k", type: "SLA penalty exposure", horizon: "3-day forecast",
-        formula: "9 contracts with SLA-credit clauses × $1.4k–2.8k credit each"
-      },
-      rec: { owner: "WFM Planner", playbook: "pb_coverage_rebalance_v2" },
-      priority: { annualK: 19, urgencyDays: 3, impactLabel: "$19k once", urgencyLabel: "3-day deadline",
-        rationale: "A 3-day deadline makes it urgent, but the $13–25k one-time cost is small. Urgent isn't the same as expensive — it ranks below the money leaks." },
-      signals: [
-        { src: "Tickets", label: "+18% off-hours inbound", w: 72 },
-        { src: "Calls", label: "Abandon rate rising after 23:00", w: 58 }
-      ],
-      actions: [
-        { ic: "flow", t: "Adjust coverage schedule", s: "Shift 2 agents to the night window", rec: true },
-        { ic: "esc", t: "Flag to WFM planning", s: "Request temporary capacity" }
-      ]
-    },
-    {
-      id: "r5", iid: "ins_1a09", sev: "low", score: 44, title: "Emerging topic — 'export to CSV'",
-      owner: "Unassigned", team: "Product feedback", age: "2h ago",
-      metric: "Roadmap signal",
-      whatHappened: "A new <b>'CSV export'</b> request cluster is forming — 31 tickets and rising in 48h.",
-      why: {
-        confidence: 0.55,
-        hypothesis: "Early clustering only — export/CSV intent is accelerating across tickets and chat, but there isn't enough signal yet to attribute a driver.",
-        note: "Emerging pattern — too early to attribute a cause."
-      },
-      impact: {
-        costed: false,
-        note: "Not yet costed — volume is accelerating but sits below any revenue or SLA threshold. Routed to product as a roadmap signal, not a dollar risk. The model declines to invent a number it can't defend."
-      },
-      rec: { owner: "Product Manager", playbook: "pb_product_routing_v1" },
-      priority: { annualK: 0, urgencyDays: null, impactLabel: "uncosted", urgencyLabel: "no deadline",
-        rationale: "Uncosted watch-list signal — accelerating, but below any dollar threshold and low confidence. Monitor, don't act yet." },
-      signals: [
-        { src: "Tickets", label: "31 requests in 48h", w: 52 },
-        { src: "Chat", label: "'export' intent up 3.4×", w: 40 }
-      ],
-      actions: [
-        { ic: "flow", t: "Route to product board", s: "Tag as feature signal", rec: true },
-        { ic: "dismiss", t: "Snooze for 7 days", s: "Re-evaluate if volume grows" }
-      ]
-    }
-  ];
+     the Insight Explorer renders the richer object behind it.
 
-  var sources = [
-    { name: "Zendesk", meta: "Ticketing", ic: "ticket", base: 1284 },
-    { name: "Aircall", meta: "Call transcripts", ic: "phone", base: 342 },
-    { name: "Klaus QA", meta: "Quality reviews", ic: "qa", base: 96 },
-    { name: "Delighted", meta: "NPS / CSAT surveys", ic: "survey", base: 218 },
-    { name: "Intercom", meta: "Live chat", ic: "chat", base: 671 }
-  ];
+     Populated by applyModel() from store.engine.insights. The literals that used
+     to live here are gone: they described a company that did not exist. */
+  var risks = [];
+  var sources = [], teams = [], kpis = [];
 
-  var teams = [
-    { name: "Team A · Onboarding", score: 91, color: "#34d399" },
-    { name: "Team B · Tier 1", score: 74, color: "#fbbf24" },
-    { name: "Team C · Billing", score: 71, color: "#fb7185" },
-    { name: "Team D · Enterprise", score: 88, color: "#22d3ee" }
-  ];
-
-  var tickTemplates = [
-    { src: "Tickets", txt: "New P2 ticket — API latency", c: "#38bdf8" },
-    { src: "Calls", txt: "Call transcript scored — sentiment −0.3", c: "#fb7185" },
-    { src: "QA", txt: "QA review completed — 88%", c: "#34d399" },
-    { src: "Survey", txt: "CSAT response received — 4/5", c: "#34d399" },
-    { src: "Chat", txt: "Chat resolved — 3m 12s", c: "#22d3ee" },
-    { src: "Tickets", txt: "Refund request auto-tagged", c: "#fbbf24" },
-    { src: "Calls", txt: "Escalation flagged by copilot", c: "#fb7185" },
-    { src: "QA", txt: "Coaching note added to Agent #214", c: "#a78bfa" },
-    { src: "Survey", txt: "Detractor NPS — score 2", c: "#fb7185" },
-    { src: "Tickets", txt: "SLA timer < 30m on 2 tickets", c: "#fbbf24" }
-  ];
-
-  var kpis = [
-    { k: "Org Health", id: "kHealth", v: "82", d: "+2 vs 7d", up: true, spark: [70,72,71,74,73,76,78,80,82] },
-    { k: "CSAT · 24h", id: "kCsat", v: "79%", d: "−4.2%", up: false, spark: [86,85,84,83,82,81,80,79,79] },
-    { k: "SLA Compliance", id: "kSla", v: "94%", d: "−1.1%", up: false, spark: [97,96,96,95,95,94,94,94,94] },
-    { k: "Open Risks", id: "kRisks", v: "5", d: "2 high", up: false, spark: [2,3,3,4,4,5,4,5,5] },
-    { k: "Avg Resolution", id: "kRes", v: "4.2h", d: "−0.6h", up: true, spark: [5.4,5.1,5.0,4.8,4.7,4.5,4.4,4.3,4.2] }
-  ];
-
+  /** Rebuild every list from the store. Called on mount and on each engine pass. */
+  function applyModel() {
+    model = buildModel(store);
+    risks = model.risks.map(function (r) {
+      var u = uiState[r.id];
+      return u ? Object.assign(r, u) : r;
+    });
+    sources = model.sources;
+    teams = model.teams;
+    kpis = model.kpis;
+    state.prevHealth = model.prevHealth;
+    state.health = model.health;
+  }
   /* ---------- helpers ---------- */
   function sparkPath(data, w, h) {
     var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
@@ -467,8 +331,11 @@
     if (a.rec && a.ic !== "dismiss") {
       r.resolved = true;
       r.resolution = a.ic === "coach" ? "Coaching booked" : a.ic === "esc" ? "Escalated" : "Fix shipped";
-      state.health = Math.min(96, state.health + ri(1, 3));
     }
+    /* Remember the decision against the insight id. The model is rebuilt from
+       the engine every pass, so anything recorded only on `r` would be gone in
+       nine seconds — the card would quietly reappear after you cleared it. */
+    uiState[r.id] = { owner: r.owner, resolved: !!r.resolved, resolution: r.resolution };
     toast(msg, a.t);
     renderFeed();
     renderHealth();
@@ -484,12 +351,14 @@
   }
 
   /* ---------- render: sources ---------- */
+  /* `base` is now a real count of records in the store rather than a starting
+     number to drift upward from, so the rail is re-read instead of remembered. */
   var srcCounts = {};
   function renderSources() {
     var wrap = $("#sources");
     wrap.innerHTML = "";
     sources.forEach(function (s) {
-      if (srcCounts[s.name] == null) srcCounts[s.name] = s.base;
+      srcCounts[s.name] = s.base;
       var row = el("div", "src");
       row.innerHTML =
         '<div class="s-ic">' + (IC[s.ic] || IC.ticket) + '</div>' +
@@ -537,28 +406,34 @@
     setTimeout(function () { t.classList.add("exit"); setTimeout(function () { t.remove(); }, 320); }, 3200);
   }
 
-  /* ---------- live ingest ticker ---------- */
-  var tickClock = 9 * 3600 + 41 * 60; // 09:41:00 baseline seconds
-  function fmtClock() {
-    var s = tickClock % 60, m = Math.floor(tickClock / 60) % 60, h = Math.floor(tickClock / 3600) % 24;
+  /* ---------- live ingest ticker ----------
+     Was a rotating list of invented one-liners on a 2.6s timer. It now renders
+     the store's event feed, so each row is a record that exists — and the row
+     you see here is the row NorthDesk just added to its queue. */
+  function fmtClock(at) {
+    var d = new Date(at);
     function p(n) { return (n < 10 ? "0" : "") + n; }
-    return p(h) + ":" + p(m) + ":" + p(s);
+    return p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
   }
-  function pushTick() {
-    tickClock += ri(3, 40);
-    var tpl = tickTemplates[ri(0, tickTemplates.length - 1)];
+  function renderTicker() {
     var wrap = $("#ticker");
-    var t = el("div", "tick");
-    t.innerHTML = '<span class="t-dot" style="background:' + tpl.c + '"></span><span class="t-src">' + tpl.src + '</span>&nbsp;' + tpl.txt + '<time>' + fmtClock() + '</time>';
-    wrap.insertBefore(t, wrap.firstChild);
-    while (wrap.children.length > 7) wrap.removeChild(wrap.lastChild);
-    // bump source counters
-    var name = tpl.src === "QA" ? "Klaus QA" : tpl.src === "Survey" ? "Delighted" : tpl.src === "Chat" ? "Intercom" : tpl.src === "Calls" ? "Aircall" : "Zendesk";
-    if (srcCounts[name] != null) {
-      srcCounts[name] += ri(1, 3);
-      var c = $('[data-src="' + name + '"]');
-      if (c) c.textContent = srcCounts[name].toLocaleString();
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    var rows = tickRows(store, 7);
+    if (!rows.length) {
+      wrap.appendChild(el("div", "tick", '<span class="t-src">Waiting for the first events…</span>'));
+      return;
     }
+    rows.forEach(function (r) {
+      var t = el("div", "tick");
+      t.innerHTML = '<span class="t-dot" style="background:' + r.c + '"></span><span class="t-src">' + r.src + '</span>&nbsp;' + r.txt + '<time>' + fmtClock(r.at) + '</time>';
+      wrap.appendChild(t);
+    });
+    // The connector counters move because records arrived, not because a timer fired.
+    sources.forEach(function (s) {
+      var c = $('[data-src="' + s.name + '"]');
+      if (c) c.textContent = s.base.toLocaleString();
+    });
   }
 
   /* ---------- tabs, search, nav ---------- */
@@ -621,11 +496,28 @@
 
   function setToday() {
     var t = $("#today");
-    if (t) t.textContent = "Wed, Jul 22 · 09:41 local";
+    if (t) t.textContent = (model ? model.today : "") + " local";
+  }
+
+  /* Redraw everything that reads the model. Called on each engine pass — the
+     ~9s cadence, not the ~3.2s tick, so the feed does not reshuffle under a
+     reader mid-sentence. The ticker updates on the tick; the cards do not. */
+  function renderAll() {
+    applyModel();
+    computePriority();
+    setToday();
+    renderKpis();
+    renderFeed();
+    renderSources();
+    renderQa();
+    renderHealth();
+    renderTicker();
+    if (state.selectedId && risks.some(function (r) { return r.id === state.selectedId; })) selectRisk(state.selectedId);
   }
 
   /* ---------- boot ---------- */
   function init() {
+    applyModel();
     setToday();
     computePriority();
     renderKpis();
@@ -633,17 +525,37 @@
     renderSources();
     renderQa();
     renderHealth();
+    renderTicker();
     bindControls();
-    // seed ticker
-    for (var i = 0; i < 5; i++) pushTick();
-    setInterval(pushTick, 2600);
-    // subtle KPI drift
-    setInterval(function () {
-      var csat = $("#kCsat");
-      if (csat) { var base = 78 + ri(0, 2); csat.textContent = base + "%"; }
-    }, 5200);
-    // auto-select top risk after a beat
-    setTimeout(function () { selectRisk("r1"); }, 500);
+
+    // The analytics view charts the same dataset instead of its own PRNG.
+    // Passing bounds is what enables its custom date range — the picker has to
+    // know where the data starts and stops before it can offer dates.
+    if (window.Analytics && window.Analytics.setProvider) {
+      window.Analytics.setProvider(
+        function (range) { return buildAnalytics(store, range); },
+        analyticsBounds(store),
+      );
+    }
+
+    store.subscribe(function (evt) {
+      if (evt.type === "tick") { renderTicker(); return; }
+      if (evt.type === "engine" || evt.type === "reset") {
+        if (evt.type === "reset") {
+          uiState = {};                              // new world, no stale dismissals
+          // A reseed moves day 0, so the date picker's limits move with it.
+          if (window.Analytics && window.Analytics.setBounds) window.Analytics.setBounds(analyticsBounds(store));
+        }
+        renderAll();
+        if (!$("#view-analytics").hidden && window.Analytics) window.Analytics.render($("#view-analytics"));
+      }
+    });
+
+    // auto-select the top-ranked risk after a beat
+    setTimeout(function () {
+      var top = risks.slice().sort(function (a, b) { return a._rank - b._rank; })[0];
+      if (top) selectRisk(top.id);
+    }, 500);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
