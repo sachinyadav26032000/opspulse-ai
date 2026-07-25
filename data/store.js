@@ -59,6 +59,13 @@ export function createStore(opts = {}) {
   let tickTimer = null, engineTimer = null, running = false;
   let counters = { added: 0, resolved: 0, escalated: 0, nps: 0, qa: 0, uploaded: 0 };
 
+  /* The decision ledger. A recommendation the engine makes is not a decision;
+     a decision is a human committing to an action, on evidence, at a stated
+     confidence. The ledger is the only place that commitment is recorded, and
+     it snapshots the evidence AS IT WAS at the moment of the call — so an
+     outcome can be judged later without the engine quietly rewriting history. */
+  let decisions = [];
+
   saveSession({ seed, as_of: asOf });
 
   const emit = (evt) => { for (const fn of listeners) { try { fn(evt); } catch (e) { console.error('[store] listener failed', e); } } };
@@ -141,9 +148,40 @@ export function createStore(opts = {}) {
     get seed() { return seed; },
     get counters() { return counters; },
     get running() { return running; },
+    get decisions() { return decisions; },
 
     /* ── subscription ── */
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+
+    /* ── decision ledger ── */
+
+    /**
+     * Commit a decision. `entry` carries the evidence snapshot; the store adds
+     * identity and timestamps. Returns the stored record.
+     */
+    recordDecision(entry) {
+      const rec = {
+        decision_id: `DEC-${String(decisions.length + 1).padStart(3, '0')}`,
+        decided_at: Date.now(),
+        status: 'open',
+        history: [{ status: 'open', at: Date.now() }],
+        ...entry,
+      };
+      decisions.unshift(rec);
+      pushFeed({ kind: 'decision', id: rec.decision_id, text: `Decision recorded — ${rec.title}`, meta: rec.owner_role });
+      emit({ type: 'decision', decision: rec });
+      return rec;
+    },
+
+    /** Move a decision along its lifecycle, keeping the transition history. */
+    updateDecision(id, patch) {
+      const rec = decisions.find((x) => x.decision_id === id);
+      if (!rec) return null;
+      if (patch.status && patch.status !== rec.status) rec.history.push({ status: patch.status, at: Date.now() });
+      Object.assign(rec, patch);
+      emit({ type: 'decision', decision: rec });
+      return rec;
+    },
 
     /* ── simulation control ── */
     start() {
@@ -170,6 +208,9 @@ export function createStore(opts = {}) {
       rng = makeRng(seed ^ 0x5f3759df);
       counters = { added: 0, resolved: 0, escalated: 0, nps: 0, qa: 0, uploaded: 0 };
       feed.length = 0;
+      // A new world makes old decisions unjudgeable — the signals they were
+      // taken against no longer exist. Clearing is more honest than orphaning.
+      decisions = [];
       saveSession({ seed, as_of: asOf });
       recompute('reseed');
       emit({ type: 'reset', seed });

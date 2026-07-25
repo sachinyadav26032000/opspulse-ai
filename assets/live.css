@@ -267,6 +267,139 @@
 .ic.n { background: rgba(213,81,129,.2); color: #f0a9c2; }
 .ic.q { background: rgba(201,133,0,.22); color: #ffd27a; }
 .ic.u { background: rgba(139,92,246,.2); color: #c4b5fd; }
+.ic.d { background: rgba(34,211,238,.2); color: #7fe6f7; }
+
+/* ── Today: the morning briefing ────────────────────────────────────────── */
+/* Typography-led on purpose. This screen has one job — land three sentences
+   and a number — so everything competing for attention is either removed or
+   pushed below them. The context strip at the bottom is deliberately small:
+   it is there to be challenged, not read first. */
+.brief-screen { max-width: 880px; margin: 0 auto; padding: 14px 0 8px; }
+
+.brief-when {
+  font-size: .72rem; text-transform: uppercase; letter-spacing: .12em;
+  color: var(--text-dim); font-weight: 700;
+}
+.brief-greet { margin-top: 10px; }
+.brief-greet h1 {
+  font-size: clamp(1.6rem, 3.6vw, 2.5rem); font-weight: 800; letter-spacing: -.03em;
+  line-height: 1.12; color: var(--text);
+}
+.brief-name {
+  background: none; border: 0; padding: 0; font: inherit; color: transparent;
+  background-image: var(--grad); -webkit-background-clip: text; background-clip: text;
+  cursor: text; border-bottom: 1px dashed rgba(255,255,255,.18);
+}
+.brief-name:hover { border-bottom-color: var(--emerald); }
+.brief-name-input {
+  font: inherit; font-size: inherit; font-weight: 800; letter-spacing: -.03em;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(52,211,153,.4); border-radius: 8px;
+  color: var(--text); padding: 0 8px; outline: 0; width: 9ch; max-width: 60vw;
+}
+.brief-sub {
+  margin: 14px 0 0; font-size: clamp(1rem, 1.8vw, 1.22rem); line-height: 1.5;
+  color: var(--text-soft); font-weight: 500; max-width: 46ch;
+}
+
+.brief-note {
+  margin: 9px 0 0; font-size: .84rem; line-height: 1.6; color: var(--text-dim); max-width: 62ch;
+}
+
+.brief-decisions { display: grid; gap: 12px; margin-top: 30px; }
+
+/* Band header — only meaningful when the briefing spans more than one band,
+   which is exactly when an executive needs to know where the line is. */
+.bd-band {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .13em;
+  font-weight: 800; color: var(--text-dim);
+}
+.bd-band:first-child { margin-top: 0; }
+.bd-band .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.bd-band .ct {
+  font-size: .66rem; letter-spacing: .04em; color: var(--text-dim);
+  background: rgba(255,255,255,.06); border-radius: 20px; padding: 1px 7px; font-weight: 700;
+}
+
+.bd-item {
+  display: grid; grid-template-columns: 40px 1fr; gap: 16px;
+  background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--line-strong);
+  border-radius: var(--radius); padding: 18px 20px; transition: border-color .16s, background .16s;
+}
+/* Rail colour is driven by the severity band, not by position in the list —
+   card #3 is not "less urgent" when all five are critical. */
+.bd-item.bd-critical { border-left-color: var(--danger); }
+.bd-item.bd-high     { border-left-color: var(--warn); }
+.bd-item.bd-medium   { border-left-color: var(--cyan); }
+.bd-item:hover { background: var(--panel-2); }
+.bd-item.done { border-left-color: var(--ok); opacity: .72; }
+.bd-item.focus {
+  border-color: rgba(52,211,153,.45);
+  box-shadow: 0 0 0 1px rgba(52,211,153,.28), 0 18px 44px -22px rgba(52,211,153,.5);
+}
+.bd-item .n {
+  font-size: 1.15rem; font-weight: 800; color: var(--text-dim);
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em; line-height: 1.35;
+}
+.bd-line { margin: 0; font-size: 1.02rem; line-height: 1.55; color: var(--text-soft); font-weight: 500; }
+.bd-line b { color: var(--text); font-weight: 700; }
+
+.bd-act { display: grid; grid-template-columns: 16px 1fr; gap: 10px; margin-top: 14px; }
+.bd-act .arrow { color: var(--emerald); font-size: .95rem; line-height: 1.4; }
+.bd-do { font-size: .93rem; font-weight: 700; color: var(--text); line-height: 1.45; }
+.bd-detail { font-size: .82rem; color: var(--text-dim); margin-top: 3px; line-height: 1.5; }
+.bd-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 9px; }
+.bd-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+.brief-protect {
+  margin-top: 26px; padding: 24px 26px; border-radius: var(--radius);
+  border: 1px solid rgba(52,211,153,.22);
+  background: linear-gradient(135deg, rgba(52,211,153,.09), rgba(34,211,238,.05) 60%, transparent);
+}
+.brief-protect .lbl {
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .13em;
+  color: var(--text-dim); font-weight: 700;
+}
+.brief-protect .amt {
+  font-size: clamp(2.4rem, 6vw, 3.6rem); font-weight: 800; letter-spacing: -.035em;
+  line-height: 1.05; margin-top: 6px;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+  font-variant-numeric: tabular-nums;
+}
+.brief-protect .foot {
+  margin: 10px 0 0; font-size: .78rem; line-height: 1.6; color: var(--text-dim); max-width: 68ch;
+}
+
+.brief-cta { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 22px; }
+
+.brief-ctx {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--line);
+}
+.bctx {
+  background: none; border: 1px solid transparent; border-radius: var(--radius-sm);
+  padding: 9px 11px; text-align: left; cursor: pointer; font: inherit; transition: background .15s, border-color .15s;
+}
+.bctx:hover { background: rgba(255,255,255,.03); border-color: var(--line); }
+.bctx .k { font-size: .66rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-dim); font-weight: 700; }
+.bctx .v { font-size: 1.05rem; font-weight: 800; color: var(--text-soft); font-variant-numeric: tabular-nums; margin-top: 3px; letter-spacing: -.02em; }
+.bctx .s { font-size: .69rem; color: var(--text-dim); margin-top: 2px; line-height: 1.4; }
+
+/* The Ops Floor runs this in half a viewport — the briefing has to hold up there. */
+@media (max-width: 900px) {
+  .brief-ctx { grid-template-columns: repeat(2, 1fr); }
+  .bd-item { grid-template-columns: 28px 1fr; gap: 12px; padding: 16px; }
+  .brief-protect { padding: 20px; }
+}
+
+/* ── Decision ledger ────────────────────────────────────────────────────── */
+/* A ledger row carries more than a feed row (the action taken, the metric then
+   vs now, and its lifecycle buttons), so it tops-aligns instead of centring. */
+.feed-row.led { align-items: start; cursor: default; }
+.feed-row.led .sev { padding-top: 2px; }
+.led-act { margin: 7px 0 0; font-size: .83rem; line-height: 1.5; color: var(--text); }
+.led-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: .75rem; color: var(--text-dim); }
+.led-meta b { color: var(--text-soft); font-variant-numeric: tabular-nums; }
 
 /* ── ServiceDesk ────────────────────────────────────────────────────────── */
 .sd-root { background: #0a0f1c; }

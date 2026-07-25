@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>OpsPulse AI — Ops Copilot Dashboard</title>
+<title>OpsPulse AI — Operational Workspace</title>
+<meta name="description" content="The drill-down workspace where a decision from the Executive Brief is investigated before it is committed." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -22,7 +23,15 @@
       OpsPulse<span style="opacity:.55;font-weight:600"> AI</span>
     </a>
 
-    <div class="side-label">Workspace</div>
+    <!-- The brief is the product; this workspace supports it. That hierarchy is
+         stated here rather than implied, so the sidebar cannot read as a peer. -->
+    <div class="side-label">Decide</div>
+    <a class="nav-brief" href="opspulse.html">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Executive Brief
+    </a>
+
+    <div class="side-label">Investigate</div>
     <div class="nav-item active" data-view="feed">
       <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       Decision Feed
@@ -78,6 +87,10 @@
     </div>
 
     <div class="content">
+      <!-- Decision context: what you came here to investigate, and the way back
+           with it still in hand. Rendered by assets/decision-context.js. -->
+      <div id="decisionContext"></div>
+
       <div class="mobile-note">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         Best viewed on a wider screen — this is a live product prototype.
@@ -180,5 +193,6 @@
 
 <script src="assets/analytics.js"></script>
 <script src="assets/app.js"></script>
+<script src="assets/decision-context.js"></script>
 </body>
 </html>

@@ -25,6 +25,7 @@ import {
 } from '../engine/web/aggregate.js';
 import { KAGGLE_COLUMNS } from '../data/generator.js';
 import { toCsv } from '../data/csv.js';
+import { CONFIDENCE_CUTOFF, SIGNAL_TYPES } from '../engine/web/schema.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -40,20 +41,68 @@ const IC = {
   dice: '<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/><circle cx="15" cy="9" r="1.3" fill="currentColor"/><circle cx="9" cy="15" r="1.3" fill="currentColor"/></svg>',
   search: '<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-3-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   file: '<svg viewBox="0 0 24 24" fill="none"><path d="M14 3v5h5M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8l-5-5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  ledger: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l8 3.5v5.7c0 4.3-3.2 7.6-8 8.8-4.8-1.2-8-4.5-8-8.8V6.5L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m8.8 12 2.2 2.2 4.2-4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
 };
 
 const sevClass = (s) => (s >= 70 ? '' : s >= 50 ? 'sev-med' : 'sev-low');
+/* Severity bands for the executive brief.
+   --------------------------------------------------------------------------
+   The brief holds a HIGHER bar than the feed, deliberately. sevClass (above)
+   flags anything ≥70 so the operational feed surfaces everything notable —
+   but measured over the engine's own output, 56% of insights clear 70 and the
+   median is 74. A word that applies to most of the list is not a priority
+   signal, and an executive brief that cries critical five times a day gets
+   ignored on the sixth.
+
+   At 80 the critical band is ~24% of insights — about two per run — which is
+   what makes "default to three, expand when there are genuinely more" behave
+   the way it reads. This is the one number to turn if the brief feels too
+   quiet or too loud; nothing else needs to change with it. */
+const CRITICAL_AT = 80;
+const HIGH_AT = 55;
+const BANDS = {
+  critical: { label: 'Critical', quietLabel: 'Highest open', color: STATUS.critical },
+  high: { label: 'High', quietLabel: 'High', color: STATUS.warning },
+  medium: { label: 'Medium', quietLabel: 'Medium', color: SERIES[0] },
+};
+const bandOf = (i) => (i.severity_score >= CRITICAL_AT ? 'critical' : i.severity_score >= HIGH_AT ? 'high' : 'medium');
+/* A decision is taken against a SIGNAL, not against an insight_id: the engine
+   rebuilds insight objects on every pass, so the id churns while the underlying
+   problem persists. Keying on signal type + entity is what lets the ledger say
+   "this is the same problem you decided on twenty minutes ago". */
+const signalKey = (i) => `${i.signal_type}::${i._meta?.entity?.key ?? '_'}`;
 const moneyRange = (i) => {
   const e = i.expected_impact;
   if (e.range_low_usd == null) return 'Not costed';
   return `${fmt.usdK(e.range_low_usd)} – ${fmt.usdK(e.range_high_usd)}`;
 };
+const unitFmt = (u) => (u === 'rate' ? fmt.pct : u === 'per_day' ? fmt.one : u === 'stars' ? fmt.stars : u === 'nps' ? fmt.nps : u === 'score' ? fmt.one : fmt.int);
 
-export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
+/* Whose morning is it. Persisted so the greeting survives a reload; a mount
+   option overrides it, which is the seam a real auth layer plugs into later. */
+const USER_KEY = 'opspulse.user.v1';
+const loadUser = (fallback) => { try { return localStorage.getItem(USER_KEY) || fallback; } catch { return fallback; } };
+const saveUser = (n) => { try { localStorage.setItem(USER_KEY, n); } catch { /* privacy mode — the greeting just resets next load */ } };
+
+export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
   root.classList.add('op-root');
   root.innerHTML = '';
 
-  const state = { view: 'dash', filter: 'all', q: '', selected: null, chat: [], lastUpload: null };
+  const state = {
+    view: 'today', filter: 'all', q: '', selected: null, chat: [], lastUpload: null,
+    user: user || loadUser('Sudharshan'),
+    focus: null,   // signal_key returned from the workspace — highlighted, never auto-committed
+  };
+
+  /* Coming back from the workspace via "Take action". We highlight the decision
+     and scroll to it; we deliberately do NOT auto-commit, because committing is
+     the human act the whole ledger exists to record. */
+  try {
+    const back = new URLSearchParams(location.search).get('decide');
+    if (back) state.focus = back;
+  } catch { /* no location in a non-browser host — the briefing still renders */ }
 
   /* ── Chrome ───────────────────────────────────────────────────────────── */
   const top = el('div', 'lv-top');
@@ -66,6 +115,7 @@ export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
     <nav class="lv-nav" id="opNav"></nav>
     <div class="lv-spacer"></div>
     <span class="lv-live"><span class="lv-dot" id="opDot"></span><span id="opLive">live</span></span>
+    <button class="lv-btn" id="opData" title="Connect a source — CSV ingest and the current signal inventory">${IC.up}<span>Data</span></button>
     <button class="lv-btn" id="opToggle">${IC.pause}<span>Pause</span></button>
     <button class="lv-btn" id="opReseed" title="Generate a different random operation with the same four patterns">${IC.dice}<span>New data</span></button>`;
   root.appendChild(top);
@@ -73,18 +123,25 @@ export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
   const body = el('div', 'lv-body');
   root.appendChild(body);
 
+  /* Nav order IS the argument: detect → rank → commit → interrogate → audit.
+     Data ingest is deliberately NOT here — it is a source-connection chore, not
+     a decision surface, and putting it at this level made the product read as a
+     file uploader with charts. It lives in the top chrome instead. */
   const NAV = [
+    { id: 'today', label: 'Today', icon: IC.sun },
     { id: 'dash', label: 'Dashboard', icon: IC.home },
     { id: 'feed', label: 'Decision Feed', icon: IC.feed, badge: () => store.engine.insights.length },
     { id: 'radar', label: 'Risk Radar', icon: IC.radar },
+    { id: 'ledger', label: 'Decision Ledger', icon: IC.ledger, badge: () => store.decisions.filter((x) => x.status !== 'closed').length },
     { id: 'copilot', label: 'Executive Copilot', icon: IC.chat },
-    { id: 'upload', label: 'Data Upload', icon: IC.up },
+    { id: 'assurance', label: 'Assurance', icon: IC.shield },
   ];
   const nav = root.querySelector('#opNav');
   function renderNav() {
     nav.innerHTML = '';
     for (const n of NAV) {
-      const b = el('button', state.view === n.id ? 'on' : '', `${n.icon}<span>${esc(n.label)}</span>${n.badge ? `<span class="badge">${n.badge()}</span>` : ''}`);
+      const bv = n.badge ? n.badge() : 0;
+      const b = el('button', state.view === n.id ? 'on' : '', `${n.icon}<span>${esc(n.label)}</span>${bv ? `<span class="badge">${bv}</span>` : ''}`);
       b.addEventListener('click', () => { state.view = n.id; render(); body.scrollTop = 0; });
       nav.appendChild(b);
     }
@@ -162,7 +219,7 @@ export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
     const vals = m.series.values.slice(from, to + 1);
     const blocks = [];
 
-    const fmtFor = m.unit === 'rate' ? fmt.pct : m.unit === 'per_day' ? fmt.one : m.unit === 'stars' ? fmt.stars : m.unit === 'nps' ? fmt.nps : m.unit === 'score' ? fmt.one : fmt.int;
+    const fmtFor = unitFmt(m.unit);
 
     blocks.push(lineChart({
       title: `${m.metric_label ? m.entity.label + ' — ' : ''}${ins._meta.title}`,
@@ -613,11 +670,12 @@ export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
       const acts = el('div', 'act-row');
       const open = el('button', 'lv-btn primary', 'Open BI drill-down');
       open.addEventListener('click', () => drillInsight(ins));
-      const assign = el('button', 'lv-btn', `Assign to ${ins.recommended_action.owner_role}`);
-      assign.addEventListener('click', () => toast('Assigned', `${m.title} → ${ins.recommended_action.owner_role}`));
+      const existing = store.decisions.find((x) => x.signal_key === signalKey(ins) && x.status !== 'closed');
+      const decide = el('button', 'lv-btn', existing ? `In the ledger — ${esc(existing.decision_id)}` : `Commit decision → ${esc(ins.recommended_action.owner_role)}`);
+      decide.addEventListener('click', () => commitDecision(ins));
       const json = el('button', 'lv-btn', 'View insight JSON');
       json.addEventListener('click', () => showJson(ins));
-      acts.appendChild(open); acts.appendChild(assign); acts.appendChild(json);
+      acts.appendChild(open); acts.appendChild(decide); acts.appendChild(json);
       bd.appendChild(acts);
     }
 
@@ -645,6 +703,317 @@ export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
   /* ══════════════════════════════════════════════════════════════════════
      SCREENS
      ══════════════════════════════════════════════════════════════════════ */
+
+  /* ══════════════════════════════════════════════════════════════════════
+     TODAY — the morning briefing, and the first thing anyone sees
+     ----------------------------------------------------------------------
+     This screen exists because the old first screen answered "how is the
+     operation doing?" when the only question a director actually opens with
+     is "what do I have to decide today, and what does it cost me if I don't?"
+
+     Every sentence here is generated from the insight objects. None of the
+     numbers are written into the template — if the engine finds a quieter
+     week, this screen says so rather than manufacturing three crises.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  const midUsd = (i) => (i.expected_impact.range_low_usd == null ? null
+    : (i.expected_impact.range_low_usd + i.expected_impact.range_high_usd) / 2);
+
+  /* The workspace (app.html) is a separate page with its own dashboard. It
+     cannot read our in-memory engine, so the decision travels with the link as
+     context — enough for the workspace to say what you are investigating and
+     to hand you back with the same decision in focus. */
+  function workspaceHref(ins) {
+    const q = new URLSearchParams({
+      signal: signalKey(ins),
+      t: ins._meta.title,
+      metric: ins._meta.metric_label || '',
+      sev: String(ins.severity_score),
+      conf: String(Math.round(ins.why.confidence * 100)),
+      owner: ins.recommended_action.owner_role,
+      pb: ins.recommended_action.playbook_id,
+      money: moneyRange(ins),
+      act: ins.recommended_action.action,
+      band: bandOf(ins),
+    });
+    return `app.html?${q.toString()}`;
+  }
+
+  /** Open tickets that cross the 72-hour mark within the next 48 hours. */
+  function crossing72hIn48h() {
+    const d = ds(), now = d.meta.as_of;
+    return openTickets(d).filter((t) => { const a = (now - t.created_at) / 3600000; return a >= 24 && a < 72; }).length;
+  }
+
+  /** The consequence of doing nothing, in one sentence. */
+  function consequenceLine(ins) {
+    const m = ins._meta, ev = m.evidence || {}, days = ins.expected_impact.time_horizon_days;
+    const money = moneyRange(ins);
+    const label = esc(m.entity?.label || m.entity?.key || 'This signal');
+    const B = (s) => `<b>${s}</b>`;
+
+    switch (ins.signal_type) {
+      case 'escalation_spike':
+        return `${B(label + ' escalations')} are likely to cost ${B(money)} over the next ${B(days + ' days')}.`;
+      case 'emerging_topic': {
+        const lift = m.baseline ? (m.observed / m.baseline) : null;
+        return `${B(label + ' contacts')} are running ${lift ? B(lift.toFixed(1) + '×') + ' their baseline' : 'well above baseline'} — ${B(money)} at stake over ${days} days.`;
+      }
+      case 'backlog_risk': {
+        const n = crossing72hIn48h();
+        return `${B(fmt.int(n) + ' open tickets')} cross the 72-hour SLA ${B('within 48 hours')} — the queue is growing ${B(Number(ev.slope_per_day || 0).toFixed(1) + '/day')}.`;
+      }
+      case 'churn_risk':
+        return `Churn risk increased for ${B(fmt.int(ev.enterprise_count ?? m.affected_accounts) + ' enterprise accounts')} — ${B(fmt.usdK(ev.arr_at_risk || 0))} of ARR, ${B(fmt.int(ev.renewal_within_90d || 0))} renewing inside 90 days.`;
+      case 'coaching_gap':
+        return `The new-hire cohort is ${B(Number(ev.gap_pts || 0).toFixed(1) + ' QA points')} behind tenured agents — ${B(money)} in rework over ${days} days.`;
+      case 'nps_drop':
+        return `NPS fell ${B(Number(ev.drop_pts || 0).toFixed(0) + ' points')} to ${B(fmt.nps(m.observed))} — ${B(fmt.usdK(ev.detractor_arr || 0))} of ARR sits behind those responses.`;
+      case 'csat_drop':
+        return `CSAT dropped to ${B(fmt.stars(m.observed))} from ${B(fmt.stars(m.baseline))} — ${B(money)} at stake over ${days} days.`;
+      case 'sla_risk':
+        return `First-response SLA breaches rose to ${B(fmt.pct(m.observed))} from ${B(fmt.pct(m.baseline))} — ${B(money)} over ${days} days.`;
+      case 'compliance_risk':
+        return `${B(fmt.int(ev.dsar_due_within_10d || ev.dsar_open || 0) + ' statutory requests')} fall due within 10 days${ev.dsar_past_due ? `, and ${B(fmt.int(ev.dsar_past_due))} are already past due` : ''} — ${B('deliberately not costed')}.`;
+      default:
+        return esc(ins.what_happened);
+    }
+  }
+
+  /** The action, named as specifically as the evidence allows. */
+  function actionLine(ins) {
+    const m = ins._meta, ev = m.evidence || {};
+    const base = ins.recommended_action.action;
+    const top = m.decomposition?.[0];
+    let detail = '';
+
+    switch (ins.signal_type) {
+      case 'churn_risk': {
+        const a = ev.top_accounts?.[0];
+        if (a) detail = `Start with ${a.company} — ${fmt.usdK(a.arr_usd)} ARR, renews in ${a.renewal_in_days} days.`;
+        break;
+      }
+      case 'coaching_gap': {
+        const worst = ev.per_agent?.slice().sort((x, y) => x.score - y.score)[0];
+        if (worst) detail = `Start with ${worst.name} — lowest at ${Math.round(worst.score)} on ${worst.n} reviews.`;
+        break;
+      }
+      case 'compliance_risk': {
+        const soonest = ev.items?.[0];
+        if (soonest) detail = `${soonest.ticket_id} for ${soonest.company} is due in ${soonest.days_left} days.`;
+        break;
+      }
+      case 'backlog_risk':
+        if (top) detail = `${String(top.key).replace(/[-_]/g, ' ')} is the largest driver at ${fmt.pct0(top.contribution)} of the growth.`;
+        break;
+      default:
+        if (top) detail = `${String(top.key).replace(/[-_]/g, ' ')} explains ${fmt.pct0(top.contribution)} of the change.`;
+    }
+    return { base, detail };
+  }
+
+  function renderGreeting(host) {
+    const h = el('div', 'brief-greet');
+    h.innerHTML = `<h1>Good ${hourGreeting()}, <button class="brief-name" title="Click to change who this briefing is for">${esc(state.user)}</button>.</h1>`;
+    h.querySelector('.brief-name').addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const btn = ev.currentTarget;
+      const input = el('input', 'brief-name-input');
+      input.value = state.user;
+      input.setAttribute('aria-label', 'Your name');
+      const commit = () => {
+        const v = input.value.trim();
+        if (v) { state.user = v; saveUser(v); }
+        render();
+      };
+      input.addEventListener('keydown', (k) => { if (k.key === 'Enter') commit(); if (k.key === 'Escape') render(); });
+      input.addEventListener('blur', commit);
+      btn.replaceWith(input);
+      input.focus(); input.select();
+    });
+    host.appendChild(h);
+  }
+
+  function viewToday() {
+    const e = eng(), b = e.brief, h = e.health;
+    const wrap = el('div', 'lv-view');
+    const screen = el('div', 'brief-screen');
+
+    const when = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    const stamp = el('div', 'brief-when', `${esc(when)} · ${esc(b.period)}`);
+    screen.appendChild(stamp);
+    renderGreeting(screen);
+
+    /* ── How many decisions, and which ──────────────────────────────────
+       Not "always three". An executive does not want three decisions, they
+       want the RIGHT decisions — so severity picks the count:
+
+         · no criticals      → say so, and demote the rest to "worth knowing"
+         · 1–2 criticals     → top up to 3 by priority, for readability
+         · 5 criticals       → show all five, grouped by band
+
+       Criticals are unioned in FIRST so a high-severity item that ranks 4th
+       on priority (severity × confidence × urgency) can never be silently
+       dropped off the bottom of a three-item list. */
+    const ranked = e.insights;                    // already priority-ordered by the engine
+    const critical = ranked.filter((i) => bandOf(i) === 'critical');
+    const target = Math.max(3, critical.length);
+
+    const shown = [];
+    const seenIds = new Set();
+    for (const i of [...critical, ...ranked]) {
+      if (seenIds.has(i.insight_id)) continue;
+      seenIds.add(i.insight_id);
+      shown.push(i);
+      if (shown.length >= target) break;
+    }
+    // Bands must be contiguous or the group headers would repeat. Sort is
+    // stable, so priority order is preserved inside each band.
+    const BAND_ORDER = { critical: 0, high: 1, medium: 2 };
+    shown.sort((x, y) => BAND_ORDER[bandOf(x)] - BAND_ORDER[bandOf(y)]);
+
+    if (!ranked.length) {
+      screen.appendChild(el('p', 'brief-sub', 'Nothing requires a decision today. No signal cleared its detection threshold in the current window — which is a result, not an empty screen.'));
+      const acts = el('div', 'brief-cta');
+      const f = el('button', 'lv-btn', 'Open the Decision Feed');
+      f.addEventListener('click', () => { state.view = 'feed'; render(); body.scrollTop = 0; });
+      acts.appendChild(f);
+      screen.appendChild(acts);
+      wrap.appendChild(screen);
+      return wrap;
+    }
+
+    const NUM = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const spell = (n) => NUM[n] || String(n);
+
+    if (!critical.length) {
+      screen.appendChild(el('p', 'brief-sub', 'No critical decisions today.'));
+      screen.appendChild(el('p', 'brief-note',
+        `Nothing cleared the critical threshold. ${spell(shown.length)} lower-severity signal${shown.length === 1 ? ' is' : 's are'} open below — worth knowing, but none of them need you today.`));
+    } else {
+      screen.appendChild(el('p', 'brief-sub',
+        `${spell(shown.length)} decision${shown.length === 1 ? '' : 's'} require${shown.length === 1 ? 's' : ''} your attention today.`));
+      if (critical.length > 3) {
+        screen.appendChild(el('p', 'brief-note',
+          `That is more than usual — ${critical.length} signals are in the critical band, so none of them have been held back for readability.`));
+      }
+    }
+
+    /* ── The decisions, grouped by band ── */
+    const list = el('div', 'brief-decisions');
+    let lastBand = null;
+    let n = 0;
+    shown.forEach((ins) => {
+      const band = bandOf(ins);
+      if (band !== lastBand) {
+        const count = shown.filter((x) => bandOf(x) === band).length;
+        const meta = BANDS[band];
+        list.appendChild(el('div', 'bd-band',
+          `<span class="dot" style="background:${meta.color}"></span>${esc(critical.length ? meta.label : meta.quietLabel)}<span class="ct">${count}</span>`));
+        lastBand = band;
+      }
+      const i = n++;
+      const { base, detail } = actionLine(ins);
+      const committed = store.decisions.find((x) => x.signal_key === signalKey(ins) && x.status !== 'closed');
+      const item = el('article', `bd-item bd-${band}${committed ? ' done' : ''}${state.focus === signalKey(ins) ? ' focus' : ''}`);
+      item.innerHTML = `
+        <div class="n">${String(i + 1).padStart(2, '0')}</div>
+        <div class="bd-main">
+          <p class="bd-line">${consequenceLine(ins)}</p>
+          <div class="bd-act">
+            <span class="arrow">↳</span>
+            <div>
+              <div class="bd-do">${esc(base)}</div>
+              ${detail ? `<div class="bd-detail">${esc(detail)}</div>` : ''}
+              <div class="bd-chips">
+                <span class="chip">${esc(ins.recommended_action.owner_role)}</span>
+                <span class="chip">playbook ${esc(ins.recommended_action.playbook_id)}</span>
+                <span class="chip">${Math.round(ins.why.confidence * 100)}% confidence</span>
+                ${ins.status === 'held_for_review' ? '<span class="chip held">held — confirm before acting</span>' : ''}
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const acts = el('div', 'bd-actions');
+      const commit = el('button', committed ? 'lv-btn' : 'lv-btn primary',
+        committed ? `✓ Committed · ${esc(committed.decision_id)}` : 'Commit this decision');
+      commit.addEventListener('click', (ev) => { ev.stopPropagation(); commitDecision(ins); });
+      const why = el('button', 'lv-btn', 'Show me why');
+      why.addEventListener('click', (ev) => { ev.stopPropagation(); drillInsight(ins); });
+      const dig = el('a', 'lv-btn', 'Investigate in the workspace →');
+      dig.href = workspaceHref(ins);
+      dig.title = 'Opens the operational workspace with this decision as its context';
+      acts.appendChild(commit); acts.appendChild(why); acts.appendChild(dig);
+      item.querySelector('.bd-main').appendChild(acts);
+      list.appendChild(item);
+    });
+    screen.appendChild(list);
+
+    /* ── Revenue protected ── */
+    const costed = shown.filter((i) => midUsd(i) != null);
+    const protectedUsd = costed.reduce((s, i) => s + midUsd(i), 0);
+    const uncosted = shown.length - costed.length;
+
+    const prot = el('div', 'brief-protect');
+    prot.innerHTML = `
+      <div class="lbl">Estimated revenue protected</div>
+      <div class="amt">${costed.length ? esc(fmt.usdK(protectedUsd)) : '—'}</div>
+      <p class="foot">
+        ${costed.length
+          ? `Midpoint of the costed range on ${costed.length === 1 ? 'the one decision that carries a dollar figure' : `all ${costed.length} costed decisions`}, if actioned inside their stated horizons.`
+          : 'None of today\'s decisions carry a dollar figure.'}
+        ${uncosted ? ` ${uncosted} of ${shown.length} ${uncosted === 1 ? 'is' : 'are'} deliberately not costed — a statutory deadline is a legal question, and a fabricated figure would be the least defensible number on this screen.` : ''}
+      </p>`;
+    screen.appendChild(prot);
+
+    /* ── Commit-all + the supporting surfaces, deliberately below the fold ── */
+    const cta = el('div', 'brief-cta');
+    const pending = shown.filter((i) => !store.decisions.some((x) => x.signal_key === signalKey(i) && x.status !== 'closed'));
+    if (pending.length) {
+      const all = el('button', 'lv-btn primary', `Commit all ${pending.length} →`);
+      all.addEventListener('click', () => {
+        pending.forEach((i) => commitDecision(i, { quiet: true }));
+        toast(`${pending.length} decisions recorded`, 'Each one snapshotted with the evidence as it stands now');
+        state.view = 'ledger'; render(); body.scrollTop = 0;
+      });
+      cta.appendChild(all);
+    } else {
+      const led = el('button', 'lv-btn primary', 'All committed — open the ledger →');
+      led.addEventListener('click', () => { state.view = 'ledger'; render(); body.scrollTop = 0; });
+      cta.appendChild(led);
+    }
+    const ask = el('button', 'lv-btn', 'Ask about the operation');
+    ask.addEventListener('click', () => { state.view = 'copilot'; render(); body.scrollTop = 0; });
+    cta.appendChild(ask);
+    screen.appendChild(cta);
+
+    /* Context strip: this is the evidence the briefing stands on, and it is
+       small on purpose — it exists to be challenged, not read first. */
+    const ctx = el('div', 'brief-ctx');
+    const items = [
+      { k: 'Operations health', v: `${h.score}/100`, s: `${h.delta >= 0 ? '+' : ''}${h.delta} vs prior period`, go: 'radar' },
+      { k: 'Records analysed', v: fmt.int(e.run.stats.records_in), s: `across ${e.run.detectors_run.length} detectors`, go: 'assurance' },
+      { k: 'Signals raised', v: String(e.insights.length), s: `${e.run.stats.held_for_review} held below the confidence floor`, go: 'feed' },
+      { k: 'Total at risk', v: fmt.usdK(b.rollup.total_revenue_at_risk), s: 'every costed signal, not just today\'s three', go: 'feed' },
+    ];
+    for (const it of items) {
+      const c = el('button', 'bctx', `<div class="k">${esc(it.k)}</div><div class="v">${esc(it.v)}</div><div class="s">${esc(it.s)}</div>`);
+      c.addEventListener('click', () => { state.view = it.go; render(); body.scrollTop = 0; });
+      ctx.appendChild(c);
+    }
+    screen.appendChild(ctx);
+
+    if (state.focus) {
+      setTimeout(() => {
+        const f = body.querySelector('.bd-item.focus');
+        if (f) f.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 60);
+    }
+
+    wrap.appendChild(screen);
+    return wrap;
+  }
 
   function viewDashboard() {
     const d = ds(), e = eng(), h = e.health, b = e.brief;
@@ -760,8 +1129,8 @@ export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
     const bd = el('div', 'panel-bd tight');
     const t = el('div', 'ticker');
     t.style.padding = '8px';
-    const icCls = { ticket: 't', resolved: 'r', escalation: 'e', nps: 'n', qa: 'q', upload: 'u' };
-    const icTxt = { ticket: '+', resolved: '✓', escalation: '!', nps: '★', qa: 'Q', upload: '↑' };
+    const icCls = { ticket: 't', resolved: 'r', escalation: 'e', nps: 'n', qa: 'q', upload: 'u', decision: 'd' };
+    const icTxt = { ticket: '+', resolved: '✓', escalation: '!', nps: '★', qa: 'Q', upload: '↑', decision: '⚑' };
     const items = store.feed.slice(0, 26);
     if (!items.length) t.appendChild(el('div', 'empty', 'Waiting for the first events…'));
     for (const f of items) {
@@ -886,6 +1255,7 @@ export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
     'How much revenue is at risk?',
     'Why is the backlog growing?',
     'Are we exposed on compliance?',
+    'What have we decided so far?',
   ];
 
   function answer(qRaw) {
@@ -1002,6 +1372,28 @@ export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
         chips: [chip('Open the save list', () => drillInsight(i))],
       };
     }
+    if (has('decided', 'decision', 'ledger', 'committed', 'what did we do', 'acted', 'follow up', 'follow-up')) {
+      const decs = store.decisions;
+      if (!decs.length) {
+        return {
+          html: `Nothing has been committed yet — the ledger is empty.
+            <p style="margin:9px 0 0">I can recommend, but a recommendation is not a decision. Commit one from any insight and I will track the signal it was taken against and tell you honestly whether it moved.</p>
+            <div class="src">The ledger snapshots severity, confidence and the metric at commit time, so an outcome can be judged later without the engine rewriting its own history.</div>`,
+          chips: [chip('Open the Decision Feed', () => { state.view = 'feed'; render(); })],
+        };
+      }
+      const rows = decs.map((dd) => ({ dd, oc: ledgerOutcome(dd) }));
+      const good = rows.filter((x) => x.oc.key === 'cleared' || x.oc.key === 'improving');
+      const bad = rows.filter((x) => x.oc.key === 'worsening');
+      return {
+        html: `<strong>${decs.length} decision${decs.length === 1 ? '' : 's'} committed</strong>, ${decs.filter((dd) => dd.status !== 'closed').length} still open.
+          <ul>${rows.map((x) => `<li><strong>${esc(x.dd.title)}</strong> → ${esc(x.dd.owner_role)} (${esc(x.dd.decision_id)}, playbook ${esc(x.dd.playbook_id)}). <em>${esc(x.oc.label)}</em> — ${esc(x.oc.detail)}.</li>`).join('')}</ul>
+          <p style="margin:10px 0 0">${good.length} of ${decs.length} ${good.length === 1 ? 'is' : 'are'} moving the right way${bad.length ? `, and ${bad.length} ${bad.length === 1 ? 'has' : 'have'} got worse since ${bad.length === 1 ? 'it was' : 'they were'} committed — that is worth looking at before anything new is added` : ''}.</p>
+          ${decs.some((dd) => dd.held_at_decision) ? `<p style="margin:9px 0 0">${decs.filter((dd) => dd.held_at_decision).length} ${decs.filter((dd) => dd.held_at_decision).length === 1 ? 'was' : 'were'} committed below the ${Math.round(CONFIDENCE_CUTOFF * 100)}% confidence floor and ${decs.filter((dd) => dd.held_at_decision).length === 1 ? 'is' : 'are'} flagged as an override in the ledger.</p>` : ''}
+          <div class="src">Outcome is measured by re-reading the same signal each decision was taken against — matched on signal type and entity, not insight id.</div>`,
+        chips: [chip('Open the Decision Ledger', () => { state.view = 'ledger'; render(); }), ...rows.slice(0, 2).filter((x) => x.oc.live).map((x) => chip(x.dd.title, () => drillInsight(x.oc.live)))],
+      };
+    }
     if (has('health', 'score', 'how are we', 'overall')) {
       return {
         html: `Operations health is <strong>${h.score}/100</strong>, ${h.delta >= 0 ? 'up' : 'down'} ${Math.abs(h.delta)} on the prior period.
@@ -1075,6 +1467,304 @@ export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
     state.chat.push({ who: 'OpsPulse', html: a.html, chips: a.chips });
     render();
     setTimeout(() => { const l = body.querySelector('.chat-log'); if (l) l.scrollTop = l.scrollHeight; }, 0);
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     DECISION LEDGER
+     ----------------------------------------------------------------------
+     The loop was open: the product detected, explained, recommended — and
+     then forgot. Detection without a record of what was decided is reporting,
+     not decision intelligence. This closes it.
+
+     The ledger deliberately does NOT ask the engine what a decision was worth
+     after the fact. It snapshots severity, confidence and the metric AS THEY
+     WERE at commit time, then re-reads the same signal on every engine pass.
+     Outcome is the difference between those two readings — which means the
+     product can be wrong in public, and that is the point.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /** `quiet` batches a commit: no toast, no navigation — the caller does both. */
+  function commitDecision(ins, { quiet = false } = {}) {
+    const m = ins._meta;
+    const key = signalKey(ins);
+    const existing = store.decisions.find((x) => x.signal_key === key && x.status !== 'closed');
+    if (existing) {
+      if (quiet) return existing;
+      toast('Already in the ledger', `${existing.decision_id} — ${existing.title}`);
+      state.view = 'ledger'; render(); body.scrollTop = 0;
+      return existing;
+    }
+    const rec = store.recordDecision({
+      signal_key: key,
+      insight_id: ins.insight_id,
+      signal_type: ins.signal_type,
+      title: m.title,
+      metric_label: m.metric_label,
+      unit: m.unit,
+      action: ins.recommended_action.action,
+      owner_role: ins.recommended_action.owner_role,
+      playbook_id: ins.recommended_action.playbook_id,
+      root_cause: firstSentence(ins.why.root_cause),
+      severity_at_decision: ins.severity_score,
+      confidence_at_decision: ins.why.confidence,
+      observed_at_decision: m.observed,
+      baseline_at_decision: m.baseline,
+      affected_accounts: m.affected_accounts,
+      value_low: ins.expected_impact.range_low_usd,
+      value_high: ins.expected_impact.range_high_usd,
+      horizon_days: ins.expected_impact.time_horizon_days,
+      // Committing below the cutoff is ALLOWED but permanently recorded. A
+      // control you can bypass silently is not a control.
+      held_at_decision: ins.status === 'held_for_review',
+    });
+    if (quiet) return rec;
+    toast(`${rec.decision_id} recorded`, `${rec.owner_role} · playbook ${rec.playbook_id}`);
+    state.view = 'ledger'; render(); body.scrollTop = 0;
+    return rec;
+  }
+
+  /** Re-read the signal this decision was taken against, and score the move. */
+  function ledgerOutcome(dec) {
+    const live = eng().insights.find((i) => signalKey(i) === dec.signal_key);
+    if (!live) {
+      return {
+        key: 'cleared', label: 'Cleared', color: STATUS.good, sevNow: null, observedNow: null,
+        detail: 'no longer clears its detection threshold',
+      };
+    }
+    const sevNow = live.severity_score;
+    const delta = sevNow - dec.severity_at_decision;
+    const detail = `severity ${dec.severity_at_decision} → ${sevNow}`;
+    if (delta <= -5) return { key: 'improving', label: 'Improving', color: STATUS.good, sevNow, observedNow: live._meta.observed, detail, live };
+    if (delta >= 5) return { key: 'worsening', label: 'Worsening', color: STATUS.critical, sevNow, observedNow: live._meta.observed, detail, live };
+    return { key: 'holding', label: 'Holding', color: STATUS.warning, sevNow, observedNow: live._meta.observed, detail, live };
+  }
+
+  const DEC_STATUS = {
+    open: { label: 'Open', chip: '' },
+    in_progress: { label: 'In progress', chip: 'info' },
+    closed: { label: 'Closed', chip: 'ok' },
+  };
+
+  function ledgerRow(dec) {
+    const oc = ledgerOutcome(dec);
+    const f = unitFmt(dec.unit);
+    const pct = Math.round(dec.confidence_at_decision * 100);
+    const st = DEC_STATUS[dec.status] || DEC_STATUS.open;
+
+    const r = el('div', 'feed-row led');
+    r.innerHTML = `
+      <div class="sev"><b style="color:${oc.color}">${oc.sevNow ?? '✓'}</b><small>${oc.sevNow ? 'sev now' : 'clear'}</small></div>
+      <div>
+        <div class="ttl">${esc(dec.title)}</div>
+        <div class="sub">
+          <span class="chip">${esc(dec.decision_id)}</span>
+          <span class="chip ${st.chip}">${esc(st.label)}</span>
+          <span class="chip">${esc(dec.owner_role)}</span>
+          <span class="chip">playbook ${esc(dec.playbook_id)}</span>
+          ${dec.held_at_decision ? '<span class="chip held">committed below cutoff</span>' : ''}
+          <span class="conf" title="Confidence recorded at the moment of the decision — not recomputed since">
+            <span class="bar"><i style="width:${pct}%"></i></span><b>${pct}%</b> at decision
+          </span>
+        </div>
+        <p class="led-act">${esc(dec.action)}</p>
+        <div class="led-meta">
+          <span><b>${esc(dec.metric_label)}</b></span>
+          <span>at decision <b>${esc(f(dec.observed_at_decision))}</b>${dec.baseline_at_decision != null ? ` vs baseline ${esc(f(dec.baseline_at_decision))}` : ''}</span>
+          ${oc.observedNow != null ? `<span>now <b style="color:${oc.color}">${esc(f(oc.observedNow))}</b></span>` : ''}
+          <span>committed ${esc(relTime(dec.decided_at))} ago</span>
+          <span>${dec.value_low == null ? 'not costed' : `${esc(fmt.usdK(dec.value_low))} – ${esc(fmt.usdK(dec.value_high))}`}</span>
+        </div>
+      </div>
+      <div class="right">
+        <div class="m" style="color:${oc.color}">${esc(oc.label)}</div>
+        <div class="h">${esc(oc.detail)}</div>
+      </div>`;
+
+    const acts = el('div', 'act-row');
+    if (dec.status === 'open') {
+      const b = el('button', 'lv-btn', 'Mark in progress');
+      b.addEventListener('click', () => { store.updateDecision(dec.decision_id, { status: 'in_progress' }); render(); });
+      acts.appendChild(b);
+    }
+    if (dec.status !== 'closed') {
+      const b = el('button', 'lv-btn', 'Close decision');
+      b.addEventListener('click', () => {
+        store.updateDecision(dec.decision_id, { status: 'closed', outcome_at_close: ledgerOutcome(dec).key });
+        toast(`${dec.decision_id} closed`, `outcome recorded as ${ledgerOutcome(dec).label.toLowerCase()}`);
+        render();
+      });
+      acts.appendChild(b);
+    }
+    if (oc.live) {
+      const b = el('button', 'lv-btn', 'Open the signal');
+      b.addEventListener('click', () => drillInsight(oc.live));
+      acts.appendChild(b);
+    }
+    r.children[1].appendChild(acts);   // the middle column, next to .sev and .right
+    return r;
+  }
+
+  function viewLedger() {
+    const wrap = el('div', 'lv-view');
+    const decs = store.decisions;
+
+    const p = el('div', 'panel');
+    p.innerHTML = `<div class="panel-hd"><h3>Decision Ledger</h3><span class="hint">every commitment, the evidence behind it, and what happened next</span></div>`;
+    const bd = el('div', 'panel-bd');
+
+    if (!decs.length) {
+      bd.appendChild(el('div', 'empty', 'No decisions committed yet. Open any risk in the Decision Feed and commit the recommended action — it is recorded here with the evidence as it stood at that moment.'));
+      const go = el('div', 'act-row');
+      const b = el('button', 'lv-btn primary', 'Open the Decision Feed →');
+      b.addEventListener('click', () => { state.view = 'feed'; render(); body.scrollTop = 0; });
+      go.appendChild(b);
+      bd.appendChild(go);
+      p.appendChild(bd); wrap.appendChild(p);
+      return wrap;
+    }
+
+    const outcomes = decs.map(ledgerOutcome);
+    const cleared = outcomes.filter((o) => o.key === 'cleared' || o.key === 'improving').length;
+    const costed = decs.filter((d) => d.value_low != null);
+    const addressed = costed.reduce((s, d) => s + (d.value_low + d.value_high) / 2, 0);
+
+    const k = el('div', 'drill-kpis');
+    k.innerHTML = [
+      { k: 'Decisions committed', v: String(decs.length), s: `${decs.filter((d) => d.status !== 'closed').length} still open` },
+      { k: 'Moving the right way', v: `${cleared}/${decs.length}`, s: 'cleared or improving since commit', color: cleared ? STATUS.good : undefined },
+      { k: 'Value addressed', v: costed.length ? fmt.usdK(addressed) : '—', s: `${costed.length} of ${decs.length} carried a costed range` },
+      { k: 'Below-cutoff overrides', v: String(decs.filter((d) => d.held_at_decision).length), s: `confidence floor is ${Math.round(CONFIDENCE_CUTOFF * 100)}%` },
+    ].map((x) => `<div><div class="k">${esc(x.k)}</div><div class="v" ${x.color ? `style="color:${x.color}"` : ''}>${esc(x.v)}</div><div class="s">${esc(x.s)}</div></div>`).join('');
+    bd.appendChild(k);
+
+    const list = el('div', 'feed');
+    list.style.marginTop = '14px';
+    for (const d of decs) list.appendChild(ledgerRow(d));
+    bd.appendChild(list);
+
+    const note = el('p', 'muted');
+    note.style.cssText = 'font-size:.74rem;margin:14px 0 0;line-height:1.6';
+    note.innerHTML = `Outcome is measured by re-reading the <b>same signal</b> the decision was taken against — matched on signal type and entity, not on insight id, because the engine rebuilds insight objects on every pass. <b>Cleared</b> means that signal no longer clears its detection threshold. Confidence and severity shown are the values recorded at commit time and are never back-dated.`;
+    bd.appendChild(note);
+
+    p.appendChild(bd);
+    wrap.appendChild(p);
+    return wrap;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ASSURANCE — the audit surface
+     ----------------------------------------------------------------------
+     This was a sidebar panel titled "Engine run". It is the artifact a risk,
+     audit or data-governance reviewer actually asks for, so it is a screen.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  function viewAssurance() {
+    const e = eng(), r = e.run, d = ds();
+    const wrap = el('div', 'lv-view');
+
+    const p = el('div', 'panel');
+    p.innerHTML = `<div class="panel-hd"><h3>Assurance</h3><span class="hint">contract ${r.contract_valid ? 'valid' : 'INVALID'} · ${Object.values(r.timings_ms).reduce((a, x) => a + x, 0)} ms last pass</span></div>`;
+    const bd = el('div', 'panel-bd');
+
+    const k = el('div', 'drill-kpis');
+    k.innerHTML = [
+      { k: 'Records analysed', v: fmt.int(r.stats.records_in), s: 'tickets · escalations · NPS · QA' },
+      { k: 'Anomalies flagged', v: String(r.stats.anomalies_flagged), s: `from ${r.detectors_run.length} detectors` },
+      { k: 'Insights published', v: String(r.stats.insights_built), s: 'one card per entity' },
+      { k: 'Held for review', v: String(r.stats.held_for_review), s: `below the ${Math.round(CONFIDENCE_CUTOFF * 100)}% confidence floor`, color: r.stats.held_for_review ? STATUS.warning : undefined },
+      { k: 'Contract validation', v: r.contract_valid ? 'PASS' : 'FAIL', s: `${r.contract_errors.length} schema error${r.contract_errors.length === 1 ? '' : 's'}`, color: r.contract_valid ? STATUS.good : STATUS.critical },
+    ].map((x) => `<div><div class="k">${esc(x.k)}</div><div class="v" ${x.color ? `style="color:${x.color}"` : ''}>${esc(x.v)}</div><div class="s">${esc(x.s)}</div></div>`).join('');
+    bd.appendChild(k);
+    p.appendChild(bd);
+    wrap.appendChild(p);
+
+    /* The four governance rules, stated as rules rather than marketing. */
+    const gp = el('div', 'panel');
+    gp.innerHTML = '<div class="panel-hd"><h3>Governance rules in force</h3><span class="hint">these are enforced in code, not in policy</span></div>';
+    const gbd = el('div', 'panel-bd');
+    const gg = el('div', 'q-grid');
+    [
+      ['Confidence floor', `Anything below <b>${Math.round(CONFIDENCE_CUTOFF * 100)}%</b> is marked <code>held_for_review</code> and is never auto-actioned. ${r.stats.held_for_review} insight${r.stats.held_for_review === 1 ? ' is' : 's are'} held on this pass. Committing one anyway is permitted — and permanently recorded in the ledger as an override.`],
+      ['Cause is always a hypothesis', 'Every <code>why</code> block carries <code>hypothesis: true</code> as a structural field. The system attributes by decomposition — contributions are shares of a measured delta and sum to 100% — and never claims a confirmed cause. A human closes that gap.'],
+      ['Some exposures are not priced', 'Compliance exposure returns <code>null</code> for value at risk. <code>null</code> is a legal, validated value in the contract. A fabricated fine probability would be the least defensible number in the product, so the system declines to produce one.'],
+      ['Nothing reaches the UI as free text', 'Every card is a rendering of a validated insight object. Detection is arithmetic; the language layer only describes what detection already found. It cannot introduce a claim the data does not support.'],
+    ].forEach(([h, body_]) => {
+      const q = el('div', 'qbox');
+      q.innerHTML = `<h5>${esc(h)}</h5><p>${body_}</p>`;
+      gg.appendChild(q);
+    });
+    gbd.appendChild(gg);
+    gp.appendChild(gbd);
+    wrap.appendChild(gp);
+
+    /* Detectors and their declared thresholds — arguable by a reviewer. */
+    const TH_NOTE = {
+      escalation_spike: 'two-proportion z ≥ 2.5 on escalation rate, per category',
+      emerging_topic: 'volume ≥ 1.35× its own baseline AND share-of-mix z ≥ 2.5',
+      backlog_risk: 'sustained queue growth ≥ 3 tickets/day',
+      coaching_gap: 'QA gap ≥ 8 points AND Welch t ≥ 2.5 between cohorts',
+      nps_drop: 'NPS fall ≥ 8 points on ≥ 40 responses',
+      csat_drop: 'mean-star fall ≥ 0.25 AND Welch t ≥ 2',
+      churn_risk: 'repeat escalations + detractor/low CSAT, ARR floor $60k, ≥ 5 accounts',
+      compliance_risk: 'open statutory requests against their legal deadline',
+      sla_risk: 'two-proportion z ≥ 2.5 on SLA breach rate',
+    };
+    const dp = table(
+      [{ label: 'Detector', key: 'name' }, { label: 'Threshold it must clear', key: 'th' }, { label: 'Firing now', key: 'found', num: true }],
+      r.detectors_run.map((x) => ({
+        name: x.detector.replace(/_/g, ' '),
+        th: TH_NOTE[x.detector] || 'declared in engine/web/detect.js',
+        found: x.found,
+      })),
+      { title: 'Detectors and declared thresholds', hint: `minimum sample ${r.thresholds.min_sample} recent records before any anomaly is raised` },
+    );
+    const dnote = el('p', 'muted');
+    dnote.style.cssText = 'font-size:.74rem;margin:10px 0 0;line-height:1.6';
+    dnote.innerHTML = `No detector knows what generated the data. Each compares a recent window against this operation's own baseline and raises a card only when the difference clears the stated threshold — which is why a quiet week produces an empty feed rather than invented findings.`;
+    dp.querySelector('.panel-bd').appendChild(dnote);
+    wrap.appendChild(dp);
+
+    /* Provenance — where every published field came from. */
+    const rows = [];
+    for (const i of e.insights) {
+      for (const [field, src] of Object.entries(i._meta.provenance || {})) {
+        rows.push({ ins: i._meta.title, field: field.replace(/_/g, ' '), src });
+      }
+    }
+    wrap.appendChild(table(
+      [{ label: 'Insight', key: 'ins' }, { label: 'Field', key: 'field' }, { label: 'Derived from', key: 'src' }],
+      rows, { title: 'Provenance of the current feed', hint: `${rows.length} traced fields · no field is published without a source` },
+    ));
+
+    /* Coverage: the contract's declared signal vocabulary vs what fired. */
+    const cp = el('div', 'panel');
+    cp.innerHTML = '<div class="panel-hd"><h3>Signal coverage</h3><span class="hint">the contract\'s full vocabulary, and what is live</span></div>';
+    const cbd = el('div', 'panel-bd');
+    const cd = el('div', 'drv');
+    cd.innerHTML = SIGNAL_TYPES.map((t) => {
+      const n = e.insights.filter((i) => i.signal_type === t).length;
+      return `<div class="drv-row" style="grid-template-columns:1fr auto"><span class="n">${esc(t.replace(/_/g, ' '))}</span><span class="v" style="color:${n ? STATUS.warning : 'var(--text-dim)'}">${n || '—'}</span></div>`;
+    }).join('');
+    cbd.appendChild(cd);
+    const cnote = el('p', 'muted');
+    cnote.style.cssText = 'font-size:.74rem;margin:10px 0 0;line-height:1.6';
+    cnote.innerHTML = `A dash means that signal type is defined in the contract and currently silent — not missing. Data last ingested: ${fmt.int(d.tickets.length)} tickets, ${fmt.int(d.escalations.length)} escalations, ${fmt.int(d.nps.length)} NPS responses, ${fmt.int(d.qa.length)} QA reviews.`;
+    cbd.appendChild(cnote);
+    cp.appendChild(cbd);
+    wrap.appendChild(cp);
+
+    if (!r.contract_valid) {
+      const ep = el('div', 'panel');
+      ep.innerHTML = '<div class="panel-hd"><h3>Contract violations</h3><span class="hint">published anyway — visibly</span></div>';
+      const ebd = el('div', 'panel-bd');
+      ebd.innerHTML = `<ul class="steps">${r.contract_errors.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+      ep.appendChild(ebd);
+      wrap.appendChild(ep);
+    }
+
+    return wrap;
   }
 
   /* ── Data Upload ──────────────────────────────────────────────────────── */
@@ -1186,10 +1876,13 @@ export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
     renderNav();
     const scrollTop = body.scrollTop;
     body.innerHTML = '';
-    const v = state.view === 'dash' ? viewDashboard()
+    const v = state.view === 'today' ? viewToday()
+      : state.view === 'dash' ? viewDashboard()
       : state.view === 'feed' ? viewFeed()
       : state.view === 'radar' ? viewRadar()
+      : state.view === 'ledger' ? viewLedger()
       : state.view === 'copilot' ? viewCopilot()
+      : state.view === 'assurance' ? viewAssurance()
       : viewUpload();
     body.appendChild(v);
     body.scrollTop = scrollTop;
@@ -1198,6 +1891,7 @@ export function mountOpsPulse(root, store, { onOpenTicket } = {}) {
 
   const toggleBtn = root.querySelector('#opToggle');
   toggleBtn.addEventListener('click', () => store.toggle());
+  root.querySelector('#opData').addEventListener('click', () => { state.view = 'upload'; render(); body.scrollTop = 0; });
   root.querySelector('#opReseed').addEventListener('click', () => {
     const s = store.reseed();
     state.chat = []; state.selected = null; state.lastUpload = null;

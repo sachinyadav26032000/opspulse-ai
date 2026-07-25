@@ -46,7 +46,16 @@ export const fmt = {
   pct: (v) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`),
   pct0: (v) => (v == null ? '—' : `${Math.round(v * 100)}%`),
   usd: (v) => (v == null ? '—' : '$' + Math.round(v).toLocaleString('en-US')),
-  usdK: (v) => (v == null ? '—' : Math.abs(v) >= 1000 ? '$' + Math.round(v / 1000) + 'k' : '$' + Math.round(v)),
+  // Rolls over at a million: "$1108k" is unreadable, and the briefing renders
+  // this at 3.6rem where the difference between $1.1M and $1108k is the whole
+  // impression. Uppercase K/M is the finance convention the readers expect.
+  usdK: (v) => {
+    if (v == null) return '—';
+    const a = Math.abs(v);
+    if (a >= 1e6) return '$' + (v / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
+    if (a >= 1000) return '$' + Math.round(v / 1000) + 'K';
+    return '$' + Math.round(v);
+  },
   nps: (v) => (v == null ? '—' : `${v > 0 ? '+' : ''}${Math.round(v)}`),
   stars: (v) => (v == null ? '—' : v.toFixed(2) + '★'),
   min: (v) => (v == null ? '—' : Math.round(v) + 'm'),

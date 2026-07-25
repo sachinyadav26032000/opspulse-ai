@@ -474,3 +474,69 @@ body.app::before { position: fixed; }
 
 /* summary stat tile spark */
 .an-stat .stat-spark { width: 100%; height: 34px; margin-top: 8px; overflow: visible; }
+
+/* ==========================================================================
+   Decision context bar — the frame that makes this a workspace rather than a
+   destination. It states what decision brought you here and how to get back
+   to it; without it, this page reads as "data you are looking at" instead of
+   "the decision you are investigating".
+   ========================================================================== */
+.dctx {
+  display: grid; grid-template-columns: 1fr auto; gap: 22px; align-items: start;
+  border: 1px solid var(--line); border-left: 3px solid var(--line-strong);
+  border-radius: var(--radius); padding: 18px 22px; margin-bottom: 18px;
+  background: linear-gradient(120deg, rgba(255,255,255,.028), transparent 65%);
+}
+.dctx-critical { border-left-color: var(--danger); }
+.dctx-high     { border-left-color: var(--warn); }
+.dctx-medium   { border-left-color: var(--cyan); }
+.dctx-idle     { border-left-color: var(--line-strong); background: none; }
+
+.dctx-kicker {
+  display: flex; align-items: center; gap: 7px;
+  font-size: .66rem; text-transform: uppercase; letter-spacing: .13em;
+  font-weight: 800; color: var(--text-dim);
+}
+.dctx-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.dctx-critical .dctx-dot { background: var(--danger); }
+.dctx-high     .dctx-dot { background: var(--warn); }
+.dctx-medium   .dctx-dot { background: var(--cyan); }
+
+.dctx-title {
+  font-size: 1.15rem; font-weight: 800; letter-spacing: -.02em; color: var(--text); margin-top: 6px;
+}
+.dctx-sub { margin: 5px 0 0; font-size: .84rem; color: var(--text-dim); line-height: 1.55; max-width: 74ch; }
+.dctx-act { margin: 9px 0 0; font-size: .88rem; color: var(--text-soft); line-height: 1.5; max-width: 74ch; }
+.dctx-act .ar { color: var(--emerald); margin-right: 7px; }
+.dctx-facts { display: flex; flex-wrap: wrap; gap: 5px 18px; margin-top: 11px; font-size: .77rem; color: var(--text-dim); }
+.dctx-facts b { color: var(--text-soft); font-variant-numeric: tabular-nums; }
+
+.dctx-acts { display: grid; gap: 8px; justify-items: stretch; min-width: 234px; }
+.dctx-btn {
+  display: inline-block; text-align: center; font-size: .82rem; font-weight: 700;
+  padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line-strong);
+  color: var(--text-soft); background: rgba(255,255,255,.04); transition: background .15s, color .15s, border-color .15s;
+}
+.dctx-btn:hover { background: rgba(255,255,255,.08); color: var(--text); }
+.dctx-btn.primary { background: var(--grad); color: #04120c; border-color: transparent; }
+.dctx-btn.primary:hover { filter: brightness(1.07); color: #04120c; }
+.dctx-note { margin: 2px 0 0; font-size: .7rem; color: var(--text-dim); line-height: 1.5; text-align: center; }
+
+/* The brief outranks everything else in this sidebar, and looks like it.
+   Deliberately NOT .nav-item: app.js binds view-switching to that class, and
+   this is a link to another page, not a view in this one. */
+.nav-brief {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 10px;
+  font-size: .92rem; font-weight: 700; color: var(--text);
+  background: rgba(52,211,153,.09);
+  border: 1px solid rgba(52,211,153,.24);
+  transition: background .16s;
+}
+.nav-brief:hover { background: rgba(52,211,153,.16); color: var(--text); }
+.nav-brief svg { width: 19px; height: 19px; flex: none; color: var(--emerald); }
+
+@media (max-width: 900px) {
+  .dctx { grid-template-columns: 1fr; }
+  .dctx-acts { min-width: 0; }
+}
