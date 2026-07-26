@@ -43,6 +43,7 @@ const IC = {
   file: '<svg viewBox="0 0 24 24" fill="none"><path d="M14 3v5h5M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8l-5-5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
   ledger: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
   shield: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l8 3.5v5.7c0 4.3-3.2 7.6-8 8.8-4.8-1.2-8-4.5-8-8.8V6.5L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m8.8 12 2.2 2.2 4.2-4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg>',
   sun: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
 };
 
@@ -68,6 +69,35 @@ const BANDS = {
   medium: { label: 'Medium', quietLabel: 'Medium', color: SERIES[0] },
 };
 const bandOf = (i) => (i.severity_score >= CRITICAL_AT ? 'critical' : i.severity_score >= HIGH_AT ? 'high' : 'medium');
+
+/**
+ * Which decisions the executive brief puts in front of someone today.
+ *
+ * Exported because the Live Ops Floor's reduction band has to end on the same
+ * number the brief shows — two places computing "how many decisions" from the
+ * same insights and disagreeing would undermine the exact claim that screen is
+ * making. One implementation, both callers.
+ *
+ * Every critical is included (unioned first, so a high-severity item that ranks
+ * low on priority cannot fall off the bottom), topped up to three for
+ * readability, and sorted so the bands stay contiguous.
+ */
+export function selectBriefDecisions(insights) {
+  const ranked = insights || [];
+  const critical = ranked.filter((i) => bandOf(i) === 'critical');
+  const target = Math.max(3, critical.length);
+
+  const out = [];
+  const seen = new Set();
+  for (const i of [...critical, ...ranked]) {
+    if (seen.has(i.insight_id)) continue;
+    seen.add(i.insight_id);
+    out.push(i);
+    if (out.length >= target) break;
+  }
+  const order = { critical: 0, high: 1, medium: 2 };
+  return out.sort((x, y) => order[bandOf(x)] - order[bandOf(y)]);
+}
 /* A decision is taken against a SIGNAL, not against an insight_id: the engine
    rebuilds insight objects on every pass, so the id churns while the underlying
    problem persists. Keying on signal type + entity is what lets the ledger say
@@ -127,25 +157,66 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
      Data ingest is deliberately NOT here — it is a source-connection chore, not
      a decision surface, and putting it at this level made the product read as a
      file uploader with charts. It lives in the top chrome instead. */
+  /* Four tabs, and they have to fit on one line beside the logo and the
+     controls at 1280px — seven overflowed by ~250px and silently scrolled.
+
+     Executive Copilot is deliberately NOT here. It is a tool you reach from
+     wherever you are (a decision card, Cmd+K, the docked rail), not a place
+     you navigate to; giving it a tab would mean taking it away again. It stays
+     reachable from the brief's "Ask about the operation" while the rail is built. */
   const NAV = [
     { id: 'today', label: 'Today', icon: IC.sun },
-    { id: 'dash', label: 'Dashboard', icon: IC.home },
     { id: 'feed', label: 'Decision Feed', icon: IC.feed, badge: () => store.engine.insights.length },
     { id: 'radar', label: 'Risk Radar', icon: IC.radar },
+    { id: 'dash', label: 'Workspace', icon: IC.home },
+  ];
+  /* Reachable, de-emphasised. Both are surfaces you go to on purpose rather
+     than pass through, so neither earns a permanent slot. */
+  const NAV_MORE = [
     { id: 'ledger', label: 'Decision Ledger', icon: IC.ledger, badge: () => store.decisions.filter((x) => x.status !== 'closed').length },
-    { id: 'copilot', label: 'Executive Copilot', icon: IC.chat },
     { id: 'assurance', label: 'Assurance', icon: IC.shield },
   ];
+
   const nav = root.querySelector('#opNav');
+  let moreOpen = false;
+
+  const navBtn = (n, cls) => {
+    const bv = n.badge ? n.badge() : 0;
+    const b = el('button', cls, `${n.icon}<span>${esc(n.label)}</span>${bv ? `<span class="badge">${bv}</span>` : ''}`);
+    b.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      moreOpen = false;
+      state.view = n.id; render(); body.scrollTop = 0;
+    });
+    return b;
+  };
+
   function renderNav() {
     nav.innerHTML = '';
-    for (const n of NAV) {
-      const bv = n.badge ? n.badge() : 0;
-      const b = el('button', state.view === n.id ? 'on' : '', `${n.icon}<span>${esc(n.label)}</span>${bv ? `<span class="badge">${bv}</span>` : ''}`);
-      b.addEventListener('click', () => { state.view = n.id; render(); body.scrollTop = 0; });
-      nav.appendChild(b);
+    for (const n of NAV) nav.appendChild(navBtn(n, state.view === n.id ? 'on' : ''));
+
+    const inMore = NAV_MORE.some((n) => n.id === state.view);
+    const wrapMore = el('div', 'lv-more');
+    const trigger = el('button', inMore ? 'on' : '', `${IC.more}<span>More</span>`);
+    trigger.setAttribute('aria-haspopup', 'menu');
+    trigger.setAttribute('aria-expanded', String(moreOpen));
+    trigger.addEventListener('click', (ev) => { ev.stopPropagation(); moreOpen = !moreOpen; renderNav(); });
+    wrapMore.appendChild(trigger);
+
+    if (moreOpen) {
+      const menu = el('div', 'lv-more-menu');
+      menu.setAttribute('role', 'menu');
+      for (const n of NAV_MORE) menu.appendChild(navBtn(n, state.view === n.id ? 'on' : ''));
+      wrapMore.appendChild(menu);
+      setTimeout(() => menu.querySelector('button')?.focus(), 0);
     }
+    nav.appendChild(wrapMore);
   }
+
+  /* Close the overflow on an outside click or Escape — a menu that only closes
+     by re-clicking its trigger is a trap. */
+  document.addEventListener('click', () => { if (moreOpen) { moreOpen = false; renderNav(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && moreOpen) { moreOpen = false; renderNav(); } });
 
   /* ── Drill-down modal ─────────────────────────────────────────────────── */
   const modal = el('div', 'drill');
@@ -194,6 +265,29 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
   const labelsFor = (from, to) => { const d = ds(); const out = []; for (let i = from; i <= to; i++) out.push(dayLabel(d, i)); return out; };
   const win = (n) => { const d = ds(); const to = d.meta.days - 1; return { from: Math.max(0, to - n + 1), to }; };
   const releaseMarkers = (from) => ds().meta.releases.filter((r) => r.day >= from).map((r) => ({ i: r.day - from, label: r.kind === 'policy' ? 'policy' : r.kind === 'org' ? 'new hires' : 'release' }));
+
+  /**
+   * A dense row of stat tiles. Reuses .kpi-strip/.kpi so these read as the same
+   * component family as the dashboard strip rather than a second visual language.
+   * `onClick` is optional — a tile that goes nowhere renders as static.
+   */
+  function statStrip(items) {
+    const strip = el('div', 'kpi-strip');
+    for (const it of items) {
+      const c = el('div', 'kpi' + (it.onClick ? '' : ' static'),
+        `<div class="k">${esc(it.k)}</div>
+         <div class="v" ${it.color ? `style="color:${it.color}"` : ''}>${esc(it.v)}</div>
+         ${it.spark ? sparkline(it.spark, { color: it.sparkColor || SERIES[0] }) : `<div class="s">${esc(it.s || '')}</div>`}`);
+      if (it.onClick) c.addEventListener('click', it.onClick);
+      strip.appendChild(c);
+    }
+    return strip;
+  }
+
+  /* Band counts drive several of the new summaries. */
+  const bandCounts = (list) => list.reduce((a, i) => { a[bandOf(i)] = (a[bandOf(i)] || 0) + 1; return a; }, { critical: 0, high: 0, medium: 0 });
+  const bandColor = (i) => (bandOf(i) === 'critical' ? STATUS.critical : bandOf(i) === 'high' ? STATUS.warning : SERIES[0]);
+  const medianOf = (a) => (a.length ? a.slice().sort((x, y) => x - y)[a.length >> 1] : 0);
 
   function table(cols, rows, opts = {}) {
     const wrap = el('div', 'panel');
@@ -857,20 +951,7 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
        dropped off the bottom of a three-item list. */
     const ranked = e.insights;                    // already priority-ordered by the engine
     const critical = ranked.filter((i) => bandOf(i) === 'critical');
-    const target = Math.max(3, critical.length);
-
-    const shown = [];
-    const seenIds = new Set();
-    for (const i of [...critical, ...ranked]) {
-      if (seenIds.has(i.insight_id)) continue;
-      seenIds.add(i.insight_id);
-      shown.push(i);
-      if (shown.length >= target) break;
-    }
-    // Bands must be contiguous or the group headers would repeat. Sort is
-    // stable, so priority order is preserved inside each band.
-    const BAND_ORDER = { critical: 0, high: 1, medium: 2 };
-    shown.sort((x, y) => BAND_ORDER[bandOf(x)] - BAND_ORDER[bandOf(y)]);
+    const shown = selectBriefDecisions(ranked);   // shared with the Live Ops Floor band
 
     if (!ranked.length) {
       screen.appendChild(el('p', 'brief-sub', 'Nothing requires a decision today. No signal cleared its detection threshold in the current window — which is a result, not an empty screen.'));
@@ -1120,6 +1201,46 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     right.appendChild(tickerPanel());
     cols.appendChild(right);
     wrap.appendChild(cols);
+
+    /* Below the fold: where the work sits and what the engine made of it. Both
+       are read straight off the same dataset the cards above were built from. */
+    const mix = el('div', 'grid2');
+    mix.appendChild(barChart({
+      title: 'Where the open work sits', subtitle: `${fmt.int(open.length)} unresolved tickets by category`,
+      rows: countBy(open, (t) => t.category, 9),
+      note: 'Open queue only — closed work is excluded, so this is what is still costing time.',
+    }));
+    mix.appendChild(barChart({
+      title: 'What the engine made of it', subtitle: `${e.insights.length} signals raised from ${fmt.int(e.run.stats.records_in)} records`,
+      rows: [...groupBy(e.insights, (i) => i.signal_type)].map(([k, v]) => ({
+        key: String(k).replace(/_/g, ' '),
+        value: v.length,
+        hint: `${Math.max(...v.map((x) => x.severity_score))} worst severity`,
+        color: v.some((x) => bandOf(x) === 'critical') ? STATUS.critical : v.some((x) => bandOf(x) === 'high') ? STATUS.warning : SERIES[0],
+      })).sort((a, b) => b.value - a.value),
+      format: (v) => Math.round(v),
+      note: 'Coloured by the worst band present in each type. A type with no bar did not clear its detection threshold this window.',
+    }));
+    wrap.appendChild(mix);
+
+    /* Queue against the level the desk is staffed for — the single series that
+       explains most of what the top three are about. */
+    const q = el('div', 'panel');
+    q.innerHTML = '<div class="panel-hd"><h3>Queue against target</h3><span class="hint">90 days · the gap is unstaffed work</span></div>';
+    const qbd = el('div', 'panel-bd');
+    qbd.appendChild(lineChart({
+      title: 'Open backlog vs target', subtitle: 'the level this desk is staffed to hold',
+      labels: labelsFor(0, d.meta.days - 1),
+      series: [
+        { name: 'Open backlog', values: d.meta.series.backlog },
+        { name: 'Target', values: d.meta.series.backlog_target },
+      ],
+      format: fmt.int, zeroBase: false, markers: releaseMarkers(0),
+      bands: [{ from: d.meta.recent_from, to: d.meta.days - 1, label: 'analysis window' }],
+    }));
+    q.appendChild(qbd);
+    wrap.appendChild(q);
+
     return wrap;
   }
 
@@ -1143,6 +1264,47 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
   function viewFeed() {
     const e = eng();
     const wrap = el('div', 'lv-view');
+
+    /* What shape is the feed in? The list answers item-by-item; these answer it
+       in aggregate, which is the question someone triaging actually opens with. */
+    const all = e.insights;
+    const bc = bandCounts(all);
+    const costed = all.filter((i) => i.expected_impact.range_low_usd != null);
+    const atStake = costed.reduce((s, i) => s + (i.expected_impact.range_low_usd + i.expected_impact.range_high_usd) / 2, 0);
+    const heldN = all.filter((i) => i.status === 'held_for_review').length;
+    const accounts = all.reduce((s, i) => s + (i._meta.affected_accounts || 0), 0);
+
+    wrap.appendChild(statStrip([
+      { k: 'Open signals', v: String(all.length), s: `${costed.length} carry a costed range` },
+      { k: 'Critical', v: String(bc.critical), s: `${bc.high} high · ${bc.medium} medium`, color: bc.critical ? STATUS.critical : STATUS.good },
+      { k: 'Value at stake', v: costed.length ? fmt.usdK(atStake) : '—', s: 'midpoint of every costed range' },
+      { k: 'Median confidence', v: `${Math.round(medianOf(all.map((i) => i.why.confidence)) * 100)}%`, s: `floor is ${Math.round(CONFIDENCE_CUTOFF * 100)}%` },
+      { k: 'Held for review', v: String(heldN), s: 'below the floor — never auto-actioned', color: heldN ? STATUS.warning : STATUS.good },
+      { k: 'Customers affected', v: fmt.int(accounts), s: 'summed across open signals' },
+    ]));
+
+    /* Severity and money, side by side — the two orderings a triager flips
+       between. Bars are coloured by band, which is a reserved status usage. */
+    const shape = el('div', 'grid2');
+    shape.appendChild(barChart({
+      title: 'Severity ladder', subtitle: 'every open signal, worst first',
+      rows: all.slice().sort((a, b) => b.severity_score - a.severity_score).map((i) => ({
+        key: i._meta.title, value: i.severity_score, hint: `${Math.round(i.why.confidence * 100)}% confidence`, color: bandColor(i),
+      })),
+      format: (v) => Math.round(v), maxRows: 12,
+      note: `Critical is ≥ ${CRITICAL_AT}, high ≥ ${HIGH_AT}. The brief promotes every critical; the rest wait here.`,
+    }));
+    shape.appendChild(barChart({
+      title: 'Where the money is', subtitle: 'midpoint of the costed range',
+      rows: costed.slice().sort((a, b) => b.expected_impact.range_high_usd - a.expected_impact.range_high_usd).map((i) => ({
+        key: i._meta.title, value: (i.expected_impact.range_low_usd + i.expected_impact.range_high_usd) / 2,
+        hint: `${i.expected_impact.time_horizon_days}-day horizon`, color: bandColor(i),
+      })),
+      format: fmt.usdK, maxRows: 12,
+      note: all.length - costed.length ? `${all.length - costed.length} signal(s) are deliberately not costed and are absent here.` : undefined,
+    }));
+    wrap.appendChild(shape);
+
     const tools = el('div', 'feed-tools');
     tools.innerHTML = `
       <div class="seg" id="fFilter">
@@ -1205,7 +1367,24 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
 
   function viewRadar() {
     const h = eng().health;
+    const d = ds(), e = eng();
     const wrap = el('div', 'lv-view');
+
+    /* The radar answers "which dimension", but not "by how much" or "since
+       when". These three blocks carry the numbers the shape only implies. */
+    const allDrivers = h.dimensions.flatMap((dim) => dim.drivers.map((dr) => ({ ...dr, dim: dim.label, dimKey: dim.key })));
+    const below = allDrivers.filter((dr) => dr.score < 70);
+    const worst = h.dimensions.slice().sort((a, b) => a.score - b.score)[0];
+
+    wrap.appendChild(statStrip([
+      { k: 'Composite health', v: `${h.score}`, s: `${h.delta >= 0 ? '+' : ''}${h.delta} vs prior period`, color: h.score >= 70 ? STATUS.good : h.score >= 50 ? STATUS.warning : STATUS.critical },
+      { k: 'Weakest dimension', v: String(worst.score), s: worst.label, color: STATUS.critical, onClick: () => drillDimension(worst.key) },
+      { k: 'Drivers below target', v: `${below.length}/${allDrivers.length}`, s: 'across all four dimensions', color: below.length ? STATUS.warning : STATUS.good },
+      { k: 'Open signals', v: String(e.insights.length), s: `${bandCounts(e.insights).critical} critical`, onClick: () => { state.view = 'feed'; render(); } },
+      { k: 'Backlog now', v: fmt.int(openTickets(d).length), spark: d.meta.series.backlog.slice(-30), sparkColor: STATUS.serious },
+      { k: 'Escalations open', v: fmt.int(d.escalations.filter((x) => x.status !== 'Closed').length), spark: rolling(countByDay(d.escalations, d.meta.days), 7).slice(-30), sparkColor: STATUS.warning },
+    ]));
+
     const p = el('div', 'panel');
     p.innerHTML = `<div class="panel-hd"><h3>Risk Radar</h3><span class="hint">operations health ${h.score}/100 · ${h.delta >= 0 ? '+' : ''}${h.delta} vs prior period</span></div>`;
     const bd = el('div', 'panel-bd');
@@ -1234,6 +1413,52 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     bd.appendChild(rw);
     p.appendChild(bd);
     wrap.appendChild(p);
+
+    /* Every driver in the composite, worst first — 15 real numbers the radar
+       compresses into four points. This is the "by how much". */
+    const dp = el('div', 'panel');
+    dp.innerHTML = '<div class="panel-hd"><h3>Every driver in the score, worst first</h3><span class="hint">the four radar points expanded — click any dimension card above to open its maths</span></div>';
+    const dbd = el('div', 'panel-bd');
+    dbd.appendChild(barChart({
+      title: 'Driver scores against their own target band',
+      subtitle: `${below.length} of ${allDrivers.length} are below target`,
+      rows: allDrivers.slice().sort((a, b) => a.score - b.score).map((dr) => ({
+        key: `${dr.label} · ${dr.dim.split(' ')[0]}`,
+        value: Math.round(dr.score),
+        hint: `now ${dr.display} · target ${dr.target}`,
+        color: dr.score >= 70 ? STATUS.good : dr.score >= 45 ? STATUS.warning : STATUS.critical,
+      })),
+      format: (v) => Math.round(v),
+      maxRows: 16,
+      note: 'Scored 0–100 against each driver\'s own target band, so they are comparable to each other despite measuring different things. Green is at or above target.',
+    }));
+    dp.appendChild(dbd);
+    wrap.appendChild(dp);
+
+    /* The "since when". Both series are real 90-day arrays off the dataset. */
+    const trends = el('div', 'grid2');
+    trends.appendChild(lineChart({
+      title: 'Queue against target', subtitle: 'open backlog vs the level the desk is staffed for',
+      labels: labelsFor(d.meta.days - 45, d.meta.days - 1),
+      series: [
+        { name: 'Open backlog', values: d.meta.series.backlog.slice(d.meta.days - 45) },
+        { name: 'Target', values: d.meta.series.backlog_target.slice(d.meta.days - 45) },
+      ],
+      format: fmt.int, zeroBase: false, markers: releaseMarkers(d.meta.days - 45),
+      bands: [{ from: d.meta.recent_from - (d.meta.days - 45), to: 44, label: 'analysis window' }],
+      note: 'The gap between the two lines is the part of the queue nobody is staffed to clear.',
+    }));
+    trends.appendChild(lineChart({
+      title: 'Demand vs capacity', subtitle: '7-day rolling · tickets in against tickets resolved',
+      labels: labelsFor(d.meta.days - 45, d.meta.days - 1),
+      series: [
+        { name: 'Arriving', values: rolling(d.meta.series.inflow, 7).slice(d.meta.days - 45) },
+        { name: 'Resolved', values: rolling(d.meta.series.throughput, 7).slice(d.meta.days - 45) },
+      ],
+      format: fmt.one, zeroBase: false,
+      note: 'Where arriving sits above resolved, the queue is growing — that difference is what the backlog chart accumulates.',
+    }));
+    wrap.appendChild(trends);
 
     const p2 = el('div', 'panel');
     p2.innerHTML = '<div class="panel-hd"><h3>Open insights by risk dimension</h3><span class="hint">what is actually driving each score</span></div>';

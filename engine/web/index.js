@@ -15,6 +15,7 @@ import { rootCause, recommend, impact, empiricalChurnLift, fmtVal, fmtK, cap } f
 import { healthWithDelta } from './health.js';
 import { createInsight, validateInsight, STATUS, CONFIDENCE_CUTOFF } from './schema.js';
 import { clamp, mean } from './stats.js';
+import { buildExposedAccounts } from './exposure.js';
 import { dayLabel } from './aggregate.js';
 
 /* ── Titles: short enough to scan a feed, specific enough to act on ─────── */
@@ -258,6 +259,14 @@ export function runEngine(ds, { asOf = ds.meta.as_of } = {}) {
 
   const health = mark('health', () => healthWithDelta(ds));
   const brief = mark('exec_summary', () => buildBrief(insights, health, ds, { asOf }));
+
+  /* Attach the account-level evidence behind each decision. Additive: it lands
+     on _meta, which the insight contract does not police, so nothing that
+     already reads an insight is affected. Only signals that actually resolve to
+     accounts get a list; everything else gets an empty array. */
+  for (const ins of insights) {
+    ins._meta.exposed_accounts = buildExposedAccounts(ds, ins);
+  }
 
   const errors = [];
   insights.forEach((ins, i) => { const r = validateInsight(ins, i); if (!r.ok) errors.push(...r.errors); });

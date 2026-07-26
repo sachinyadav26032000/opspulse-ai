@@ -29,22 +29,72 @@
   .floor-bar a { color: var(--text-soft); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
   .floor-bar a:hover { color: var(--text); }
 
-  .panes { display: grid; grid-template-columns: 1fr 1fr; min-height: 0; }
-  .pane { min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
-  .pane + .pane { border-left: 2px solid var(--line-strong); }
+  /* The tags, the band and the hosts are all DIRECT children of .panes so the
+     band can span the seam with `grid-column: 1 / -1`. Nesting each tag+host
+     inside its own .pane column would make a full-width band impossible. */
+  .panes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto 1fr;
+    min-height: 0;
+  }
   .pane-tag {
     font-size: .62rem; text-transform: uppercase; letter-spacing: .14em; font-weight: 800;
-    padding: 5px 18px; border-bottom: 1px solid var(--line); color: var(--text-dim);
+    padding: 8px 18px; border-bottom: 1px solid var(--line); color: var(--text-dim);
     display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.02);
+    min-width: 0;
   }
   .pane-tag .n { width: 16px; height: 16px; border-radius: 4px; display: grid; place-items: center; color: #04120c; font-size: 10px; }
-  .pane-host { flex: 1; min-height: 0; display: flex; }
+  .pane-host { min-width: 0; min-height: 0; overflow: hidden; display: flex; }
   .pane-host > * { flex: 1; min-width: 0; }
+  /* The seam, previously `.pane + .pane`. */
+  .pane-tag.right, .pane-host.right { border-left: 2px solid var(--line-strong); }
+
+  /* ── Reduction band ──────────────────────────────────────────────────────
+     The compression from raw tickets to decisions, which is the argument the
+     whole screen exists to make. Muted → accent left-to-right IS the message:
+     the first three are noise, the last two are signal. */
+  .reduction-band {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(12px, 2.5vw, 40px);
+    padding: 20px 32px;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,.012);
+  }
+  .reduction-node { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .reduction-value {
+    font-size: 26px; font-weight: 500; line-height: 1.1;
+    /* Without tabular-nums the digits jitter horizontally as the counters tick. */
+    font-variant-numeric: tabular-nums;
+  }
+  .reduction-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+  .is-noise .reduction-value { color: var(--text-soft); }
+  .is-signal .reduction-value { color: var(--emerald); }
+  .reduction-sep { font-size: 18px; color: var(--text-dim); opacity: .4; }
+
+  /* Change is signalled with a dip and a 1px nudge — never a slot-machine roll. */
+  @media (prefers-reduced-motion: no-preference) {
+    .reduction-value { transition: opacity .18s ease-out, transform .18s ease-out; }
+    .reduction-value.tick { opacity: .45; transform: translateY(-1px); }
+  }
 
   #split { display: none; }
   @media (max-width: 1180px) {
-    .panes { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
-    .pane + .pane { border-left: 0; border-top: 2px solid var(--line-strong); }
+    /* Single column: band first, then each tag with its own host beneath it. */
+    .panes { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto 1fr; }
+    .reduction-band { order: 0; }
+    .pane-tag.left  { order: 1; }
+    .pane-host.left { order: 2; }
+    .pane-tag.right { order: 3; border-left: 0; border-top: 2px solid var(--line-strong); }
+    .pane-host.right { order: 4; border-left: 0; }
+  }
+  @media (max-width: 900px) {
+    .reduction-band { gap: 16px; padding: 14px 16px; }
+    .reduction-value { font-size: 20px; }
   }
 </style>
 </head>
@@ -67,14 +117,42 @@
   </div>
 
   <div class="panes">
-    <section class="pane">
-      <div class="pane-tag"><span class="n" style="background:#3987e5">1</span> Source system — the service desk your team works in</div>
-      <div class="pane-host" id="deskHost"></div>
-    </section>
-    <section class="pane">
-      <div class="pane-tag"><span class="n" style="background:#34d399">2</span> Intelligence layer — what a director should do about it</div>
-      <div class="pane-host" id="pulseHost"></div>
-    </section>
+    <div class="pane-tag left"><span class="n" style="background:#3987e5">1</span> Source system — the service desk your team works in</div>
+    <div class="pane-tag right"><span class="n" style="background:#34d399">2</span> Intelligence layer — what a director should do about it</div>
+
+    <div class="reduction-band" role="group" aria-label="Signal reduction from tickets to decisions">
+      <div class="reduction-node is-noise">
+        <span class="reduction-value" data-count="all">—</span>
+        <span class="reduction-label">all tickets</span>
+      </div>
+      <span class="reduction-sep" aria-hidden="true">&rsaquo;</span>
+      <div class="reduction-node is-noise">
+        <span class="reduction-value" data-count="open">—</span>
+        <span class="reduction-label">open</span>
+      </div>
+      <span class="reduction-sep" aria-hidden="true">&rsaquo;</span>
+      <!-- escalations BEFORE signals: an escalation is a source-system event on
+           the left, a signal is what the engine computed from them on the right.
+           Ordered the other way the band renders an increase (≈99 escalations
+           vs ≈10 signals) and contradicts the reduction it is drawing. -->
+      <div class="reduction-node is-noise">
+        <span class="reduction-value" data-count="escalations">—</span>
+        <span class="reduction-label">escalations</span>
+      </div>
+      <span class="reduction-sep" aria-hidden="true">&rsaquo;</span>
+      <div class="reduction-node is-signal">
+        <span class="reduction-value" data-count="signals">—</span>
+        <span class="reduction-label">signals</span>
+      </div>
+      <span class="reduction-sep" aria-hidden="true">&rsaquo;</span>
+      <div class="reduction-node is-signal">
+        <span class="reduction-value" data-count="decisions">—</span>
+        <span class="reduction-label">decisions</span>
+      </div>
+    </div>
+
+    <div class="pane-host left" id="deskHost"></div>
+    <div class="pane-host right" id="pulseHost"></div>
   </div>
 </div>
 
@@ -83,13 +161,50 @@
 <script type="module">
   import { createStore } from './data/store.js';
   import { mountServiceDesk } from './assets/servicedesk.js';
-  import { mountOpsPulse } from './assets/opspulse.js';
+  import { mountOpsPulse, selectBriefDecisions } from './assets/opspulse.js';
+  import { openTickets } from './engine/web/aggregate.js';
 
   /* ONE store. Both apps read the same objects, so they cannot disagree and
      there is nothing to keep in sync. */
   const store = createStore();
   mountServiceDesk(document.getElementById('deskHost'), store);
   mountOpsPulse(document.getElementById('pulseHost'), store);
+
+  /* ── Reduction band ──────────────────────────────────────────────────────
+     Every figure is read off the same store both panels render from — none of
+     them are counters kept on the side. The left of the band accelerates as
+     tickets arrive; `decisions` comes from the same selection the brief uses
+     and holds steady. That stillness is the argument, so it is important that
+     it is a real reading and not a hardcoded 3: if the operation genuinely
+     deteriorates, this number SHOULD move. */
+  const bandEls = {};
+  document.querySelectorAll('.reduction-value').forEach((el) => { bandEls[el.dataset.count] = el; });
+
+  const calmMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const nf = new Intl.NumberFormat('en-US');
+
+  function paint(key, value) {
+    const el = bandEls[key];
+    if (!el) return;
+    const next = nf.format(value);
+    if (el.textContent === next) return;         // no flicker when nothing moved
+    if (calmMotion.matches) { el.textContent = next; return; }
+    el.classList.add('tick');
+    setTimeout(function () { el.textContent = next; el.classList.remove('tick'); }, 180);
+  }
+
+  function readBand() {
+    const d = store.dataset;
+    const e = store.engine;
+    paint('all', d.tickets.length);
+    paint('open', openTickets(d).length);
+    paint('signals', e.run.stats.anomalies_flagged);
+    paint('escalations', d.escalations.filter(function (x) { return x.status !== 'Closed'; }).length);
+    paint('decisions', selectBriefDecisions(e.insights).length);
+  }
+
+  readBand();
+  store.subscribe(readBand);   // fires on tick, engine pass, upload and reseed
 
   window.__opspulse = store;   // handy in the console: __opspulse.dataset / .engine
 </script>

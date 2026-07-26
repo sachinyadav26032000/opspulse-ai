@@ -10,19 +10,33 @@
 .op-root, .sd-root { container-type: inline-size; display: flex; flex-direction: column; min-width: 0; height: 100%; }
 
 /* ── Shared chrome ───────────────────────────────────────────────────────── */
+/* ── Vertical rhythm ──────────────────────────────────────────────────────
+   One unit, used for every structural gap in both panels. The Live Ops Floor
+   sits them side by side, so a header that is 12px taller on one side offsets
+   everything beneath it and the eye can no longer compare the two. */
+:root { --u: 8px; --chrome-h: 56px; }   /* 56 = 7u */
+
 .lv-top {
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-  padding: 12px 20px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: calc(var(--u) * 1.5); flex-wrap: nowrap;
+  /* Fixed, identical on both panels — this is what puts the two content areas
+     on the same baseline. Previously the height was content-driven, so the
+     OpsPulse nav wrapping at half-viewport made its header two rows tall. */
+  min-height: var(--chrome-h);
+  padding: var(--u) calc(var(--u) * 2); border-bottom: 1px solid var(--line);
   background: rgba(9, 13, 24, .82); backdrop-filter: blur(12px);
   position: sticky; top: 0; z-index: 20;
 }
 .lv-top .lv-brand { display: flex; align-items: center; gap: 9px; font-weight: 800; letter-spacing: -.01em; font-size: .98rem; }
 .lv-top .lv-brand .dot { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; flex: none; }
 .lv-top .lv-brand .dot svg { width: 16px; height: 16px; }
-.lv-spacer { margin-left: auto; }
+.lv-spacer { margin-left: auto; flex: none; }
 
-.lv-nav { display: flex; gap: 4px; flex-wrap: wrap; }
+/* nowrap + scroll rather than wrap: wrapping is precisely what made the two
+   panel headers different heights. Overflow is invisible until it is needed. */
+.lv-nav { display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.lv-nav::-webkit-scrollbar { display: none; }
 .lv-nav button {
+  flex: none;
   background: transparent; border: 1px solid transparent; color: var(--text-soft);
   font: inherit; font-size: .84rem; font-weight: 500; padding: 6px 11px; border-radius: 8px; cursor: pointer;
   display: flex; align-items: center; gap: 7px; transition: background .15s, color .15s;
@@ -32,12 +46,13 @@
 .lv-nav button.on { background: rgba(52,211,153,.12); color: var(--emerald); border-color: rgba(52,211,153,.2); }
 .lv-nav .badge { font-size: .68rem; font-weight: 700; background: rgba(251,113,133,.2); color: var(--danger); padding: 0 6px; border-radius: 20px; }
 
-.lv-live { display: flex; align-items: center; gap: 7px; font-size: .74rem; color: var(--text-dim); white-space: nowrap; }
+.lv-live { display: flex; align-items: center; gap: 7px; font-size: .74rem; color: var(--text-dim); white-space: nowrap; flex: none; }
 .lv-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 rgba(52,211,153,.55); animation: lvpulse 2s infinite; flex: none; }
 .lv-dot.off { background: var(--text-dim); animation: none; box-shadow: none; }
 @keyframes lvpulse { 70% { box-shadow: 0 0 0 7px rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
 
 .lv-btn {
+  flex: none;
   background: rgba(255,255,255,.05); border: 1px solid var(--line-strong); color: var(--text-soft);
   font: inherit; font-size: .78rem; font-weight: 600; padding: 5px 11px; border-radius: 8px; cursor: pointer;
   display: inline-flex; align-items: center; gap: 6px; transition: background .15s, color .15s, border-color .15s;
@@ -48,14 +63,14 @@
 .lv-btn svg { width: 14px; height: 14px; }
 .lv-btn:disabled { opacity: .45; cursor: not-allowed; }
 
-.lv-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 18px 20px 60px; min-height: 0; }
+.lv-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: calc(var(--u) * 2) calc(var(--u) * 2) calc(var(--u) * 7); min-height: 0; }
 .lv-view[hidden] { display: none; }
 
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.panel + .panel { margin-top: 14px; }
+.panel + .panel { margin-top: calc(var(--u) * 2); }
 .panel-hd {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: 12px 16px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.015);
+  display: flex; align-items: center; gap: calc(var(--u) * 1.5); flex-wrap: wrap;
+  padding: calc(var(--u) * 1.5) calc(var(--u) * 2); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.015);
 }
 .panel-hd h3 { margin: 0; font-size: .92rem; letter-spacing: -.01em; }
 .panel-hd .hint { color: var(--text-dim); font-size: .76rem; margin-left: auto; }
@@ -404,7 +419,7 @@
 /* ── ServiceDesk ────────────────────────────────────────────────────────── */
 .sd-root { background: #0a0f1c; }
 .sd-layout { display: grid; grid-template-columns: 178px 1fr; flex: 1; min-height: 0; }
-.sd-side { border-right: 1px solid var(--line); padding: 12px 10px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
+.sd-side { border-right: 1px solid var(--line); padding: var(--u) var(--u); display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
 .sd-side .lbl { font-size: .62rem; text-transform: uppercase; letter-spacing: .12em; color: var(--text-dim); padding: 12px 9px 5px; }
 .sd-side button {
   display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
@@ -415,7 +430,7 @@
 .sd-side button.on { background: rgba(57,135,229,.14); color: #9ec5f4; }
 .sd-side button .n { margin-left: auto; font-size: .7rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .sd-main { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
-.sd-tools { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.sd-tools { display: flex; gap: var(--u); align-items: center; padding: var(--u) calc(var(--u) * 2); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .sd-scroll { flex: 1; overflow-y: auto; min-height: 0; }
 
 .sd-table { width: 100%; border-collapse: collapse; font-size: .79rem; }
@@ -445,7 +460,7 @@
 .pill.P3 { background: rgba(255,255,255,.07); color: var(--text-dim); }
 .warnflag { color: var(--danger); font-weight: 700; }
 
-.pager { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: .78rem; color: var(--text-dim); }
+.pager { display: flex; align-items: center; gap: var(--u); padding: var(--u) calc(var(--u) * 2); border-top: 1px solid var(--line); font-size: .78rem; color: var(--text-dim); }
 .pager .lv-btn { padding: 3px 9px; font-size: .74rem; }
 
 .sd-detail { border-top: 1px solid var(--line); background: var(--panel); padding: 14px 16px; max-height: 46%; overflow-y: auto; }
@@ -545,8 +560,12 @@
   .radar-wrap { grid-template-columns: 1fr; justify-items: center; }
   .src-grid { grid-template-columns: 1fr; }
   .sd-layout { grid-template-columns: 132px 1fr; }
-  .lv-body { padding: 14px 13px 50px; }
-  .lv-top { padding: 10px 13px; }
+  /* Narrow panels get tighter padding — but on the SAME unit as everywhere
+     else. These two lines previously carried hardcoded 10/13/14/50px values
+     that silently beat the --u rhythm declared at the top of this file,
+     because @container adds no specificity and these come last. */
+  .lv-body { padding: calc(var(--u) * 1.5) calc(var(--u) * 1.5) calc(var(--u) * 6); }
+  .lv-top { padding: var(--u) calc(var(--u) * 1.5); }
   .op-hero { grid-template-columns: 1fr; }
   .op-hero h2 { font-size: 1.1rem; }
 }
@@ -556,3 +575,20 @@
   .sd-side { display: none; }
   .drill-kpis { grid-template-columns: 1fr 1fr; }
 }
+
+/* A stat tile that is purely informational — no drill-down behind it, so it
+   must not advertise one. Same component, different affordance. */
+.kpi.static { cursor: default; }
+.kpi.static:hover { background: var(--panel); border-color: var(--line); transform: none; }
+.kpi .s { font-size: .68rem; color: var(--text-dim); line-height: 1.4; margin-top: 4px; min-height: 26px; }
+
+/* Nav overflow — the two surfaces that do not earn a permanent tab. */
+.lv-more { position: relative; flex: none; }
+.lv-more-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 40;
+  min-width: 210px; display: flex; flex-direction: column; gap: 2px;
+  background: var(--panel-2); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm); padding: 6px; box-shadow: var(--shadow);
+}
+.lv-more-menu button { width: 100%; justify-content: flex-start; }
+.lv-more-menu button .badge { margin-left: auto; }
