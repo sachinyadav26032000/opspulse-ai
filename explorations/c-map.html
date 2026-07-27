@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>C — The Map</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ══════════════════════════════════════════════════════════════════════
+     C — THE MAP
+     Leaders orient spatially before they read.
+
+     The commitments:
+       · The money picture is the FIRST object and the LARGEST object. Nothing
+         above it competes.
+       · Size and position carry meaning. A block's width IS its share of
+         exposure — so "the biggest leak" needs no label to be identified.
+       · Decisions hang OFF the map. Each attaches to the block it belongs to
+         and inherits that block's colour, so the link is spatial not textual.
+       · Plain CSS/SVG geometry, no charting library.
+       · Two levels: total exposure across the operation, then the largest
+         block broken down into the accounts inside it.
+
+     A note on proportion honesty: standing churn exposure genuinely dwarfs the
+     three costed decisions here. The map does not rescale to flatter the
+     decisions — that lopsidedness IS the finding.
+     ══════════════════════════════════════════════════════════════════════ */
+  :root {
+    --bg:#070a12; --panel:#0e1425; --panel-2:#121a30;
+    --text:#eaf0ff; --text-soft:#aeb9d6; --text-dim:#737f9e;
+    --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.14);
+    --emerald:#34d399; --cyan:#22d3ee; --amber:#fbbf24; --rose:#fb7185; --violet:#8b5cf6;
+    --u:8px;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); }
+  body {
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    color:var(--text); -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:1200px; margin:0 auto; padding:calc(var(--u)*3) calc(var(--u)*4) calc(var(--u)*8); }
+
+  .kicker { font-size:.68rem; text-transform:uppercase; letter-spacing:.15em; color:var(--text-dim); font-weight:700; }
+  h1 { font-size:1.5rem; font-weight:700; letter-spacing:-.025em; margin:var(--u) 0 0; }
+  h1 .fig { font-variant-numeric:tabular-nums; }
+  .sub { font-size:.86rem; color:var(--text-dim); margin:calc(var(--u)*.75) 0 0; }
+
+  /* ── LEVEL 1 · total exposure, proportional ───────────────────────────── */
+  .map { margin-top:calc(var(--u)*3); }
+  .stack { display:flex; height:104px; gap:2px; }
+  .blk {
+    position:relative; border-radius:3px; padding:calc(var(--u)*1.25);
+    display:flex; flex-direction:column; justify-content:space-between;
+    overflow:hidden; cursor:default; min-width:3px;
+    border:1px solid transparent;
+  }
+  .blk .bname { font-size:.72rem; font-weight:700; letter-spacing:-.005em; line-height:1.25; }
+  .blk .bval  { font-size:1.28rem; font-weight:800; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+  .blk .bpct  { font-size:.66rem; opacity:.72; font-variant-numeric:tabular-nums; }
+  /* Narrow blocks cannot hold text — they keep their colour and label below. */
+  .blk.tiny { padding:0; }
+  .blk.tiny > * { display:none; }
+
+  .b-churn  { background:rgba(139,92,246,.22); border-color:rgba(139,92,246,.5); color:#d6c9ff; }
+  .b-refund { background:rgba(251,113,133,.20); border-color:rgba(251,113,133,.5); color:#ffc2cb; }
+  .b-cap    { background:rgba(251,191,36,.18);  border-color:rgba(251,191,36,.45); color:#ffe0a3; }
+  .b-surge  { background:rgba(34,211,238,.16);  border-color:rgba(34,211,238,.42); color:#a8ecf7; }
+
+  .legend { display:flex; gap:calc(var(--u)*2.5); flex-wrap:wrap; margin-top:calc(var(--u)*1.5); font-size:.74rem; color:var(--text-dim); }
+  .legend span { display:flex; align-items:center; gap:6px; white-space:nowrap; }
+  .legend i { width:9px; height:9px; border-radius:2px; flex:none; }
+  .legend b { color:var(--text-soft); font-variant-numeric:tabular-nums; font-weight:600; }
+
+  /* ── LEVEL 2 · the biggest block, opened ──────────────────────────────── */
+  .zoom { margin-top:calc(var(--u)*4); padding-top:calc(var(--u)*3); border-top:1px solid var(--line); }
+  .zh { display:flex; align-items:baseline; gap:var(--u); flex-wrap:wrap; }
+  .zh h2 { font-size:1.02rem; font-weight:700; margin:0; letter-spacing:-.015em; }
+  .zh .hint { font-size:.76rem; color:var(--text-dim); margin-left:auto; }
+  .acct-map { display:flex; gap:2px; height:70px; margin-top:calc(var(--u)*2); }
+  .acct {
+    background:rgba(139,92,246,.14); border:1px solid rgba(139,92,246,.32); border-radius:3px;
+    padding:calc(var(--u)*.875); overflow:hidden; min-width:2px;
+    display:flex; flex-direction:column; justify-content:space-between;
+  }
+  .acct.urgent { border-color:rgba(251,113,133,.6); background:rgba(251,113,133,.14); }
+  .acct .an { font-size:.68rem; font-weight:700; color:var(--text); line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .acct .av { font-size:.86rem; font-weight:700; font-variant-numeric:tabular-nums; color:var(--text-soft); }
+  .acct .ar { font-size:.62rem; color:var(--text-dim); font-variant-numeric:tabular-nums; }
+  .acct.narrow .av, .acct.narrow .ar { display:none; }
+
+  .acct-rows { margin-top:calc(var(--u)*2); display:grid; gap:1px; }
+  .arow {
+    display:grid; grid-template-columns:16px 150px 84px 68px 1fr; gap:calc(var(--u)*1.5);
+    align-items:baseline; padding:calc(var(--u)*1.125) var(--u);
+    border-bottom:1px solid var(--line); font-size:.79rem;
+  }
+  .arow:hover { background:rgba(255,255,255,.025); }
+  .arow .sw { width:9px; height:9px; border-radius:2px; background:rgba(139,92,246,.65); margin-top:3px; }
+  .arow.urgent .sw { background:var(--rose); }
+  .arow .nm { font-weight:600; color:var(--text); }
+  .arow .nm small { display:block; color:var(--text-dim); font-weight:400; font-size:.72rem; margin-top:1px; }
+  .arow .mo { font-variant-numeric:tabular-nums; font-weight:700; }
+  .arow .rn { font-variant-numeric:tabular-nums; color:var(--text-dim); }
+  .arow.urgent .rn { color:var(--rose); font-weight:600; }
+  .arow .rs { color:var(--text-dim); line-height:1.45; }
+  .arow-total {
+    display:grid; grid-template-columns:16px 150px 84px 68px 1fr; gap:calc(var(--u)*1.5);
+    padding:calc(var(--u)*1.5) var(--u); border-top:1px solid var(--line-strong);
+    font-size:.79rem; font-weight:700;
+  }
+  .arow-total .mo { font-variant-numeric:tabular-nums; }
+
+  /* ── Decisions, attached to their block ───────────────────────────────── */
+  .attach { margin-top:calc(var(--u)*4); padding-top:calc(var(--u)*3); border-top:1px solid var(--line); }
+  .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:calc(var(--u)*1.5); margin-top:calc(var(--u)*2); }
+  .card {
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--u);
+    border-top:3px solid var(--line-strong); padding:calc(var(--u)*1.75);
+  }
+  .card.t-refund { border-top-color:var(--rose); }
+  .card.t-cap    { border-top-color:var(--amber); }
+  .card.t-surge  { border-top-color:var(--cyan); }
+  .card .anchor { font-size:.62rem; text-transform:uppercase; letter-spacing:.13em; color:var(--text-dim); font-weight:700; }
+  .card h3 { font-size:.92rem; margin:calc(var(--u)*.75) 0 0; letter-spacing:-.015em; line-height:1.3; }
+  .card .mo { font-size:1.18rem; font-weight:800; letter-spacing:-.025em; font-variant-numeric:tabular-nums; margin-top:var(--u); }
+  .card .mo small { display:block; font-size:.68rem; font-weight:500; color:var(--text-dim); letter-spacing:0; margin-top:2px; }
+  .card .ac { font-size:.79rem; color:var(--text-soft); line-height:1.5; margin-top:calc(var(--u)*1.5); padding-top:calc(var(--u)*1.5); border-top:1px solid var(--line); }
+  .card .mt { font-size:.68rem; color:var(--text-dim); margin-top:var(--u); font-variant-numeric:tabular-nums; }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap"></div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  var S = window.SNAPSHOT;
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]; }); };
+  var usdK = function (v) {
+    if (v == null) return '—';
+    var a = Math.abs(v);
+    if (a >= 1e6) return '$' + (v / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
+    if (a >= 1000) return '$' + Math.round(v / 1000) + 'K';
+    return '$' + Math.round(v);
+  };
+
+  /* Blocks = every costed exposure in the operation. Standing churn exposure is
+     one block; each costed decision is another. Widths are true shares. */
+  var themeFor = function (d) {
+    if (/refund escalation/i.test(d.title)) return { cls:'refund', card:'t-refund', label:'Refund escalations' };
+    if (/backlog/i.test(d.title))           return { cls:'cap',    card:'t-cap',    label:'Backlog vs capacity' };
+    return { cls:'surge', card:'t-surge', label:'Refund contact surge' };
+  };
+
+  var blocks = [{
+    key:'churn', cls:'churn', name:'Standing churn exposure',
+    value:S.churn.arr_at_risk, note:S.churn.affected_accounts + ' accounts flagged'
+  }];
+  S.decisions.forEach(function (d) {
+    if (d.money_mid == null) return;
+    var th = themeFor(d);
+    blocks.push({ key:d.id, cls:th.cls, name:th.label, value:d.money_mid, note:d.horizon_days + '-day horizon', decision:d, theme:th });
+  });
+  var total = blocks.reduce(function (s, b) { return s + b.value; }, 0);
+
+  var h = [];
+  h.push('<div class="kicker">' + esc(S.meta.period) + ' &middot; where revenue is leaking</div>');
+  h.push('<h1><span class="fig">' + esc(usdK(total)) + '</span> of exposure, across ' + blocks.length + ' fronts.</h1>');
+  h.push('<p class="sub">Block width is share of total exposure. The largest block is the largest problem — no legend required to see which.</p>');
+
+  /* LEVEL 1 */
+  h.push('<div class="map"><div class="stack">');
+  blocks.forEach(function (b) {
+    var pct = b.value / total * 100;
+    h.push('<div class="blk b-' + b.cls + (pct < 6 ? ' tiny' : '') + '" style="flex:0 0 ' + pct.toFixed(2) + '%">' +
+      '<div class="bname">' + esc(b.name) + '</div>' +
+      '<div><div class="bval">' + esc(usdK(b.value)) + '</div>' +
+      '<div class="bpct">' + pct.toFixed(1) + '% &middot; ' + esc(b.note) + '</div></div>' +
+    '</div>');
+  });
+  h.push('</div><div class="legend">');
+  blocks.forEach(function (b) {
+    var pct = b.value / total * 100;
+    h.push('<span><i class="b-' + b.cls + '" style="border:1px solid currentColor"></i>' +
+      esc(b.name) + ' <b>' + esc(usdK(b.value)) + '</b> (' + pct.toFixed(1) + '%)</span>');
+  });
+  h.push('</div></div>');
+
+  /* LEVEL 2 — open the biggest block */
+  var big = blocks.slice().sort(function (a, b) { return b.value - a.value; })[0];
+  h.push('<section class="zoom">');
+  h.push('<div class="zh"><h2>Inside the largest block &middot; ' + esc(big.name) + '</h2>' +
+    '<span class="hint">top ' + S.reconciliation.exposed_count + ' of ' + S.reconciliation.of_full_set +
+    ' flagged accounts, sized by ARR</span></div>');
+  var mx = S.exposed_accounts.reduce(function (m, a) { return Math.max(m, a.arr_usd); }, 0);
+  var exTotal = S.reconciliation.exposed_total;
+  h.push('<div class="acct-map">');
+  S.exposed_accounts.forEach(function (a) {
+    var pct = a.arr_usd / exTotal * 100;
+    var urgent = a.renewal_in_days <= 30;
+    h.push('<div class="acct' + (urgent ? ' urgent' : '') + (pct < 9 ? ' narrow' : '') + '" style="flex:0 0 ' + pct.toFixed(2) + '%">' +
+      '<div class="an">' + esc(a.account_name) + '</div>' +
+      '<div><div class="av">' + esc(usdK(a.arr_usd)) + '</div>' +
+      '<div class="ar">' + pct.toFixed(0) + '% &middot; ' + a.renewal_in_days + 'd</div></div>' +
+    '</div>');
+  });
+  h.push('</div>');
+
+  h.push('<div class="acct-rows">');
+  S.exposed_accounts.forEach(function (a) {
+    var urgent = a.renewal_in_days <= 30;
+    h.push('<div class="arow' + (urgent ? ' urgent' : '') + '">' +
+      '<span class="sw"></span>' +
+      '<span class="nm">' + esc(a.account_name) + '<small>' + esc(a.plan) + ' &middot; ' + esc(a.region) + ' &middot; ' + esc(a.owner) + '</small></span>' +
+      '<span class="mo">' + esc(a.arr_display) + '</span>' +
+      '<span class="rn">' + a.renewal_in_days + 'd</span>' +
+      '<span class="rs">' + esc(a.risk_reason) + '</span>' +
+    '</div>');
+  });
+  h.push('<div class="arow-total"><span></span><span>Total, top ' + S.reconciliation.exposed_count + '</span>' +
+    '<span class="mo">' + esc(S.reconciliation.exposed_total_display) + '</span><span></span>' +
+    '<span style="color:var(--text-dim);font-weight:400">of ' + esc(S.churn.arr_at_risk_display) +
+    ' across all ' + S.reconciliation.of_full_set + ' flagged</span></div>');
+  h.push('</div></section>');
+
+  /* Decisions hang off the map, colour-matched to their block. */
+  h.push('<section class="attach">');
+  h.push('<div class="kicker">Decisions attached to these fronts &middot; ' +
+    esc(S.headline.at_stake_range) + ' at stake</div>');
+  h.push('<div class="cards">');
+  S.decisions.forEach(function (d) {
+    var th = themeFor(d);
+    h.push('<div class="card ' + th.card + '">' +
+      '<div class="anchor">' + String(d.rank).padStart(2,'0') + ' &middot; ' + esc(th.label) + '</div>' +
+      '<h3>' + esc(d.title) + '</h3>' +
+      '<div class="mo">' + esc(d.money_range) + '<small>over ' + d.horizon_days + ' days &middot; ' + esc(d.metric_label) + '</small></div>' +
+      '<div class="ac">' + esc(d.action) + '</div>' +
+      '<div class="mt">' + d.confidence + '% confidence &middot; ' + esc(d.owner_role) + ' &middot; ' + d.affected_accounts.toLocaleString('en-US') + ' customers</div>' +
+    '</div>');
+  });
+  h.push('</div></section>');
+
+  document.getElementById('wrap').innerHTML = h.join('');
+})();
+</script>
+</body>
+</html>

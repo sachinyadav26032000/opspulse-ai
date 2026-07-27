@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Executive Brief — three design explorations</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:#070a12; --panel:#0e1425; --text:#eaf0ff; --text-soft:#aeb9d6; --text-dim:#737f9e;
+    --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.14); --emerald:#34d399;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); }
+  body {
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    color:var(--text); display:flex; flex-direction:column; height:100vh; overflow:hidden;
+  }
+  header { padding:14px 20px; border-bottom:1px solid var(--line-strong); flex:none; }
+  .row1 { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  h1 { font-size:1rem; font-weight:700; margin:0; letter-spacing:-.01em; }
+  .note { font-size:.78rem; color:var(--text-dim); }
+  .note b { color:var(--emerald); font-weight:600; }
+  .tabs { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .tabs button {
+    font:inherit; font-size:.79rem; font-weight:600; padding:5px 12px; border-radius:7px;
+    background:rgba(255,255,255,.05); border:1px solid var(--line-strong); color:var(--text-soft); cursor:pointer;
+  }
+  .tabs button:hover { background:rgba(255,255,255,.09); color:var(--text); }
+  .tabs button.on { background:var(--emerald); border-color:transparent; color:#04120c; }
+  .tabs .meta { margin-left:auto; font-size:.72rem; color:var(--text-dim); align-self:center; font-variant-numeric:tabular-nums; }
+
+  main { flex:1; min-height:0; display:grid; gap:1px; background:var(--line-strong); }
+  main.three { grid-template-columns:repeat(3,1fr); }
+  main.one   { grid-template-columns:1fr; }
+  .pane { display:flex; flex-direction:column; min-width:0; background:var(--bg); }
+  .pane[hidden] { display:none; }
+  .cap { padding:9px 12px; border-bottom:1px solid var(--line); flex:none; background:var(--panel); }
+  .cap .nm { font-size:.82rem; font-weight:700; letter-spacing:-.01em; }
+  .cap .arg { font-size:.72rem; color:var(--text-dim); margin-top:2px; line-height:1.4; }
+  /* Each variant is authored for 1280px, so the iframe is rendered at 1280 and
+     scaled down to fit its column — otherwise the side-by-side comparison would
+     be judging three different breakpoints rather than three designs. */
+  .frame { flex:1; min-height:0; overflow:hidden; position:relative; }
+  .frame iframe { position:absolute; top:0; left:0; width:1280px; height:800px; border:0; transform-origin:0 0; background:var(--bg); }
+  .one .frame iframe { width:100%; height:100%; transform:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="row1">
+    <h1>Executive Brief — three design explorations</h1>
+    <span class="note"><b>Same data, same copy, three designs.</b> Frozen snapshot: seed 20260724, as_of 2026-07-26T09:00Z.</span>
+  </div>
+  <div class="tabs" id="tabs">
+    <button data-v="all" class="on">All three</button>
+    <button data-v="0">A — Briefing</button>
+    <button data-v="1">B — Instrument</button>
+    <button data-v="2">C — Map</button>
+    <span class="meta" id="meta"></span>
+  </div>
+</header>
+
+<main class="three" id="main">
+  <section class="pane">
+    <div class="cap"><div class="nm">A — The Briefing</div><div class="arg">An executive reads a brief; they don't operate a console.</div></div>
+    <div class="frame"><iframe src="a-briefing.html" title="A — The Briefing"></iframe></div>
+  </section>
+  <section class="pane">
+    <div class="cap"><div class="nm">B — The Instrument</div><div class="arg">The people who run revenue operations want an instrument they get fast at.</div></div>
+    <div class="frame"><iframe src="b-instrument.html" title="B — The Instrument"></iframe></div>
+  </section>
+  <section class="pane">
+    <div class="cap"><div class="nm">C — The Map</div><div class="arg">Leaders orient spatially before they read; show the shape of the problem first.</div></div>
+    <div class="frame"><iframe src="c-map.html" title="C — The Map"></iframe></div>
+  </section>
+</main>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  var main = document.getElementById('main');
+  var panes = [].slice.call(main.querySelectorAll('.pane'));
+  var btns = [].slice.call(document.querySelectorAll('#tabs button'));
+
+  var S = window.SNAPSHOT;
+  if (S) {
+    document.getElementById('meta').textContent =
+      S.headline.decisions_count + ' decisions · ' + S.headline.at_stake_range + ' at stake · ' +
+      S.reconciliation.exposed_count + ' exposed accounts · ' + S.reconciliation.exposed_total_display;
+  }
+
+  /* Scale each 1280px-wide iframe down to its column so all three are judged at
+     the same authored breakpoint. */
+  function fit() {
+    var multi = main.classList.contains('three');
+    panes.forEach(function (p) {
+      var f = p.querySelector('iframe');
+      var box = p.querySelector('.frame');
+      if (!multi) { f.style.transform = 'none'; return; }
+      var s = box.clientWidth / 1280;
+      f.style.transform = 'scale(' + s + ')';
+      f.style.height = (box.clientHeight / s) + 'px';
+    });
+  }
+
+  function show(v) {
+    btns.forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
+    if (v === 'all') {
+      main.className = 'three';
+      panes.forEach(function (p) { p.hidden = false; });
+    } else {
+      main.className = 'one';
+      panes.forEach(function (p, i) { p.hidden = String(i) !== v; });
+    }
+    requestAnimationFrame(fit);
+  }
+
+  btns.forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.v); }); });
+  window.addEventListener('resize', fit);
+  requestAnimationFrame(fit);
+})();
+</script>
+</body>
+</html>

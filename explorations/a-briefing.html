@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>A — The Briefing</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ══════════════════════════════════════════════════════════════════════
+     A — THE BRIEFING
+     An executive reads a brief; they do not operate a console.
+
+     The commitments that make this direction what it is:
+       · ONE column at a comfortable measure (~62ch). Never two.
+       · The problem is a SENTENCE in large type. No label/value pairs.
+       · Money and metadata are demoted below the prose, small and quiet.
+       · Whitespace is structural, not leftover. The rhythm is 8px-based but
+         the multiples are large (40, 56, 72) because a page breathes.
+       · No panels, no cards, no borders round things. A rule and space instead.
+     ══════════════════════════════════════════════════════════════════════ */
+  :root {
+    --bg:#070a12; --text:#eaf0ff; --text-soft:#aeb9d6; --text-dim:#737f9e;
+    --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.14);
+    --emerald:#34d399; --cyan:#22d3ee; --amber:#fbbf24; --rose:#fb7185;
+    --u:8px;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); }
+  body {
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    color:var(--text); -webkit-font-smoothing:antialiased;
+  }
+  .page { max-width:720px; margin:0 auto; padding:56px 40px 96px; }
+
+  /* ── Masthead ── */
+  .rule { height:1px; background:var(--line); border:0; margin:0; }
+  .stamp {
+    font-size:.68rem; text-transform:uppercase; letter-spacing:.16em;
+    color:var(--text-dim); font-weight:700;
+  }
+  .greeting {
+    font-size:2.1rem; font-weight:700; letter-spacing:-.03em; line-height:1.15;
+    margin:calc(var(--u)*2) 0 0;
+  }
+  .greeting em { font-style:normal; color:var(--emerald); }
+  .standfirst {
+    font-size:1.12rem; line-height:1.6; color:var(--text-soft);
+    margin:calc(var(--u)*2) 0 0; max-width:52ch; font-weight:400;
+  }
+  .standfirst b { color:var(--text); font-weight:600; }
+  .masthead-foot {
+    display:flex; gap:calc(var(--u)*3); flex-wrap:wrap;
+    margin-top:calc(var(--u)*4); padding-top:calc(var(--u)*2);
+    border-top:1px solid var(--line);
+    font-size:.76rem; color:var(--text-dim);
+  }
+  .masthead-foot b { color:var(--text-soft); font-weight:600; font-variant-numeric:tabular-nums; }
+
+  /* ── A decision, set as prose ── */
+  .decision { margin-top:calc(var(--u)*9); }
+  .decision + .decision { padding-top:calc(var(--u)*7); border-top:1px solid var(--line); }
+  .num {
+    font-size:.8rem; font-weight:800; letter-spacing:.12em;
+    color:var(--text-dim); font-variant-numeric:tabular-nums;
+  }
+  .num .band { margin-left:calc(var(--u)*1.5); letter-spacing:.1em; }
+  /* The title is present for content parity with the other variants, but it is
+     deliberately a caption here — the SENTENCE is the headline in a briefing. */
+  .dtitle {
+    font-size:.82rem; font-weight:600; color:var(--text-soft);
+    margin-top:calc(var(--u)*1.5); letter-spacing:-.005em;
+  }
+  .band-critical { color:var(--rose); }
+  .band-high     { color:var(--amber); }
+  .band-medium   { color:var(--cyan); }
+
+  /* The sentence IS the interface. Everything else is footnote. */
+  .problem {
+    font-size:1.44rem; line-height:1.45; letter-spacing:-.02em; font-weight:500;
+    color:var(--text); margin:calc(var(--u)*2) 0 0; max-width:40ch;
+  }
+  .because {
+    font-size:1rem; line-height:1.65; color:var(--text-soft);
+    margin:calc(var(--u)*2.5) 0 0; max-width:56ch;
+  }
+  .because .lbl {
+    display:block; font-size:.66rem; text-transform:uppercase; letter-spacing:.14em;
+    color:var(--text-dim); font-weight:700; margin-bottom:calc(var(--u)*.75);
+  }
+  .do {
+    font-size:1.06rem; line-height:1.6; color:var(--text); font-weight:500;
+    margin:calc(var(--u)*3) 0 0; max-width:56ch;
+    padding-left:calc(var(--u)*2.5); border-left:2px solid var(--emerald);
+  }
+  .do .lbl {
+    display:block; font-size:.66rem; text-transform:uppercase; letter-spacing:.14em;
+    color:var(--text-dim); font-weight:700; margin-bottom:calc(var(--u)*.75);
+  }
+  /* Demoted on purpose: an executive does not need the number to be loud. */
+  .meta {
+    display:flex; gap:calc(var(--u)*2.5); flex-wrap:wrap;
+    margin-top:calc(var(--u)*3); font-size:.78rem; color:var(--text-dim);
+  }
+  .meta span { white-space:nowrap; }
+  .meta b { color:var(--text-soft); font-weight:600; font-variant-numeric:tabular-nums; }
+
+  /* ── Closing ── */
+  .close { margin-top:calc(var(--u)*10); padding-top:calc(var(--u)*4); border-top:1px solid var(--line-strong); }
+  .close .lbl { font-size:.68rem; text-transform:uppercase; letter-spacing:.16em; color:var(--text-dim); font-weight:700; }
+  .close .fig {
+    font-size:2.6rem; font-weight:700; letter-spacing:-.035em; margin-top:calc(var(--u)*1.5);
+    font-variant-numeric:tabular-nums; color:var(--text);
+  }
+  .close p { font-size:.88rem; line-height:1.65; color:var(--text-dim); margin:calc(var(--u)*1.5) 0 0; max-width:58ch; }
+  .close .exposure { margin-top:calc(var(--u)*5); }
+  .close dl { margin:calc(var(--u)*2) 0 0; display:grid; gap:calc(var(--u)*1.5); }
+  .close dl > div { display:grid; grid-template-columns:1fr auto; gap:calc(var(--u)*2); align-items:baseline; }
+  .close dt { font-size:.92rem; color:var(--text-soft); }
+  .close dt small { display:block; color:var(--text-dim); font-size:.76rem; margin-top:2px; }
+  .close dd { margin:0; font-size:.92rem; font-variant-numeric:tabular-nums; color:var(--text); font-weight:600; }
+  .close .total { border-top:1px solid var(--line); padding-top:calc(var(--u)*1.5); margin-top:calc(var(--u)*1.5); }
+</style>
+</head>
+<body>
+<div class="page" id="page"></div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  var S = window.SNAPSHOT;
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]; }); };
+  var NUM = ['no','One','Two','Three','Four','Five','Six'];
+
+  var h = [];
+
+  /* Masthead — the date is a stamp, not a heading. */
+  h.push('<div class="stamp">' + esc(S.meta.period) + ' &middot; ' + S.meta.window_days + '-day window</div>');
+  h.push('<h1 class="greeting">Good morning, <em>' + esc(S.meta.user) + '</em>.</h1>');
+  h.push('<p class="standfirst">' + NUM[S.headline.decisions_count] + ' decision' +
+    (S.headline.decisions_count === 1 ? '' : 's') + ' need' + (S.headline.decisions_count === 1 ? 's' : '') +
+    ' you today, carrying <b>' + esc(S.headline.at_stake_range) + '</b> between them. ' +
+    'Operations health is <b>' + S.health.score + '</b> out of 100, ' +
+    (S.health.delta < 0 ? 'down ' + Math.abs(S.health.delta) : 'up ' + S.health.delta) + ' on the prior period.</p>');
+  h.push('<div class="masthead-foot">' +
+    '<span><b>' + S.meta.records_in.toLocaleString('en-US') + '</b> records analysed</span>' +
+    '<span><b>' + S.meta.detectors + '</b> detectors</span>' +
+    '<span>confidence floor <b>' + S.meta.confidence_floor + '%</b></span>' +
+    '</div>');
+
+  /* Decisions — prose first, numbers last. */
+  S.decisions.forEach(function (d) {
+    h.push('<article class="decision">');
+    h.push('<div class="num">' + String(d.rank).padStart(2, '0') +
+      '<span class="band band-' + d.band + '">' + d.band.toUpperCase() + '</span></div>');
+    h.push('<div class="dtitle">' + esc(d.title) + '</div>');
+    h.push('<p class="problem">' + esc(d.problem) + '</p>');
+    h.push('<p class="because"><span class="lbl">Why</span>' + esc(d.root_cause) + '</p>');
+    h.push('<p class="do"><span class="lbl">What to do</span>' + esc(d.action) + '</p>');
+    h.push('<div class="meta">' +
+      '<span><b>' + esc(d.money_range) + '</b> over ' + d.horizon_days + ' days</span>' +
+      '<span><b>' + d.confidence + '%</b> confidence</span>' +
+      '<span>' + esc(d.owner_role) + '</span>' +
+      '<span>' + d.affected_accounts.toLocaleString('en-US') + ' customers</span>' +
+      (d.held ? '<span style="color:var(--amber)">held for review</span>' : '') +
+      '</div>');
+    h.push('</article>');
+  });
+
+  /* Closing figure, then the exposure it rests on. */
+  h.push('<section class="close">');
+  h.push('<div class="lbl">Revenue at stake, these ' + S.headline.decisions_count + ' decisions</div>');
+  h.push('<div class="fig">' + esc(S.headline.at_stake_range) + '</div>');
+  h.push('<p>Midpoint of each costed range, summed. Ranges are ranges on purpose — the conversion assumption is the widest source of uncertainty and it is stated rather than averaged away.</p>');
+
+  h.push('<div class="exposure">');
+  h.push('<div class="lbl">Standing exposure &middot; ' + esc(S.churn.title) + '</div>');
+  h.push('<p>' + esc(S.churn.metric_label) + ' across ' + S.churn.affected_accounts +
+    ' accounts. The ' + S.reconciliation.exposed_count + ' largest by ARR:</p>');
+  h.push('<dl>');
+  S.exposed_accounts.forEach(function (a) {
+    h.push('<div><dt>' + esc(a.account_name) +
+      '<small>' + esc(a.risk_reason) + '</small></dt>' +
+      '<dd>' + esc(a.arr_display) + '</dd></div>');
+  });
+  h.push('<div class="total"><dt>Total, top ' + S.reconciliation.exposed_count +
+    ' of ' + S.reconciliation.of_full_set + '</dt><dd>' + esc(S.reconciliation.exposed_total_display) + '</dd></div>');
+  h.push('</dl>');
+  h.push('</div>');
+  h.push('</section>');
+
+  document.getElementById('page').innerHTML = h.join('');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>B — The Instrument</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ══════════════════════════════════════════════════════════════════════
+     B — THE INSTRUMENT
+     The people who run revenue operations want a tool they get fast at.
+
+     The commitments:
+       · EARNED density. Every row carries information; nothing is padding.
+         The way to be dense without being crowded is alignment and rules,
+         not shrinking type.
+       · Tabular numerals everywhere a number appears, monospace for figures,
+         so columns of digits line up and can be scanned vertically.
+       · Everything on one screen at once — decisions, exposure, owners, status.
+         No progressive disclosure; an operator wants the whole board.
+       · Keyboard affordances are VISIBLE. A tool you get fast at advertises
+         its shortcuts; a consumer app hides them.
+       · Chrome is 1px rules and uppercase micro-labels. No cards, no shadows,
+         no rounded containers — those cost vertical space and buy nothing.
+     ══════════════════════════════════════════════════════════════════════ */
+  :root {
+    --bg:#070a12; --panel:#0b1020; --panel-2:#0e1425;
+    --text:#eaf0ff; --text-soft:#aeb9d6; --text-dim:#737f9e;
+    --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.16);
+    --emerald:#34d399; --cyan:#22d3ee; --amber:#fbbf24; --rose:#fb7185;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --u:8px;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); }
+  body {
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    color:var(--text); font-size:13px; -webkit-font-smoothing:antialiased;
+  }
+  .tnum { font-variant-numeric:tabular-nums; }
+  .mono { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+
+  /* ── Status bar ── */
+  .bar {
+    display:flex; align-items:center; gap:calc(var(--u)*2); flex-wrap:nowrap;
+    height:34px; padding:0 calc(var(--u)*1.5);
+    border-bottom:1px solid var(--line-strong); background:var(--panel);
+    font-size:11px; color:var(--text-dim); white-space:nowrap; overflow:hidden;
+  }
+  .bar .id { color:var(--text); font-weight:700; letter-spacing:.02em; }
+  .bar .sep { color:var(--line-strong); }
+  .bar b { color:var(--text-soft); font-weight:600; }
+  .bar .right { margin-left:auto; display:flex; gap:calc(var(--u)*1.5); align-items:center; }
+  kbd {
+    font-family:var(--mono); font-size:10px; padding:1px 5px; border-radius:3px;
+    background:rgba(255,255,255,.06); border:1px solid var(--line-strong);
+    color:var(--text-soft);
+  }
+
+  /* ── Headline row: the four figures that matter, no cards ── */
+  .figs { display:grid; grid-template-columns:repeat(5,1fr); border-bottom:1px solid var(--line-strong); }
+  .fig { padding:calc(var(--u)*1.5); border-right:1px solid var(--line); }
+  .fig:last-child { border-right:0; }
+  .fig .k { font-size:9.5px; text-transform:uppercase; letter-spacing:.13em; color:var(--text-dim); font-weight:700; }
+  .fig .v { font-family:var(--mono); font-size:20px; font-weight:600; letter-spacing:-.02em; margin-top:3px; font-variant-numeric:tabular-nums; }
+  .fig .s { font-size:10.5px; color:var(--text-dim); margin-top:2px; }
+
+  /* ── Main board ── */
+  .board { display:grid; grid-template-columns:1fr 372px; align-items:start; }
+  .col { min-width:0; }
+  .col + .col { border-left:1px solid var(--line-strong); }
+  .sec {
+    display:flex; align-items:center; gap:var(--u); height:26px; padding:0 calc(var(--u)*1.5);
+    border-bottom:1px solid var(--line); background:var(--panel-2);
+    font-size:9.5px; text-transform:uppercase; letter-spacing:.13em; color:var(--text-dim); font-weight:700;
+  }
+  .sec .n { margin-left:auto; font-family:var(--mono); letter-spacing:0; }
+
+  table { width:100%; border-collapse:collapse; }
+  th {
+    text-align:left; font-size:9.5px; text-transform:uppercase; letter-spacing:.11em;
+    color:var(--text-dim); font-weight:700; padding:calc(var(--u)*.75) calc(var(--u)*1.5);
+    border-bottom:1px solid var(--line); white-space:nowrap;
+  }
+  th.r, td.r { text-align:right; }
+  td { padding:calc(var(--u)*1.25) calc(var(--u)*1.5); border-bottom:1px solid var(--line); vertical-align:top; }
+  tbody tr:hover { background:rgba(255,255,255,.028); }
+  /* Severity as a rail — one pixel of colour, not a pill. */
+  tr.d { border-left:2px solid transparent; }
+  tr.d.critical { border-left-color:var(--rose); }
+  tr.d.high     { border-left-color:var(--amber); }
+  tr.d.medium   { border-left-color:var(--cyan); }
+
+  .ttl { font-weight:600; font-size:12.5px; letter-spacing:-.01em; }
+  .sub { color:var(--text-dim); font-size:11px; margin-top:2px; line-height:1.45; }
+  .act { color:var(--text-soft); font-size:11.5px; margin-top:4px; line-height:1.45; }
+  .act::before { content:"\2192"; color:var(--emerald); margin-right:5px; }
+  .who { color:var(--text-dim); font-size:10.5px; margin-top:3px; font-family:var(--mono); }
+  .money { font-family:var(--mono); font-size:12.5px; font-weight:600; white-space:nowrap; }
+  .horiz { color:var(--text-dim); font-size:10.5px; font-family:var(--mono); }
+
+  /* Confidence as a 3-cell meter: precise, scannable, no gradient. */
+  .conf { display:flex; align-items:center; gap:5px; justify-content:flex-end; }
+  .conf .cells { display:flex; gap:2px; }
+  .conf i { width:6px; height:9px; background:rgba(255,255,255,.12); display:block; }
+  .conf i.on { background:var(--emerald); }
+  .conf span { font-family:var(--mono); font-size:11px; color:var(--text-soft); }
+
+  /* Exposure column — ARR bars inline in the cell, sized proportionally. */
+  .arrbar { height:3px; background:rgba(255,255,255,.10); margin-top:5px; }
+  .arrbar i { display:block; height:100%; background:var(--cyan); }
+  .rsn { color:var(--text-dim); font-size:10.5px; line-height:1.45; margin-top:4px; }
+  tfoot td { border-top:1px solid var(--line-strong); border-bottom:0; font-weight:700; }
+  tfoot .money { color:var(--text); }
+  .foot-note { padding:calc(var(--u)*1.5); font-size:10.5px; color:var(--text-dim); line-height:1.5; border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="figs" id="figs"></div>
+<div class="board">
+  <div class="col">
+    <div class="sec">Decisions requiring action<span class="n" id="dcount"></span></div>
+    <table id="dtable"></table>
+  </div>
+  <div class="col">
+    <div class="sec">Standing exposure &middot; top accounts by ARR<span class="n" id="ecount"></span></div>
+    <table id="etable"></table>
+    <div class="foot-note" id="enote"></div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  var S = window.SNAPSHOT;
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]; }); };
+  var n = function (v) { return v.toLocaleString('en-US'); };
+
+  document.getElementById('bar').innerHTML =
+    '<span class="id">OPSPULSE</span><span class="sep">|</span>' +
+    '<span>BRIEF ' + esc(S.meta.period.toUpperCase()) + '</span><span class="sep">|</span>' +
+    '<span>W<b>' + S.meta.window_days + 'D</b></span>' +
+    '<span>REC<b>' + n(S.meta.records_in) + '</b></span>' +
+    '<span>DET<b>' + S.meta.detectors + '</b></span>' +
+    '<span>FLOOR<b>' + S.meta.confidence_floor + '%</b></span>' +
+    '<div class="right">' +
+      '<span>' + esc(S.meta.user) + '</span>' +
+      '<span><kbd>J</kbd><kbd>K</kbd> move</span>' +
+      '<span><kbd>&#8629;</kbd> open</span>' +
+      '<span><kbd>C</kbd> commit</span>' +
+      '<span><kbd>&#8984;K</kbd> ask</span>' +
+    '</div>';
+
+  var worst = S.health.dimensions.slice().sort(function (a, b) { return a.score - b.score; })[0];
+  var figs = [
+    { k:'Decisions', v:String(S.headline.decisions_count), s:S.decisions.filter(function(d){return d.band==='critical';}).length + ' critical' },
+    { k:'At stake', v:S.headline.at_stake_range, s:'sum of costed ranges' },
+    { k:'Ops health', v:S.health.score + '/100', s:(S.health.delta>=0?'+':'') + S.health.delta + ' vs prior' },
+    { k:'Weakest dimension', v:String(worst.score), s:worst.label },
+    { k:'Standing exposure', v:S.churn.arr_at_risk_display, s:S.churn.affected_accounts + ' accounts flagged' }
+  ];
+  document.getElementById('figs').innerHTML = figs.map(function (f) {
+    return '<div class="fig"><div class="k">' + esc(f.k) + '</div><div class="v">' + esc(f.v) + '</div><div class="s">' + esc(f.s) + '</div></div>';
+  }).join('');
+
+  document.getElementById('dcount').textContent = S.headline.decisions_count;
+  var dh = ['<thead><tr><th style="width:20px">#</th><th>Decision &amp; action</th><th class="r">Exposure</th><th class="r">Conf</th></tr></thead><tbody>'];
+  S.decisions.forEach(function (d) {
+    var cells = '';
+    for (var i = 0; i < 5; i++) cells += '<i class="' + (i < Math.round(d.confidence / 20) ? 'on' : '') + '"></i>';
+    dh.push('<tr class="d ' + d.band + '">' +
+      '<td class="mono" style="color:var(--text-dim)">' + String(d.rank).padStart(2,'0') + '</td>' +
+      '<td><div class="ttl">' + esc(d.title) + '</div>' +
+        '<div class="sub">' + esc(d.metric_label) + ' &middot; ' + n(d.affected_accounts) + ' customers &middot; ' + esc(d.root_cause) + '</div>' +
+        '<div class="act">' + esc(d.action) + '</div>' +
+        '<div class="who">' + esc(d.owner_role.toUpperCase()) + ' &middot; ' + esc(d.playbook_id) + (d.held ? ' &middot; HELD' : '') + '</div></td>' +
+      '<td class="r"><div class="money">' + esc(d.money_range) + '</div><div class="horiz">' + d.horizon_days + 'd</div></td>' +
+      '<td class="r"><div class="conf"><span class="cells">' + cells + '</span><span>' + d.confidence + '</span></div></td>' +
+    '</tr>');
+  });
+  dh.push('</tbody>');
+  document.getElementById('dtable').innerHTML = dh.join('');
+
+  document.getElementById('ecount').textContent = S.reconciliation.exposed_count + '/' + S.reconciliation.of_full_set;
+  var max = Math.max.apply(null, S.exposed_accounts.map(function (a) { return a.arr_usd; }));
+  var eh = ['<thead><tr><th>Account</th><th class="r">ARR</th><th class="r">Renews</th></tr></thead><tbody>'];
+  S.exposed_accounts.forEach(function (a) {
+    eh.push('<tr>' +
+      '<td><div class="ttl" style="font-size:12px">' + esc(a.account_name) + '</div>' +
+        '<div class="who">' + esc(a.plan.toUpperCase()) + ' &middot; ' + esc(a.region) + ' &middot; ' + esc(a.owner) + '</div>' +
+        '<div class="arrbar"><i style="width:' + (a.arr_usd / max * 100).toFixed(1) + '%"></i></div>' +
+        '<div class="rsn">' + esc(a.risk_reason) + '</div></td>' +
+      '<td class="r money">' + esc(a.arr_display) + '</td>' +
+      '<td class="r"><span class="mono" style="font-size:11.5px;color:' + (a.renewal_in_days <= 30 ? 'var(--rose)' : 'var(--text-soft)') + '">' + a.renewal_in_days + 'd</span></td>' +
+    '</tr>');
+  });
+  eh.push('</tbody><tfoot><tr><td>TOTAL, TOP ' + S.reconciliation.exposed_count + '</td>' +
+    '<td class="r money">' + esc(S.reconciliation.exposed_total_display) + '</td><td></td></tr></tfoot>');
+  document.getElementById('etable').innerHTML = eh.join('');
+
+  document.getElementById('enote').textContent =
+    'Ranked by revenue exposure and cut to ' + S.reconciliation.exposed_count + ' of ' +
+    S.reconciliation.of_full_set + ' flagged. ' + S.reconciliation.of_full_set +
+    ' accounts is a list, not a decision — the cut is the prioritisation step.';
+})();
+</script>
+</body>
+</html>
