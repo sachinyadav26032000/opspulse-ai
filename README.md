@@ -15,6 +15,7 @@ This repo contains two applications sharing one live dataset:
 | **OpsPulse** | `opspulse.html` | The decision engine — Dashboard, Decision Feed, Risk Radar, Executive Copilot, Data Upload. |
 | **Live Ops Floor** | `demo.html` | Both, side by side, off **one shared store.** Start here. |
 | **Ops Copilot** | `app.html` | The original single-screen dashboard — decision feed, insight explorer, analytics. Reads the same store. |
+| **MCP server** | `mcp/` | The same engine as tools an LLM can call. Inspector at `mcp-inspector.html`. |
 
 Open any combination of them, in any number of tabs. They all show the same
 operation — see **One operation, every tab** below.
@@ -27,16 +28,20 @@ ES modules are blocked on `file://`, so the apps must be served over http. There
 step and nothing to install.**
 
 ```bash
-./serve.sh          # macOS / Linux
-serve.cmd           # Windows
+node mcp/http.js    # everything, one process, one port  ← start here
 ```
 
-…or by hand:
+That serves the apps **and** the MCP endpoint on `http://localhost:5500` — see
+**An agent can drive this** below. A static server still works if you only want the apps:
 
 ```bash
+./serve.sh          # macOS / Linux
+serve.cmd           # Windows
 python -m http.server 5500
-# then open http://localhost:5500/demo.html
 ```
+
+The static path cannot answer JSON-RPC, so `/mcp-inspector.html` will report that it
+can't reach the endpoint — that is the only difference.
 
 ---
 
@@ -168,11 +173,17 @@ Both harnesses are the acceptance test, not decoration.
 ```bash
 node tools/verify.mjs                 # 67 checks — the engine finds the patterns
 npm install --no-save jsdom
-node tools/uicheck.mjs                # 78 checks — the UI renders them
+node tools/uicheck.mjs                # 78+ checks — the UI renders them
 node tools/synccheck.mjs              # 36 checks — every tab shows the same operation
 node tools/appcheck.mjs               # 34 checks — app.html reads the store, not a mock
 node tools/browsercheck.mjs           # 29 checks — the real navigator.locks path, both directions
+node tools/mcpcheck.mjs               # 79 checks — the MCP server, over a real pipe
 ```
+
+**Around 325 checks.** Five of the six totals are fixed; `uicheck` drills into *every* insight
+the engine produced, and how many clear the thresholds depends on where `Date.now()` falls in
+the window — so its total floats by a few from day to day. A changed uicheck total is
+therefore not by itself a regression; a **failure** is.
 
 `verify.mjs` asserts that all four injected patterns are found, root-caused to the *correct*
 release, ranked, and costed with arithmetic that reconciles — across **5 seeds × 4 calendar
@@ -210,6 +221,18 @@ requirement literally — **the numbers on the two screens match, and an action 
 screen reaches the other**: pause from the OpsPulse toolbar stops NorthDesk (and NorthDesk's
 own button flips to "Resume"), a CSV dropped on OpsPulse appears in NorthDesk's queue, and
 "New data" on either rebuilds both.
+
+`mcpcheck.mjs` does not call the tool functions — the failure mode a hand-rolled protocol
+invites is passing your own tests and failing a real client. It **spawns `mcp/server.js` as a
+child process** and drives a real handshake over a real pipe, then does the same over HTTP
+against `mcp/http.js` and asserts the two transports agree. It checks the shapes a client
+depends on (`tools/call` returns a content *array*; a bad argument comes back as `isError`
+inside a *successful* result, because a JSON-RPC error would abort a model's turn;
+notifications produce no reply) and that **stdout carries protocol bytes and nothing else** —
+one stray `console.log` there is enough to kill a client's parser, and it is the easiest
+mistake to make in a stdio server. Then the part that matters: every retrieved `record_id`
+must resolve to a record that exists, every printed dollar range must re-multiply from its
+printed inputs, and compliance exposure must still refuse to carry a number.
 
 ---
 
@@ -254,6 +277,73 @@ grounding layer is the part that matters.)
 
 ---
 
+## An agent can drive this — MCP
+
+The Copilot answers the questions it was built for. **`mcp/` exposes the same engine as tools
+any LLM can call**, so the questions stop being a fixed list:
+
+```bash
+node mcp/http.js                     # then open /mcp-inspector.html
+node mcp/server.js                   # stdio, for Claude Desktop / Claude Code
+node tools/mcpcheck.mjs              # 79 checks
+```
+
+Seven read-only tools. There is no reseed, no resolve, no write of any kind — an agent
+inspecting an operation should not be able to change it.
+
+| | |
+|---|---|
+| `describe_operation` | Window, record counts, release timeline, declared thresholds |
+| `get_executive_brief` | The diversity-aware top 3 and the narrative |
+| `list_insights` | The full ranked feed |
+| `explain_insight` | Evidence, decomposition, confidence parts, **impact arithmetic** |
+| `search_evidence` | BM25 over ticket text, NPS verbatims and QA notes |
+| `get_metric_series` | Daily inflow / backlog / throughput |
+| `get_health` | Health score and its four dimensions, with drivers |
+
+**The division of labour is the point.** Detection stays arithmetic; the model chooses which
+finding matters and says it in English. Nothing here asks a model to compute a number, and
+the three credibility rules are carried into the tool payloads rather than left behind:
+
+- `explain_insight` returns the **formula, the rounded inputs and the basis lines in the same
+  payload as the range**, so a model physically cannot quote the range without its derivation.
+- Compliance exposure comes back `costed: false` with the reason, and the server's
+  `instructions` tell the model not to estimate one.
+- `get_metric_series` returns the series the dataset already computed. It does **not** re-slice
+  the tickets with its own bucketing — a second aggregation is exactly how a tool answer starts
+  disagreeing with the chart on screen.
+
+**`search_evidence` is retrieval, and every passage carries the id of the record it came from.**
+A quote with no `ticket_id` behind it is the thing this codebase refuses to produce, so a
+passage that cannot be traced is not returned. BM25 rather than embeddings: no model, no vector
+store, no network call, ~2ms over 11,100 passages, and the ranking is inspectable. Retrieval
+answers *"what are customers actually saying"*; it deliberately cannot tell you whether a change
+is significant, and the tool description says so — that is what the insights are for.
+
+The protocol is hand-rolled (`mcp/rpc.js`, ~150 lines) for the same reason the charts are
+hand-rendered SVG: nothing to install. `mcp/server.js` speaks stdio, `mcp/http.js` speaks HTTP,
+and both hand the same messages to the same handler — `mcpcheck` asserts the two transports
+return byte-identical results, so there is no second implementation to keep in sync.
+
+To wire it into Claude Desktop or Claude Code, add:
+
+```json
+{
+  "mcpServers": {
+    "opspulse": {
+      "command": "node",
+      "args": ["/absolute/path/to/agent/mcp/server.js"],
+      "env": { "OPSPULSE_SEED": "20260724" }
+    }
+  }
+}
+```
+
+One world per process — the dataset rebuilds deterministically from `OPSPULSE_SEED`, so an
+agent halfway through a line of questioning never has the ground shift under it.
+
+---
+
 ## Project structure
 
 ```
@@ -261,8 +351,16 @@ demo.html               Live Ops Floor — both apps, one store  ← start here
 opspulse.html           OpsPulse standalone
 servicedesk.html        NorthDesk standalone
 app.html                Ops Copilot — the original single-screen dashboard, now store-backed
+mcp-inspector.html      MCP client in the browser — drives the real handshake
 index.html              Marketing site
 roadmap.html            Technical roadmap
+
+mcp/
+  tools.js              The seven read-only tools over the live engine
+  retrieve.js           BM25 index + search — every passage carries its record id
+  rpc.js                MCP over JSON-RPC 2.0, transport-agnostic
+  server.js             stdio transport (Claude Desktop / Claude Code)
+  http.js               HTTP transport + static file server — one process, one port
 
 data/
   rng.js                Seeded PRNG — the whole dataset rebuilds from one integer
@@ -295,6 +393,7 @@ tools/
   synccheck.mjs         Cross-tab sync test (needs jsdom)
   appcheck.mjs          app.html data-provenance test (needs jsdom)
   browsercheck.mjs      Real navigator.locks path, both directions (needs jsdom)
+  mcpcheck.mjs          MCP over a real pipe + both transports (needs jsdom)
 ```
 
 ---

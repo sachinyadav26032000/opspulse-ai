@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpsPulse — MCP Inspector</title>
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+  /* The inspector is a protocol console, not a dashboard. It borrows the design
+     tokens so it sits in the same product, but it deliberately shows raw JSON —
+     the thing worth seeing here is that the wire format is real. */
+  body { background: var(--bg); color: var(--text); margin: 0;
+         font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--cyan); }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 22px 20px 60px; }
+
+  header.top { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+               padding-bottom: 14px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+  header.top h1 { font-size: 1.15rem; margin: 0; letter-spacing: -.01em; }
+  header.top .grad { background: var(--grad); -webkit-background-clip: text;
+                     background-clip: text; -webkit-text-fill-color: transparent; }
+  header.top .sub { color: var(--text-dim); font-size: .82rem; }
+  header.top nav { margin-left: auto; display: flex; gap: 14px; font-size: .82rem; }
+
+  .status { display: inline-flex; align-items: center; gap: 7px; font-size: .78rem;
+            padding: 3px 10px; border-radius: 20px; border: 1px solid var(--line-strong);
+            color: var(--text-dim); }
+  .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); }
+  .status.ok  .dot { background: var(--ok); box-shadow: 0 0 0 3px rgba(52,211,153,.16); }
+  .status.ok  { color: var(--ok); border-color: rgba(52,211,153,.3); }
+  .status.err .dot { background: var(--danger); }
+  .status.err { color: var(--danger); border-color: rgba(251,113,133,.35); }
+
+  .grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { background: var(--panel); border: 1px solid var(--line);
+          border-radius: var(--radius-sm); overflow: hidden; }
+  .card > h2 { font-size: .74rem; text-transform: uppercase; letter-spacing: .09em;
+               color: var(--text-dim); margin: 0; padding: 11px 14px;
+               border-bottom: 1px solid var(--line); font-weight: 600; }
+  .card > .body { padding: 14px; }
+
+  .tool { display: block; width: 100%; text-align: left; background: none; color: inherit;
+          border: 0; border-bottom: 1px solid var(--line); padding: 11px 14px;
+          cursor: pointer; font: inherit; transition: background .12s; }
+  .tool:last-child { border-bottom: 0; }
+  .tool:hover { background: var(--panel-2); }
+  .tool.on { background: var(--panel-3); box-shadow: inset 3px 0 0 var(--cyan); }
+  .tool .n { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+             font-size: .82rem; color: var(--cyan); }
+  .tool.on .n { color: var(--text); }
+  .tool .d { font-size: .74rem; color: var(--text-dim); margin-top: 3px; line-height: 1.45; }
+
+  .field { margin-bottom: 11px; }
+  .field label { display: block; font-size: .76rem; color: var(--text-soft); margin-bottom: 4px; }
+  .field label .req { color: var(--amber); }
+  .field .hint { font-size: .71rem; color: var(--text-dim); margin-top: 3px; line-height: 1.4; }
+  input, select { width: 100%; box-sizing: border-box; background: rgba(255,255,255,.05);
+                  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+                  color: var(--text); font: inherit; font-size: .85rem; outline: 0; }
+  input:focus, select:focus { border-color: var(--cyan); }
+  select option { background: var(--panel-2); color: var(--text); }
+
+  .btn { background: var(--grad); color: #04121a; border: 0; border-radius: 9px;
+         padding: 9px 18px; font: inherit; font-weight: 650; font-size: .86rem; cursor: pointer; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.ghost { background: rgba(255,255,255,.05); color: var(--text-soft);
+               border: 1px solid var(--line-strong); font-weight: 500; }
+
+  .presets { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 16px; }
+  .presets button { background: rgba(255,255,255,.04); border: 1px solid var(--line);
+                    color: var(--text-soft); border-radius: 20px; padding: 5px 12px;
+                    font: inherit; font-size: .77rem; cursor: pointer; }
+  .presets button:hover { border-color: var(--cyan); color: var(--text); }
+
+  pre { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: .78rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+        max-height: 460px; overflow: auto; color: var(--text-soft); }
+  .k { color: var(--cyan); } .s { color: var(--emerald); }
+  .n { color: var(--amber); } .b { color: var(--violet); }
+
+  .meta { font-size: .75rem; color: var(--text-dim); margin-bottom: 9px;
+          display: flex; gap: 12px; flex-wrap: wrap; }
+  .meta b { color: var(--text-soft); font-weight: 600; }
+  .err { color: var(--danger); font-size: .84rem; }
+  details.wire { margin-top: 14px; }
+  details.wire summary { cursor: pointer; font-size: .76rem; color: var(--text-dim);
+                         padding: 7px 0; user-select: none; }
+  details.wire summary:hover { color: var(--cyan); }
+  .note { font-size: .76rem; color: var(--text-dim); line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1><span class="grad">OpsPulse</span> · MCP Inspector</h1>
+    <span class="sub" id="serverInfo">connecting…</span>
+    <span class="status" id="status"><span class="dot"></span><span id="statusText">idle</span></span>
+    <nav>
+      <a href="demo.html">Live Ops Floor</a>
+      <a href="opspulse.html">OpsPulse</a>
+      <a href="mcp">/mcp</a>
+    </nav>
+  </header>
+
+  <p class="note" id="intro" style="margin:-8px 0 18px">
+    This page is a real MCP client. On load it sends <code>initialize</code> and
+    <code>tools/list</code> over JSON-RPC to <code>POST /mcp</code> — the same handler
+    <code>mcp/server.js</code> exposes over stdio to Claude Desktop. Every call below
+    shows its raw wire messages, so what you see here is what a model sees.
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Tools</h2>
+      <div id="toolList"><div class="body note">Loading…</div></div>
+    </div>
+
+    <div>
+      <div class="presets" id="presets"></div>
+
+      <div class="card" style="margin-bottom:16px">
+        <h2 id="argsTitle">Arguments</h2>
+        <div class="body">
+          <p class="note" id="toolDesc" style="margin:0 0 12px"></p>
+          <div id="fields"></div>
+          <button class="btn" id="run">Call tool</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Result</h2>
+        <div class="body">
+          <div class="meta" id="resultMeta"></div>
+          <pre id="result">Pick a tool and call it — or try one of the questions above.</pre>
+          <details class="wire">
+            <summary>Raw JSON-RPC (request + response)</summary>
+            <pre id="wire">—</pre>
+          </details>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+/* A minimal MCP client. Deliberately not abstracted into a library: the point
+   of this page is that the protocol is small enough to read in one screen. */
+
+const $ = (id) => document.getElementById(id);
+let nextId = 1;
+let tools = [];
+let selected = null;
+let lastWire = '';
+
+function setStatus(kind, text) {
+  const el = $('status');
+  el.className = `status ${kind}`;
+  $('statusText').textContent = text;
+}
+
+async function rpc(method, params) {
+  const req = { jsonrpc: '2.0', id: nextId++, method, ...(params ? { params } : {}) };
+  const started = performance.now();
+  const res = await fetch('mcp', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(req),
+  });
+  const body = res.status === 204 ? null : await res.json();
+  const ms = Math.round(performance.now() - started);
+  lastWire = `→ ${JSON.stringify(req, null, 2)}\n\n← ${JSON.stringify(body, null, 2)}`;
+  if (body && body.error) {
+    const e = new Error(`${body.error.message} (code ${body.error.code})`);
+    e.ms = ms;
+    throw e;
+  }
+  return { result: body ? body.result : null, ms };
+}
+
+/* Tiny JSON syntax highlighter — one regex, no dependency. Escapes first so a
+   quoted "<script>" inside a ticket description can never become markup. */
+function highlight(obj) {
+  const esc = JSON.stringify(obj, null, 2)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return esc.replace(
+    /("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+    (m) => {
+      let cls = 'n';
+      if (/^"/.test(m)) cls = /:$/.test(m) ? 'k' : 's';
+      else if (/true|false|null/.test(m)) cls = 'b';
+      return `<span class="${cls}">${m}</span>`;
+    },
+  );
+}
+
+function renderTools() {
+  const host = $('toolList');
+  host.textContent = '';
+  for (const t of tools) {
+    const b = document.createElement('button');
+    b.className = 'tool';
+    b.dataset.name = t.name;
+    const n = document.createElement('div');
+    n.className = 'n';
+    n.textContent = t.name;
+    const d = document.createElement('div');
+    d.className = 'd';
+    d.textContent = t.description.split('.')[0] + '.';
+    b.append(n, d);
+    b.addEventListener('click', () => select(t.name));
+    host.appendChild(b);
+  }
+}
+
+function select(name) {
+  selected = tools.find((t) => t.name === name) || null;
+  for (const el of document.querySelectorAll('.tool')) {
+    el.classList.toggle('on', el.dataset.name === name);
+  }
+  $('argsTitle').textContent = name ? `Arguments · ${name}` : 'Arguments';
+  $('toolDesc').textContent = selected ? selected.description : '';
+  renderFields();
+}
+
+/* Build the form straight from the tool's own inputSchema — the same schema a
+   model reads. If the form can't be built from it, the schema is wrong. */
+function renderFields() {
+  const host = $('fields');
+  host.textContent = '';
+  if (!selected) return;
+  const props = selected.inputSchema?.properties || {};
+  const required = new Set(selected.inputSchema?.required || []);
+  if (!Object.keys(props).length) {
+    const p = document.createElement('p');
+    p.className = 'note';
+    p.textContent = 'This tool takes no arguments.';
+    host.appendChild(p);
+    return;
+  }
+  for (const [key, spec] of Object.entries(props)) {
+    const wrap = document.createElement('div');
+    wrap.className = 'field';
+    const label = document.createElement('label');
+    label.textContent = key;
+    label.htmlFor = `f_${key}`;
+    if (required.has(key)) {
+      const r = document.createElement('span');
+      r.className = 'req';
+      r.textContent = ' *';
+      label.appendChild(r);
+    }
+    let input;
+    if (spec.enum) {
+      input = document.createElement('select');
+      const blank = document.createElement('option');
+      blank.value = '';
+      blank.textContent = required.has(key) ? '— choose —' : '— any —';
+      input.appendChild(blank);
+      for (const v of spec.enum) {
+        const o = document.createElement('option');
+        o.value = v;
+        o.textContent = v;
+        input.appendChild(o);
+      }
+    } else {
+      input = document.createElement('input');
+      input.type = spec.type === 'integer' || spec.type === 'number' ? 'number' : 'text';
+    }
+    input.id = `f_${key}`;
+    input.dataset.key = key;
+    input.dataset.jsonType = spec.type || 'string';
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.textContent = spec.description || '';
+    wrap.append(label, input, hint);
+    host.appendChild(wrap);
+  }
+}
+
+function collectArgs() {
+  const args = {};
+  for (const el of $('fields').querySelectorAll('[data-key]')) {
+    const v = el.value.trim();
+    if (v === '') continue;
+    args[el.dataset.key] =
+      el.dataset.jsonType === 'integer' || el.dataset.jsonType === 'number' ? Number(v) : v;
+  }
+  return args;
+}
+
+async function callSelected(args) {
+  if (!selected) return;
+  $('run').disabled = true;
+  setStatus('', 'calling…');
+  $('resultMeta').textContent = '';
+  try {
+    const { result, ms } = await rpc('tools/call', { name: selected.name, arguments: args ?? collectArgs() });
+    const text = result?.content?.[0]?.text ?? '';
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { parsed = text; }
+    $('result').innerHTML = typeof parsed === 'string' ? parsed : highlight(parsed);
+    const bits = [
+      `<b>${selected.name}</b>`,
+      `${ms} ms`,
+      `${new Blob([text]).size.toLocaleString()} bytes`,
+    ];
+    if (result?.isError) bits.push('<b style="color:var(--danger)">isError: true</b>');
+    $('resultMeta').innerHTML = bits.join('<span style="opacity:.4">·</span>');
+    setStatus('ok', result?.isError ? 'tool reported an error' : 'ok');
+  } catch (e) {
+    $('result').innerHTML = `<span class="err">${e.message}</span>`;
+    setStatus('err', 'failed');
+  } finally {
+    $('wire').textContent = lastWire;
+    $('run').disabled = false;
+  }
+}
+
+/* Preset questions: each is a real question a director would ask, mapped to the
+   tool that answers it. They exist to show that the tool surface was designed
+   around the questions, not the other way round. */
+const PRESETS = [
+  ['What should I act on today?', 'get_executive_brief', {}],
+  ['Ground me on the dataset', 'describe_operation', {}],
+  ['Show me the whole feed', 'list_insights', {}],
+  ['What are customers actually saying about refunds?', 'search_evidence',
+    { query: 'refund window 30 days policy changed', limit: 5 }],
+  ['Why did NPS drop?', 'search_evidence', { query: 'nps detractor onboarding refund wait time', kind: 'nps', limit: 5 }],
+  ['Is the backlog really growing?', 'get_metric_series', { metric: 'backlog', last_days: 30 }],
+  ['How healthy are we overall?', 'get_health', {}],
+];
+
+function renderPresets() {
+  const host = $('presets');
+  host.textContent = '';
+  for (const [label, tool, args] of PRESETS) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.addEventListener('click', () => {
+      select(tool);
+      for (const [k, v] of Object.entries(args)) {
+        const el = document.getElementById(`f_${k}`);
+        if (el) el.value = v;
+      }
+      callSelected(args);
+    });
+    host.appendChild(b);
+  }
+}
+
+$('run').addEventListener('click', () => callSelected());
+
+/* The handshake. A client that skips initialize and jumps to tools/call is not
+   speaking MCP — doing it properly here is part of what the page demonstrates. */
+(async function connect() {
+  try {
+    setStatus('', 'initialize…');
+    const init = await rpc('initialize', {
+      protocolVersion: '2024-11-05',
+      capabilities: {},
+      clientInfo: { name: 'opspulse-inspector', version: '1.0.0' },
+    });
+    const info = init.result.serverInfo;
+    $('serverInfo').textContent =
+      `${info.name} v${info.version} · protocol ${init.result.protocolVersion}`;
+
+    // Notification: no id, no response expected.
+    await fetch('mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }),
+    });
+
+    const listed = await rpc('tools/list');
+    tools = listed.result.tools;
+    renderTools();
+    renderPresets();
+    select(tools[0].name);
+    setStatus('ok', `${tools.length} tools`);
+  } catch (e) {
+    $('serverInfo').textContent = 'not connected';
+    setStatus('err', 'connect failed');
+    $('toolList').innerHTML =
+      `<div class="body err">Could not reach <code>/mcp</code>: ${e.message}<br><br>` +
+      `<span class="note">This page needs the Node server — run <code>node mcp/http.js</code> ` +
+      `and open it from that port. It will not work over <code>file://</code> or from ` +
+      `<code>python -m http.server</code>, neither of which can answer JSON-RPC.</span></div>`;
+  }
+})();
+</script>
+</body>
+</html>
