@@ -8,8 +8,11 @@
    ========================================================================== */
 
 export const SIGNAL_TYPES = [
+  // support-operations signals — key off tickets, escalations, QA, surveys
   'churn_risk', 'csat_drop', 'coaching_gap', 'sla_risk', 'emerging_topic',
   'escalation_spike', 'backlog_risk', 'nps_drop', 'compliance_risk',
+  // revenue signals — key off product usage and contract data
+  'silent_decline', 'adoption_failure', 'renewal_risk', 'concentrated_cause',
 ];
 
 export const STATUS = {

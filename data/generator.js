@@ -39,6 +39,7 @@
    ========================================================================== */
 
 import { makeRng, allocate } from './rng.js';
+import { attachUsage } from './usage.js';
 
 const DAY_MS = 86400000;
 export const DAYS = 90;
@@ -80,6 +81,12 @@ const FIRST = ['Ava','Liam','Noor','Diego','Mei','Priya','Jonas','Sara','Kofi','
 const LAST  = ['Okafor','Nakamura','Silva','Kowalski','Haddad','Fernandez','Lindqvist','Mehta','Dubois','Rossi','Novak','Bergman','Costa','Ahmed','Kim','Weber','Moreau','Petrov','Andersson','Bianchi','Sharma','Larsen','Ferreira','Yilmaz','Hassan','Dvorak','Moretti','Sandoval','Virtanen','Bakker'];
 const CO_A  = ['Vertex','Lumen','Ardent','Northgate','Cobalt','Bright','Harbor','Quill','Solstice','Ironwood','Meridian','Fable','Kestrel','Onyx','Pinewood','Aster','Granite','Vela','Corvus','Latitude','Beacon','Halcyon','Juniper','Zephyr'];
 const CO_B  = ['Labs','Health','Retail','Logistics','Financial','Media','Systems','Foods','Energy','Studios','Group','Partners','Robotics','Analytics','Textiles','Motors','Insurance','Digital'];
+/* CO_A x CO_B yields 432 names for 2,400 accounts, so ~420 names were being
+   reused — "Lumen Energy" appeared 15 times at ARR from $1.1K to $160.6K. Two
+   rows with the same company name and different ARR read as broken data the
+   moment a decision names accounts, so the namespace is widened with legal
+   qualifiers (none of which collide with CO_B) and uniqueness is enforced. */
+const CO_SUFFIX = ['Holdings', 'International', 'Worldwide', 'Ventures', 'Industries', 'Technologies'];
 
 /* Subject / description templates per category. `tag` is the sub-driver the
    root-cause agent decomposes on — this is where P1/P3 leave their fingerprint. */
@@ -279,13 +286,37 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
   for (const t of TEAMS) agentsByTeam[t] = agents.filter((a) => a.team === t);
 
   /* ---- 2. Accounts ----------------------------------------------------- */
+
+  /* Unique company names, drawn deterministically. Base combinations first,
+     then qualified variants — so the common names stay clean and only the tail
+     carries a suffix. */
+  const namePool = (() => {
+    const base = [];
+    for (const a of CO_A) for (const b of CO_B) base.push(`${a} ${b}`);
+    rnd.shuffle(base);
+    const out = base.slice();
+    for (const suffix of CO_SUFFIX) for (const n of base) out.push(`${n} ${suffix}`);
+    return out;
+  })();
+  let nameCursor = 0;
+  const usedNames = new Set();
+  const companyName = () => {
+    while (nameCursor < namePool.length) {
+      const n = namePool[nameCursor++];
+      if (!usedNames.has(n)) { usedNames.add(n); return n; }
+    }
+    // Pool exhausted — should not happen at 2,400 accounts, but never collide.
+    let n, i = 2;
+    do { n = `${namePool[0]} ${i++}`; } while (usedNames.has(n));
+    usedNames.add(n); return n;
+  };
   const accounts = [];
   const ACCOUNT_N = 2400;
   for (let i = 0; i < ACCOUNT_N; i++) {
     const plan = rnd.weighted(Object.entries(PLANS).map(([k, v]) => [k, v.w]));
     const cfg = PLANS[plan];
     const contact = `${rnd.pick(FIRST)} ${rnd.pick(LAST)}`;
-    const company = `${rnd.pick(CO_A)} ${rnd.pick(CO_B)}`;
+    const company = companyName();
     accounts.push({
       account_id: 'AC' + pad(i + 1, 4),
       company,
@@ -723,7 +754,7 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
 
   tickets.sort((a, b) => a.created_at - b.created_at);
 
-  return {
+  const ds = {
     meta: {
       seed,
       as_of: nowMs,
@@ -759,6 +790,12 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
     nps,
     qa,
   };
+
+  /* Product usage, attached last: it is shaped against each account's real
+     ticket and escalation history, which only exists by this point. */
+  attachUsage(ds);
+
+  return ds;
 }
 
 /* ==========================================================================

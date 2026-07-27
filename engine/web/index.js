@@ -16,6 +16,7 @@ import { healthWithDelta } from './health.js';
 import { createInsight, validateInsight, STATUS, CONFIDENCE_CUTOFF } from './schema.js';
 import { clamp, mean } from './stats.js';
 import { buildExposedAccounts } from './exposure.js';
+import { detectRevenue } from './revenue.js';
 import { dayLabel } from './aggregate.js';
 
 /* ── Titles: short enough to scan a feed, specific enough to act on ─────── */
@@ -260,6 +261,13 @@ export function runEngine(ds, { asOf = ds.meta.as_of } = {}) {
   const health = mark('health', () => healthWithDelta(ds));
   const brief = mark('exec_summary', () => buildBrief(insights, health, ds, { asOf }));
 
+  /* Revenue-shaped decisions, appended to the same feed. Additive: they are
+     built independently and validated against the same contract, so a consumer
+     that does not know about them still renders them correctly. */
+  const revenue = mark('revenue', () => detectRevenue(ds, { asOf }));
+  insights.push(...revenue.insights);
+  insights.sort((x, y) => y.severity_score - x.severity_score);
+
   /* Attach the account-level evidence behind each decision. Additive: it lands
      on _meta, which the insight contract does not police, so nothing that
      already reads an insight is affected. Only signals that actually resolve to
@@ -278,8 +286,8 @@ export function runEngine(ds, { asOf = ds.meta.as_of } = {}) {
     churn_model: churn,
     run: {
       timings_ms: t,
-      detectors_run,
-      thresholds,
+      detectors_run: [...detectors_run, ...revenue.ran],
+      thresholds: { ...thresholds, ...revenue.thresholds },
       contract_valid: errors.length === 0,
       contract_errors: errors,
       stats: {

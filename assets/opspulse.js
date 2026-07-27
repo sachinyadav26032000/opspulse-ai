@@ -310,12 +310,17 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     const d = ds(), m = ins._meta;
     const from = Math.max(0, d.meta.days - 45), to = d.meta.days - 1;
     const labels = labelsFor(from, to);
-    const vals = m.series.values.slice(from, to + 1);
     const blocks = [];
+
+    /* Revenue signals key off product usage, which arrives as two 30-day
+       windows rather than a daily series — so `_meta.series` is legitimately
+       null. Showing no trend line is correct; fabricating 45 daily points from
+       two readings would be inventing data to fill a chart. */
+    const vals = m.series ? m.series.values.slice(from, to + 1) : null;
 
     const fmtFor = unitFmt(m.unit);
 
-    blocks.push(lineChart({
+    if (vals) blocks.push(lineChart({
       title: `${m.metric_label ? m.entity.label + ' — ' : ''}${ins._meta.title}`,
       subtitle: 'last 45 days · shaded band is the analysis window',
       labels, series: [{ name: m.metric || 'value', values: vals }],
