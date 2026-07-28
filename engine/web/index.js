@@ -18,6 +18,7 @@ import { clamp, mean } from './stats.js';
 import { buildExposedAccounts } from './exposure.js';
 import { detectRevenue } from './revenue.js';
 import { applyDecisionSizing, isRevenueShaped } from './sizing.js';
+import { measureCoverage, attachConfidence, detectDataQuality } from './confidence.js';
 import { dayLabel } from './aggregate.js';
 
 /* ── Titles: short enough to scan a feed, specific enough to act on ─────── */
@@ -284,6 +285,13 @@ export function runEngine(ds, { asOf = ds.meta.as_of } = {}) {
      the opposite of what a prioritiser should reward. */
   for (const ins of insights) applyDecisionSizing(ins);
 
+  /* Source coverage, measured once. Confidence is then capped by the weakest
+     source each decision actually read, and the gap becomes a finding itself. */
+  const coverage = mark('coverage', () => measureCoverage(ds));
+  const dq = detectDataQuality(ds, coverage, { asOf });
+  if (dq) insights.push(dq);
+  for (const ins of insights) attachConfidence(ins, coverage);
+
   /* Classification is semantic, derived from the sized decision — a decision is
      revenue-shaped when it puts named accounts and their ARR at stake, not
      because of which module emitted it. */
@@ -307,6 +315,7 @@ export function runEngine(ds, { asOf = ds.meta.as_of } = {}) {
       timings_ms: t,
       detectors_run: [...detectors_run, ...revenue.ran],
       thresholds: { ...thresholds, ...revenue.thresholds },
+      coverage,
       contract_valid: errors.length === 0,
       contract_errors: errors,
       stats: {

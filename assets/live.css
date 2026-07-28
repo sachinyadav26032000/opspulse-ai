@@ -592,3 +592,11 @@
 }
 .lv-more-menu button { width: 100%; justify-content: flex-start; }
 .lv-more-menu button .badge { margin-left: auto; }
+
+/* The weakest input behind a confidence score, stated rather than implied. */
+.limiting {
+  margin: 8px 0 0; font-size: .75rem; line-height: 1.5; color: var(--warn);
+  background: rgba(251,191,36,.07); border-left: 2px solid rgba(251,191,36,.4);
+  padding: 7px 10px; border-radius: 0 6px 6px 0;
+}
+.limiting b { color: var(--text-soft); font-weight: 700; }

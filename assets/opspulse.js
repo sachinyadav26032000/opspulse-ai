@@ -722,7 +722,7 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
         <div><dt>${ins.expected_impact.range_low_usd == null ? 'Exposure' : 'Value at stake'}</dt><dd class="money">${esc(moneyRange(ins))}</dd></div>
       </dl>
       <div class="foot">
-        <span class="conf" title="Confidence = 45% statistical strength + 30% share of change explained + 25% corroborating signals">
+        <span class="conf" title="${esc(ins.confidence ? ins.confidence.limiting_factor : 'Confidence = 45% statistical strength + 30% share of change explained + 25% corroborating signals')}">
           <span class="bar"><i style="width:${Math.round(ins.why.confidence * 100)}%"></i></span><b>${Math.round(ins.why.confidence * 100)}%</b> confidence
         </span>
         <span class="chip">${esc(ins.recommended_action.owner_role)}</span>
@@ -745,7 +745,8 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
           <span class="chip">${esc(ins.signal_type.replace(/_/g, ' '))}</span>
           <span class="chip">${esc(ins.recommended_action.owner_role)}</span>
           ${ins.status === 'held_for_review' ? '<span class="chip held">held</span>' : ''}
-          <span class="conf"><span class="bar"><i style="width:${Math.round(ins.why.confidence * 100)}%"></i></span><b>${Math.round(ins.why.confidence * 100)}%</b></span>
+          <span class="conf" title="${esc(ins.confidence ? ins.confidence.limiting_factor : '')}"><span class="bar"><i style="width:${Math.round(ins.why.confidence * 100)}%"></i></span><b>${Math.round(ins.why.confidence * 100)}%</b></span>
+          ${ins.confidence?.coverage_capped ? '<span class="chip held" title="' + esc(ins.confidence.limiting_factor) + '">coverage-capped</span>' : ''}
         </div>
       </div>
       <div class="right"><div class="m">${esc(moneyRange(ins))}</div><div class="h">${fmt.int(m.affected_accounts)} customers · ${ins.expected_impact.time_horizon_days}d</div></div>`;
@@ -775,6 +776,7 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
         statistical ${fmt.pct0(cp.statistical)} · explained by top driver ${fmt.pct0(cp.explained)} · corroborated ${fmt.pct0(cp.corroborated)}.
         Correlation, not confirmed cause — a human closes that gap.
       </p>
+      ${ins.confidence ? `<p class="limiting"><b>Limiting factor:</b> ${esc(ins.confidence.limiting_factor)}</p>` : ''}
       <ul class="evidence">${ins.why.contributing_signals.map((s) => `<li><span class="mark ${s.hit ? 'y' : 'n'}">${s.hit ? '✓' : '–'}</span><span>${esc(s.label)} <span class="det">— ${esc(s.detail)}</span></span></li>`).join('')}</ul>`;
     grid.appendChild(q2);
 
@@ -1067,7 +1069,8 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
               <div class="bd-chips">
                 <span class="chip">${esc(ins.recommended_action.owner_role)}</span>
                 <span class="chip">playbook ${esc(ins.recommended_action.playbook_id)}</span>
-                <span class="chip">${Math.round(ins.why.confidence * 100)}% confidence</span>
+                <span class="chip" title="${esc(ins.confidence ? ins.confidence.limiting_factor : '')}">${Math.round(ins.why.confidence * 100)}% confidence</span>
+                ${ins.confidence?.coverage_capped ? '<span class="chip held">coverage-capped</span>' : ''}
                 ${ins.status === 'held_for_review' ? '<span class="chip held">held — confirm before acting</span>' : ''}
               </div>
             </div>

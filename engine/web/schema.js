@@ -13,6 +13,8 @@ export const SIGNAL_TYPES = [
   'escalation_spike', 'backlog_risk', 'nps_drop', 'compliance_risk',
   // revenue signals — key off product usage and contract data
   'silent_decline', 'adoption_failure', 'renewal_risk', 'concentrated_cause',
+  // meta: the engine reporting on the quality of its own inputs
+  'data_quality',
 ];
 
 export const STATUS = {
