@@ -17,19 +17,19 @@ seed    20260724
 as_of   2026-07-26T09:00:00Z
 ```
 
-**Both are required.** `generate(seed, asOf)` derives `day0` from `as_of`, so a
-seed alone reproduces nothing — the dataset shifts with the clock and the
-exposed accounts turn over completely. Two runs seven hours apart on the same
-seed produced entirely different six-account cohorts and a $48K swing in total
-exposure.
+**Both are required.** `generate(seed, asOf)` is sensitive to its input *below
+day granularity*, so a seed alone reproduces nothing. The same seed at 09:00,
+14:30 and 22:30 on one day produced three different at-risk cohorts — $664K,
+$813K and $444K — even though the derived `day0` was identical in all three.
 
-`data/store.js` already persists `{ seed, as_of }` together for this reason.
-`explorations/data.js` is a frozen snapshot at the pin above.
+✅ **Resolved.** `data/store.js` now rounds `as_of` down to the start of the
+local day, so a run is stable within a business day and refreshes when the day
+turns. That is the correct cadence for a morning brief, not a demo hack: a
+brief that reshuffles under someone who acted on it at 9am is worse than
+useless. Session staleness compares local days, and `reseed()` rounds too, so a
+new world cannot land mid-day and start drifting.
 
-> **Open issue.** The live app still calls `generate(seed, Date.now())`, so a
-> demo rehearsed in the morning will show different accounts in the afternoon.
-> Rounding `as_of` to the start of the local day would make it stable within a
-> day at the cost of one line. Not yet done — it is a product decision.
+`explorations/data.js` is a frozen snapshot at the pin above and is unaffected.
 
 ---
 
