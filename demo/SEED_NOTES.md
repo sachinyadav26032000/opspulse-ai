@@ -257,6 +257,38 @@ is "how does it know."
 
 ---
 
+## 5b. The drill-down spine — decision → accounts → account
+
+One path, three levels deep, rather than making everything shallowly clickable.
+
+| Level | Surface | Source of every field |
+|---|---|---|
+| 1 | Decision card | detectors — see §2 |
+| 2 | Exposed accounts | `engine/web/exposure.js` |
+| 3 | One account | same, plus `supporting_signals` |
+
+**The money figure is the affordance.** No extra button was added — the thing a
+reader wants to interrogate is the number, so the number is what they click.
+It is keyboard-reachable (`role="button"`, `tabIndex=0`, Enter/Space).
+
+- The parent decision stays pinned at Level 2, so the thread is never lost.
+- Accounts sort by ARR descending, and the footer **states whether the rows
+  reconcile to the decision headline**. A drill-down whose rows do not add up
+  is the fastest way to lose a room.
+- Level 2 also states what sizing scoped out and where it went.
+- Evidence at Level 3 names its source system per row. Typical spread is three
+  systems — that spread is the argument, since no single tool holds all of them.
+
+**No router**, by decision. Levels live in `state`; the breadcrumb and an
+in-app back are the only ways up. Browser back and deep links would need
+history integration touching how every existing surface is entered.
+
+Transitions are a 180ms fade-and-lift, wrapped in
+`prefers-reduced-motion: no-preference`. Motion encodes descent; it is not
+decoration.
+
+---
+
 ## 6. Known data-quality issues in the generator itself
 
 Flagged, not fixed unless noted.

@@ -158,6 +158,8 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     view: 'today', filter: 'all', q: '', selected: null, chat: [], lastUpload: null,
     user: user || loadUser('Sudharshan'),
     focus: null,   // signal_key returned from the workspace — highlighted, never auto-committed
+    drillId: null,     // decision being drilled into (Level 2)
+    drillAccount: null, // account being drilled into (Level 3)
   };
 
   /* Coming back from the workspace via "Take action". We highlight the decision
@@ -716,7 +718,9 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
       <h4>${esc(m.title)}</h4>
       <div class="metric">${esc(m.metric_label)}</div>
       <dl>
-        <div><dt>Impact</dt><dd>${fmt.int(m.affected_accounts)} customers${m.evidence.arr_at_risk ? ` · ${fmt.usdK(m.evidence.arr_at_risk)} ARR` : ''}</dd></div>
+        <div><dt>Impact</dt><dd>${drillable(ins)
+          ? `<span class="drill-link" data-drill="1" role="button" tabindex="0" title="Open the ${m.exposed_accounts.length} exposed accounts">${fmt.int(m.affected_accounts)} customers${m.evidence.arr_at_risk ? ` · ${fmt.usdK(m.evidence.arr_at_risk)} ARR` : ''} <i>›</i></span>`
+          : `${fmt.int(m.affected_accounts)} customers${m.evidence.arr_at_risk ? ` · ${fmt.usdK(m.evidence.arr_at_risk)} ARR` : ''}`}</dd></div>
         <div><dt>Root cause <span class="muted">(hypothesis)</span></dt><dd>${esc(firstSentence(ins.why.root_cause))}</dd></div>
         <div><dt>Recommended action</dt><dd>${esc(ins.recommended_action.action)}</dd></div>
         <div><dt>${ins.expected_impact.range_low_usd == null ? 'Exposure' : 'Value at stake'}</dt><dd class="money">${esc(moneyRange(ins))}</dd></div>
@@ -728,6 +732,12 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
         <span class="chip">${esc(ins.recommended_action.owner_role)}</span>
         ${ins.status === 'held_for_review' ? '<span class="chip held">held for review</span>' : ''}
       </div>`;
+    const link = c.querySelector('[data-drill]');
+    if (link) {
+      const go = (ev) => { ev.stopPropagation(); openAccounts(ins); };
+      link.addEventListener('click', go);
+      link.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(ev); } });
+    }
     c.addEventListener('click', () => drillInsight(ins));
     return c;
   }
@@ -749,7 +759,15 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
           ${ins.confidence?.coverage_capped ? '<span class="chip held" title="' + esc(ins.confidence.limiting_factor) + '">coverage-capped</span>' : ''}
         </div>
       </div>
-      <div class="right"><div class="m">${esc(moneyRange(ins))}</div><div class="h">${fmt.int(m.affected_accounts)} customers · ${ins.expected_impact.time_horizon_days}d</div></div>`;
+      <div class="right"><div class="m">${esc(moneyRange(ins))}</div><div class="h">${drillable(ins)
+        ? `<span class="drill-link" data-drill="1" role="button" tabindex="0">${fmt.int(m.affected_accounts)} customers <i>›</i></span>`
+        : `${fmt.int(m.affected_accounts)} customers`} · ${ins.expected_impact.time_horizon_days}d</div></div>`;
+    const flink = r.querySelector('[data-drill]');
+    if (flink) {
+      const go = (ev) => { ev.stopPropagation(); openAccounts(ins); };
+      flink.addEventListener('click', go);
+      flink.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(ev); } });
+    }
     r.addEventListener('click', () => { state.selected = ins.insight_id; render(); });
     return r;
   }
@@ -969,6 +987,204 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     host.appendChild(h);
   }
 
+  /* ══════════════════════════════════════════════════════════════════════
+     THE DRILL-DOWN SPINE — decision → exposed accounts → one account
+     ----------------------------------------------------------------------
+     One path, three levels deep, rather than making everything shallowly
+     clickable. The money figure on a decision IS the affordance; there is no
+     extra button, because the thing you want to interrogate is the number.
+
+     No router, by decision. Levels are held in `state` and the breadcrumb is
+     the only way back — browser back would need history integration that
+     touches how every existing surface is entered.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  const drillable = (ins) => (ins?._meta?.exposed_accounts?.length || 0) > 0;
+
+  function openAccounts(ins) {
+    state.drillId = ins.insight_id;
+    state.drillAccount = null;
+    state.view = 'accounts';
+    render(); body.scrollTop = 0;
+  }
+  function openAccount(accountId) {
+    state.drillAccount = accountId;
+    state.view = 'account';
+    render(); body.scrollTop = 0;
+  }
+  const drilledInsight = () => eng().insights.find((i) => i.insight_id === state.drillId);
+
+  /** Persistent across all three levels. Each crumb is a real way back. */
+  function breadcrumb(trail) {
+    const bc = el('nav', 'crumbs');
+    bc.setAttribute('aria-label', 'Breadcrumb');
+    trail.forEach((c, i) => {
+      const last = i === trail.length - 1;
+      if (last) {
+        const cur = el('span', 'crumb on', esc(c.label));
+        cur.setAttribute('aria-current', 'page');
+        bc.appendChild(cur);
+      } else {
+        const b = el('button', 'crumb', esc(c.label));
+        b.addEventListener('click', c.go);
+        bc.appendChild(b);
+        bc.appendChild(el('span', 'sep', '›'));
+      }
+    });
+    return bc;
+  }
+
+  const toBrief = () => { state.view = 'today'; state.drillId = null; state.drillAccount = null; render(); body.scrollTop = 0; };
+  const toAccounts = () => { state.drillAccount = null; state.view = 'accounts'; render(); body.scrollTop = 0; };
+
+  /* ── LEVEL 2 · the exposed accounts ──────────────────────────────────── */
+  function viewAccounts() {
+    const ins = drilledInsight();
+    const wrap = el('div', 'lv-view drill-level');
+    if (!ins) { wrap.appendChild(el('div', 'empty', 'That decision is no longer in the current feed.')); return wrap; }
+
+    const m = ins._meta;
+    const accts = (m.exposed_accounts || []).slice().sort((a, b) => b.arr_usd - a.arr_usd);
+    const total = accts.reduce((s2, a) => s2 + a.arr_usd, 0);
+
+    wrap.appendChild(breadcrumb([
+      { label: 'Today', go: toBrief },
+      { label: m.title },
+    ]));
+
+    /* The parent decision stays visible — you must never lose the thread of
+       which decision you are inside. */
+    const hd = el('div', 'drill-parent');
+    hd.innerHTML = `
+      <div class="dp-band bd-${bandOf(ins)}"></div>
+      <div class="dp-main">
+        <div class="dp-kicker">Exposed accounts behind this decision</div>
+        <h2>${esc(m.title)}</h2>
+        <p class="dp-sub">${esc(ins.what_happened)}</p>
+        <div class="dp-meta">
+          <span><b>${esc(moneyRange(ins))}</b> over ${ins.expected_impact.time_horizon_days} days</span>
+          <span><b>${Math.round(ins.why.confidence * 100)}%</b> confidence</span>
+          <span>${esc(ins.recommended_action.owner_role)}</span>
+          ${ins.confidence?.coverage_capped ? '<span class="chip held">coverage-capped</span>' : ''}
+        </div>
+        ${ins.confidence ? `<p class="limiting"><b>Limiting factor:</b> ${esc(ins.confidence.limiting_factor)}</p>` : ''}
+      </div>`;
+    wrap.appendChild(hd);
+
+    const p = el('div', 'panel');
+    p.innerHTML = `<div class="panel-hd"><h3>${accts.length} accounts, largest exposure first</h3>
+      <span class="hint">${m.sizing ? esc(m.sizing.note) : 'every matched account'}</span></div>`;
+    const bd = el('div', 'panel-bd tight');
+
+    const rows = el('div', 'acct-list');
+    accts.forEach((a, i) => {
+      const urgent = a.renewal_in_days <= 30;
+      const r = el('button', 'acct-row' + (urgent ? ' urgent' : ''));
+      r.innerHTML = `
+        <span class="ar-n">${String(i + 1).padStart(2, '0')}</span>
+        <span class="ar-name">${esc(a.account_name)}<small>${esc(a.plan)} · ${esc(a.region)} · ${esc(a.owner)}</small></span>
+        <span class="ar-arr">${esc(fmt.usd(a.arr_usd))}</span>
+        <span class="ar-ren">${a.renewal_in_days}d<small>${esc(a.renewal_date)}</small></span>
+        <span class="ar-why">${esc(a.risk_reason)}</span>
+        <span class="ar-go" aria-hidden="true">›</span>`;
+      r.addEventListener('click', () => openAccount(a.account_id));
+      rows.appendChild(r);
+    });
+    bd.appendChild(rows);
+
+    /* Reconciliation. A drill-down whose rows do not add up to the headline is
+       the fastest way to lose a room. */
+    const foot = el('div', 'acct-total');
+    const matches = m.evidence?.arr_at_risk_scoped == null || Math.round(m.evidence.arr_at_risk_scoped) === Math.round(total);
+    foot.innerHTML = `
+      <span>Total, ${accts.length} account${accts.length === 1 ? '' : 's'} shown</span>
+      <b>${esc(fmt.usd(total))}</b>
+      <span class="rec ${matches ? 'ok' : 'bad'}">${matches ? '✓ reconciles to the decision headline' : '✕ does not match the headline'}</span>`;
+    bd.appendChild(foot);
+
+    if (m.sizing?.cut) {
+      const cut = el('p', 'muted');
+      cut.style.cssText = 'font-size:.75rem;margin:12px 14px 4px;line-height:1.55';
+      cut.textContent = `${m.sizing.cut} further account${m.sizing.cut === 1 ? '' : 's'} matched this signal, holding ${fmt.usdK(m.sizing.cut_arr)}. They are ranked below these on revenue exposure and remain in the feed — this decision is scoped to what one person can work this week.`;
+      bd.appendChild(cut);
+    }
+
+    p.appendChild(bd);
+    wrap.appendChild(p);
+    return wrap;
+  }
+
+  /* ── LEVEL 3 · one account, and why it specifically is at risk ────────── */
+  function viewAccount() {
+    const ins = drilledInsight();
+    const wrap = el('div', 'lv-view drill-level');
+    const a = ins?._meta?.exposed_accounts?.find((x) => x.account_id === state.drillAccount);
+    if (!a) { wrap.appendChild(el('div', 'empty', 'That account is no longer in the current decision.')); return wrap; }
+
+    wrap.appendChild(breadcrumb([
+      { label: 'Today', go: toBrief },
+      { label: ins._meta.title, go: toAccounts },
+      { label: a.account_name },
+    ]));
+
+    const head = el('div', 'acct-head');
+    head.innerHTML = `
+      <div>
+        <h2>${esc(a.account_name)}</h2>
+        <div class="ah-meta">${esc(a.plan)} · ${esc(a.region)} · ${esc(a.account_id)}${a.contact_name ? ` · ${esc(a.contact_name)}` : ''}</div>
+      </div>
+      <dl class="ah-facts">
+        <div><dt>ARR</dt><dd>${esc(fmt.usd(a.arr_usd))}</dd></div>
+        <div><dt>Renews</dt><dd class="${a.renewal_in_days <= 30 ? 'urgent' : ''}">${a.renewal_in_days} days<small>${esc(a.renewal_date)}</small></dd></div>
+        <div><dt>Owner</dt><dd>${esc(a.owner)}</dd></div>
+      </dl>`;
+    wrap.appendChild(head);
+
+    /* The answer to "why is this one leaving", in prominent type. */
+    const why = el('div', 'acct-why');
+    why.innerHTML = `<div class="aw-lbl">Why this account is at risk</div><p>${esc(a.risk_reason)}</p>`;
+    wrap.appendChild(why);
+
+    const ev = el('div', 'panel');
+    ev.innerHTML = `<div class="panel-hd"><h3>Evidence</h3><span class="hint">${a.supporting_signals.length} signal${a.supporting_signals.length === 1 ? '' : 's'} across ${new Set(a.supporting_signals.map((x) => x.source.split(' · ')[0])).size} source systems</span></div>`;
+    const ebd = el('div', 'panel-bd tight');
+    const list = el('div', 'sig-list');
+    for (const sg of a.supporting_signals) {
+      const row = el('div', 'sig');
+      row.innerHTML = `
+        <span class="sg-src">${esc(sg.source)}</span>
+        <span class="sg-metric">${esc(sg.metric)}</span>
+        <span class="sg-val">${esc(sg.value)}</span>
+        <span class="sg-delta">${esc(sg.delta || '')}</span>
+        <span class="sg-when">${sg.observed_at ? esc(String(sg.observed_at).slice(0, 10)) : '—'}</span>
+        ${sg.detail ? `<span class="sg-detail">${esc(sg.detail)}</span>` : ''}`;
+      list.appendChild(row);
+    }
+    ebd.appendChild(list);
+    const note = el('p', 'muted');
+    note.style.cssText = 'font-size:.73rem;margin:10px 14px;line-height:1.55';
+    note.textContent = 'Each row names the system it came from. No single tool holds all of these — that spread is the point, and it is why the pattern is only visible here.';
+    ebd.appendChild(note);
+    ev.appendChild(ebd);
+    wrap.appendChild(ev);
+
+    if (a.recommended_action) {
+      const act = el('div', 'acct-action');
+      act.innerHTML = `
+        <div class="aa-lbl">Recommended action for this account</div>
+        <p>${esc(a.recommended_action.action)}</p>
+        <div class="aa-owner">${esc(a.recommended_action.owner)}${a.recommended_action.owner_role ? ` · ${esc(a.recommended_action.owner_role)}` : ''}</div>`;
+      wrap.appendChild(act);
+    }
+
+    const back = el('div', 'brief-cta');
+    const b = el('button', 'lv-btn', `← Back to the ${ins._meta.exposed_accounts.length} exposed accounts`);
+    b.addEventListener('click', toAccounts);
+    back.appendChild(b);
+    wrap.appendChild(back);
+    return wrap;
+  }
+
   function viewToday() {
     const e = eng(), b = e.brief, h = e.health;
     const wrap = el('div', 'lv-view');
@@ -1067,6 +1283,7 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
               <div class="bd-do">${esc(base)}</div>
               ${detail ? `<div class="bd-detail">${esc(detail)}</div>` : ''}
               <div class="bd-chips">
+                ${drillable(ins) ? `<span class="chip drill-link" data-drill="1" role="button" tabindex="0" title="Open the ${ins._meta.exposed_accounts.length} exposed accounts">${ins._meta.exposed_accounts.length} accounts · ${esc(fmt.usdK(ins._meta.exposed_accounts.reduce((s2, a) => s2 + a.arr_usd, 0)))} ARR <i>›</i></span>` : ''}
                 <span class="chip">${esc(ins.recommended_action.owner_role)}</span>
                 <span class="chip">playbook ${esc(ins.recommended_action.playbook_id)}</span>
                 <span class="chip" title="${esc(ins.confidence ? ins.confidence.limiting_factor : '')}">${Math.round(ins.why.confidence * 100)}% confidence</span>
@@ -1076,6 +1293,13 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
             </div>
           </div>
         </div>`;
+
+      const dl = item.querySelector('[data-drill]');
+      if (dl) {
+        const go = (ev) => { ev.stopPropagation(); openAccounts(ins); };
+        dl.addEventListener('click', go);
+        dl.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(ev); } });
+      }
 
       const acts = el('div', 'bd-actions');
       const commit = el('button', committed ? 'lv-btn' : 'lv-btn primary',
@@ -2162,7 +2386,9 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     renderNav();
     const scrollTop = body.scrollTop;
     body.innerHTML = '';
-    const v = state.view === 'today' ? viewToday()
+    const v = state.view === 'accounts' ? viewAccounts()
+      : state.view === 'account' ? viewAccount()
+      : state.view === 'today' ? viewToday()
       : state.view === 'dash' ? viewDashboard()
       : state.view === 'feed' ? viewFeed()
       : state.view === 'radar' ? viewRadar()
