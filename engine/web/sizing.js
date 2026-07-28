@@ -1,0 +1,107 @@
+/* ==========================================================================
+   Decision sizing — applied BEFORE ranking, on purpose.
+   --------------------------------------------------------------------------
+   Ranking on total ARR rewards unfocused decisions. Churn risk swept 59
+   accounts for $1,283K and outranked silent decline's 6 accounts for $578K —
+   not because it was more valuable, but because it was less specific. Breadth
+   was being paid a premium.
+
+   So the cut comes first. Every ARR-bearing decision is reduced to the
+   accounts a human will actually work this week, its exposure is restated as
+   what THOSE accounts carry, and only then does it compete. A decision is then
+   ranked on what acting on it is worth, which is the only version of the
+   question anyone actually asks.
+
+   Nothing is discarded: the full matched set stays in `_meta.sizing` and the
+   accounts remain in the feed and the workspace. The cut is declared, not
+   hidden — see `note`.
+   ========================================================================== */
+
+export const DECISION_SIZE = 6;
+
+/**
+ * True when a decision is revenue-shaped.
+ *
+ * SEMANTIC, not structural. The previous test was "which file emitted this",
+ * which tagged churn_risk as support-ops despite it naming accounts, carrying
+ * the largest ARR exposure in the feed and being owned by VP Customer Success.
+ * A decision is revenue-shaped when it puts named accounts and their ARR at
+ * stake — queue depth, contact volume and QA scores do not, however urgent.
+ */
+export function isRevenueShaped(insight) {
+  const m = insight?._meta;
+  if (!m) return false;
+  const arr = m.evidence?.arr_at_risk;
+  return typeof arr === 'number' && arr > 0;
+}
+
+/**
+ * Cut an insight to its actionable set and restate its economics accordingly.
+ * Mutates the insight. No-op for decisions that carry no ARR exposure.
+ */
+export function applyDecisionSizing(insight, size = DECISION_SIZE) {
+  const m = insight._meta;
+  if (!m || !isRevenueShaped(insight)) return insight;
+
+  // exposure.js has already ranked and cut these to the top `size` by ARR.
+  const shown = m.exposed_accounts || m.accounts || [];
+  if (!shown.length) return insight;
+
+  const fullArr = m.evidence.arr_at_risk;
+  const sizedArr = shown.reduce((s, a) => s + (a.arr_usd || 0), 0);
+  if (!(sizedArr > 0) || !(fullArr > 0)) return insight;
+
+  const matched = m.affected_accounts ?? shown.length;
+  const ratio = Math.min(1, sizedArr / fullArr);
+
+  /* Restate the money. The impact formula was ARR x probability, so scaling by
+     the share of ARR that survived the cut keeps the arithmetic intact rather
+     than inventing a second model. */
+  const ei = insight.expected_impact;
+  if (ei && ei.range_low_usd != null) {
+    ei.range_low_usd = Math.round(ei.range_low_usd * ratio);
+    ei.range_high_usd = Math.round(ei.range_high_usd * ratio);
+    ei.revenue_at_risk_usd = Math.round((ei.range_low_usd + ei.range_high_usd) / 2);
+  }
+
+  const cut = Math.max(0, matched - shown.length);
+  m.sizing = {
+    matched,
+    shown: shown.length,
+    cut,
+    total_arr: fullArr,
+    shown_arr: sizedArr,
+    cut_arr: Math.max(0, fullArr - sizedArr),
+    ratio,
+    basis: 'revenue exposure, descending',
+    note: cut
+      ? `${matched} accounts matched. This decision is scoped to the ${shown.length} largest by ARR (${money(sizedArr)}); the remaining ${cut} hold ${money(fullArr - sizedArr)} and stay in the feed.`
+      : `${matched} accounts matched — all in scope.`,
+  };
+
+  // The headline must describe what the decision is scoped to, not what the
+  // detector swept, or the drill-down will contradict the card.
+  m.evidence.arr_at_risk_full = fullArr;
+  m.evidence.arr_at_risk_scoped = sizedArr;
+  m.scoped_accounts = shown.length;
+
+  /* Restate the headline to the scope. "Churn risk — 62 accounts" beside a
+     $285K figure derived from 6 of them, opening onto a drill-down listing 6,
+     is three different answers to the same question on one card. */
+  if (cut > 0) {
+    m.title_full = m.title;
+    m.title = m.title.replace(/—\s*\d[\d,]*\s+accounts?/i, `— top ${shown.length} of ${matched} accounts`);
+    if (m.title === m.title_full) m.title = `${m.title_full} — top ${shown.length} of ${matched}`;
+    m.metric_label_full = m.metric_label;
+    m.metric_label = `${money(sizedArr)} ARR across ${shown.length} accounts`;
+  }
+
+  return insight;
+}
+
+function money(n) {
+  const a = Math.abs(n);
+  if (a >= 1e6) return '$' + (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (a >= 1000) return '$' + Math.round(n / 1000) + 'K';
+  return '$' + Math.round(n);
+}

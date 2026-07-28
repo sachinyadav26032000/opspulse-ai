@@ -17,6 +17,7 @@ import { createInsight, validateInsight, STATUS, CONFIDENCE_CUTOFF } from './sch
 import { clamp, mean } from './stats.js';
 import { buildExposedAccounts } from './exposure.js';
 import { detectRevenue } from './revenue.js';
+import { applyDecisionSizing, isRevenueShaped } from './sizing.js';
 import { dayLabel } from './aggregate.js';
 
 /* ── Titles: short enough to scan a feed, specific enough to act on ─────── */
@@ -275,6 +276,24 @@ export function runEngine(ds, { asOf = ds.meta.as_of } = {}) {
   for (const ins of insights) {
     ins._meta.exposed_accounts = buildExposedAccounts(ds, ins);
   }
+
+  /* SIZING BEFORE RANKING. Cut every ARR-bearing decision to the accounts a
+     human will actually work, and restate its exposure as what those accounts
+     carry. Ranking on the full sweep paid a premium for breadth: churn risk
+     outranked silent decline by covering 59 accounts instead of 6, which is
+     the opposite of what a prioritiser should reward. */
+  for (const ins of insights) applyDecisionSizing(ins);
+
+  /* Classification is semantic, derived from the sized decision — a decision is
+     revenue-shaped when it puts named accounts and their ARR at stake, not
+     because of which module emitted it. */
+  for (const ins of insights) ins._meta.is_revenue = isRevenueShaped(ins);
+
+  insights.sort((x, y) => {
+    const w = (i) => (i.expected_impact.range_low_usd == null ? 0
+      : (i.expected_impact.range_low_usd + i.expected_impact.range_high_usd) / 2);
+    return (w(y) - w(x)) || (y.severity_score - x.severity_score);
+  });
 
   const errors = [];
   insights.forEach((ins, i) => { const r = validateInsight(ins, i); if (!r.ok) errors.push(...r.errors); });
