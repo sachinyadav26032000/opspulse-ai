@@ -291,9 +291,16 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
      then qualified variants — so the common names stay clean and only the tail
      carries a suffix. */
   const namePool = (() => {
+    /* Its OWN rng stream, derived from the seed. Shuffling on the main `rnd`
+       consumed 432 draws before accounts were generated and shifted every
+       downstream draw — same seed, different world. That silently changed which
+       accounts, tickets and NPS responses the generator produced and broke the
+       pattern-detection harness on two of five seeds. Deduping names must not
+       be able to move the data. */
+    const nameRnd = makeRng((seed ^ 0x1d3a7f) >>> 0);
     const base = [];
     for (const a of CO_A) for (const b of CO_B) base.push(`${a} ${b}`);
-    rnd.shuffle(base);
+    nameRnd.shuffle(base);
     const out = base.slice();
     for (const suffix of CO_SUFFIX) for (const n of base) out.push(`${n} ${suffix}`);
     return out;
@@ -301,6 +308,11 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
   let nameCursor = 0;
   const usedNames = new Set();
   const companyName = () => {
+    /* Consume the two draws the original `${rnd.pick(CO_A)} ${rnd.pick(CO_B)}`
+       made. Uniqueness must not move the RNG sequence: removing these two draws
+       per account shifted every subsequent value and produced a different world
+       from the same seed, which broke pattern detection on two of five seeds. */
+    rnd.pick(CO_A); rnd.pick(CO_B);
     while (nameCursor < namePool.length) {
       const n = namePool[nameCursor++];
       if (!usedNames.has(n)) { usedNames.add(n); return n; }
