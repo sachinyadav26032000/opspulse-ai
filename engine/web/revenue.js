@@ -154,6 +154,7 @@ function silentDecline(ds, ctx) {
       accounts: shown.map((a) => acctRow(a)),
     },
     impact: {
+      type: 'revenue_at_risk',
       formula: `${usd(arr)} ARR × 35% churn probability at this decline rate`,
       basis: [
         `${shown.length} accounts, ${usd(arr)} combined ARR`,
@@ -228,6 +229,7 @@ function adoptionFailure(ds, ctx) {
       })),
     },
     impact: {
+      type: 'renewal_at_risk',
       formula: `${usd(arr)} ARR × 30% non-renewal probability where adoption is below ${Math.round(T.adoption_floor * 100)}%`,
       basis: [
         `${dormant.toLocaleString('en-US')} dormant seats across ${shown.length} accounts`,
@@ -306,6 +308,7 @@ function renewalRisk(ds, ctx) {
     },
     decomposition: Object.entries(mix).map(([k, v]) => ({ key: k, value: v, contribution: v / shown.length })),
     impact: {
+      type: 'renewal_at_risk',
       formula: `${usd(arr)} of renewals × 25% loss probability where a deterioration signal is present`,
       basis: [
         `${shown.length} accounts renewing within ${T.renewal_window_days} days`,
@@ -430,6 +433,7 @@ function concentratedCause(ds, ctx) {
     },
     decomposition: tested.slice(0, 5).map((c) => ({ key: c.cat, value: c.arr, contribution: c.arr / tested.reduce((s2, x) => s2 + x.arr, 0) })),
     impact: {
+      type: 'revenue_at_risk',
       formula: `${usd(top.arr)} at-risk ARR concentrated in ${top.cat} x 30% loss probability if unaddressed`,
       basis: [
         `${top.list.length} at-risk accounts whose dominant contact reason is ${top.cat}`,

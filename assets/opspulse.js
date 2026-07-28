@@ -82,22 +82,56 @@ const bandOf = (i) => (i.severity_score >= CRITICAL_AT ? 'critical' : i.severity
  * low on priority cannot fall off the bottom), topped up to three for
  * readability, and sorted so the bands stay contiguous.
  */
-export function selectBriefDecisions(insights) {
-  const ranked = insights || [];
-  const critical = ranked.filter((i) => bandOf(i) === 'critical');
-  const target = Math.max(3, critical.length);
+export const BRIEF_LIMIT = 4;
 
-  const out = [];
-  const seen = new Set();
-  for (const i of [...critical, ...ranked]) {
-    if (seen.has(i.insight_id)) continue;
-    seen.add(i.insight_id);
-    out.push(i);
-    if (out.length >= target) break;
-  }
-  const order = { critical: 0, high: 1, medium: 2 };
-  return out.sort((x, y) => order[bandOf(x)] - order[bandOf(y)]);
+/**
+ * What the executive brief puts in front of someone today.
+ *
+ * Ranked by REVENUE IMPACT, not severity. A support-operations decision can be
+ * severity 86 and still be the wrong thing to lead a CRO with; the question the
+ * brief answers is "what is this worth", so that is what orders it.
+ *
+ * Capped at BRIEF_LIMIT. Everything below the cut stays fully available in the
+ * Decision Feed and the Workspace — nothing is discarded, and the caller is
+ * given the cut list so the brief can say what it left out and why. A brief
+ * that silently drops decisions is indistinguishable from one that never
+ * found them.
+ */
+export function briefSelection(insights, limit = BRIEF_LIMIT) {
+  const worth = (i) => (i.expected_impact.range_low_usd == null
+    ? 0
+    : (i.expected_impact.range_low_usd + i.expected_impact.range_high_usd) / 2);
+
+  const ranked = (insights || []).slice().sort((a, b) => {
+    const d = worth(b) - worth(a);
+    return d !== 0 ? d : b.severity_score - a.severity_score;   // severity breaks ties only
+  });
+
+  const shown = ranked.slice(0, limit);
+  const cut = ranked.slice(limit);
+  const cutWorth = cut.reduce((s, i) => s + worth(i), 0);
+
+  return {
+    shown,
+    cut,
+    worth,
+    sizing: {
+      matched: ranked.length,
+      shown: shown.length,
+      cut: cut.length,
+      cut_worth: cutWorth,
+      shown_worth: shown.reduce((s, i) => s + worth(i), 0),
+      uncosted_cut: cut.filter((i) => worth(i) === 0).length,
+      basis: 'revenue impact (midpoint of the costed range), descending',
+    },
+  };
 }
+
+/** Back-compatible: the Live Ops Floor reduction band counts this array. */
+export function selectBriefDecisions(insights, limit = BRIEF_LIMIT) {
+  return briefSelection(insights, limit).shown;
+}
+
 /* A decision is taken against a SIGNAL, not against an insight_id: the engine
    rebuilds insight objects on every pass, so the id churns while the underlying
    problem persists. Keying on signal type + entity is what lets the ledger say
@@ -954,9 +988,10 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
        Criticals are unioned in FIRST so a high-severity item that ranks 4th
        on priority (severity × confidence × urgency) can never be silently
        dropped off the bottom of a three-item list. */
-    const ranked = e.insights;                    // already priority-ordered by the engine
-    const critical = ranked.filter((i) => bandOf(i) === 'critical');
-    const shown = selectBriefDecisions(ranked);   // shared with the Live Ops Floor band
+    const ranked = e.insights;
+    const sel = briefSelection(ranked);           // ranked by revenue impact, capped
+    const shown = sel.shown;
+    const critical = shown.filter((i) => bandOf(i) === 'critical');
 
     if (!ranked.length) {
       screen.appendChild(el('p', 'brief-sub', 'Nothing requires a decision today. No signal cleared its detection threshold in the current window — which is a result, not an empty screen.'));
@@ -983,6 +1018,24 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
         screen.appendChild(el('p', 'brief-note',
           `That is more than usual — ${critical.length} signals are in the critical band, so none of them have been held back for readability.`));
       }
+    }
+
+    /* Say what was left out. The brief is a cut, and a cut you cannot see is
+       indistinguishable from a search that found nothing. */
+    if (sel.sizing.cut > 0) {
+      const s2 = sel.sizing;
+      const money = s2.cut_worth > 0 ? ` carrying ${fmt.usdK(s2.cut_worth)} between them` : '';
+      const note = el('p', 'brief-note');
+      note.innerHTML = `Ranked by revenue impact. ${s2.cut} further decision${s2.cut === 1 ? '' : 's'}${money} sit${s2.cut === 1 ? 's' : ''} below the cut` +
+        `${s2.uncosted_cut ? `, ${s2.uncosted_cut} of which carr${s2.uncosted_cut === 1 ? 'ies' : 'y'} no costed exposure` : ''} — ` +
+        `all of them remain in the <b>Decision Feed</b>.`;
+      const open = el('button', 'lv-btn', `Open the feed (${e.insights.length}) →`);
+      open.addEventListener('click', () => { state.view = 'feed'; render(); body.scrollTop = 0; });
+      screen.appendChild(note);
+      const row = el('div', 'brief-cta');
+      row.style.marginTop = '10px';
+      row.appendChild(open);
+      screen.appendChild(row);
     }
 
     /* ── The decisions, grouped by band ── */
