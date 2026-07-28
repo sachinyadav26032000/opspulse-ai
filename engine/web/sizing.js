@@ -54,13 +54,40 @@ export function applyDecisionSizing(insight, size = DECISION_SIZE) {
   const matched = m.affected_accounts ?? shown.length;
   const ratio = Math.min(1, sizedArr / fullArr);
 
-  /* Restate the money. The impact formula was ARR x probability, so scaling by
-     the share of ARR that survived the cut keeps the arithmetic intact rather
-     than inventing a second model. */
+  /* Restate the money — INCLUDING the shown arithmetic.
+     Rescaling expected_impact alone left _meta.impact describing the full ARR,
+     so the card published $95K-$171K while the drill-down's formula multiplied
+     out to $181K-$325K. The repo's first credibility rule is that the printed
+     inputs genuinely produce the printed range; scaling one without the other
+     breaks exactly that. The ARR input is scaled, then low/high are recomputed
+     FROM the inputs so the two cannot drift again. */
+  const im = insight._meta.impact;
+  if (im && im.low != null && Array.isArray(im.inputs) && Array.isArray(im.range_factor)) {
+    for (const inp of im.inputs) {
+      // the input carrying the ARR is the one that tracks the full exposure
+      if (typeof inp.value === 'number' && Math.abs(inp.value - fullArr) <= Math.max(1, fullArr * 0.001)) {
+        inp.value = Math.round(inp.value * ratio);
+        if (inp.display) inp.display = money(inp.value);
+      }
+    }
+    const product = im.inputs.reduce((s, x) => s * x.value, 1);
+    im.low = Math.round(product * im.range_factor[0]);
+    im.high = Math.round(product * im.range_factor[1]);
+    im.formula_full = im.formula;
+    im.formula = `${money(product)} × ${im.range_factor.map((f) => Math.round(f * 100) + '%').join('–')} (scoped to ${shown.length} of ${matched} accounts)`;
+    im.scoped_by_sizing = true;
+  }
+
   const ei = insight.expected_impact;
   if (ei && ei.range_low_usd != null) {
-    ei.range_low_usd = Math.round(ei.range_low_usd * ratio);
-    ei.range_high_usd = Math.round(ei.range_high_usd * ratio);
+    if (im && im.low != null) {
+      // Publish exactly what the shown arithmetic produces.
+      ei.range_low_usd = im.low;
+      ei.range_high_usd = im.high;
+    } else {
+      ei.range_low_usd = Math.round(ei.range_low_usd * ratio);
+      ei.range_high_usd = Math.round(ei.range_high_usd * ratio);
+    }
     ei.revenue_at_risk_usd = Math.round((ei.range_low_usd + ei.range_high_usd) / 2);
   }
 

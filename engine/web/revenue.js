@@ -155,7 +155,11 @@ function silentDecline(ds, ctx) {
     },
     impact: {
       type: 'revenue_at_risk',
-      formula: `${usd(arr)} ARR × 35% churn probability at this decline rate`,
+      low: Math.round(arr * 0.22), high: Math.round(arr * 0.48),
+      inputs: [{ label: 'ARR at risk', value: arr, display: usd(arr) }],
+      range_factor: [0.22, 0.48],
+      time_horizon_days: Math.max(30, soonest.renewal_in_days),
+      formula: `${usd(arr)} × 22–48% churn probability at this decline rate`,
       basis: [
         `${shown.length} accounts, ${usd(arr)} combined ARR`,
         `mean usage change ${pct(avgDrop)} over 30 days`,
@@ -230,7 +234,11 @@ function adoptionFailure(ds, ctx) {
     },
     impact: {
       type: 'renewal_at_risk',
-      formula: `${usd(arr)} ARR × 30% non-renewal probability where adoption is below ${Math.round(T.adoption_floor * 100)}%`,
+      low: Math.round(arr * 0.18), high: Math.round(arr * 0.42),
+      inputs: [{ label: 'ARR at risk', value: arr, display: usd(arr) }],
+      range_factor: [0.18, 0.42],
+      time_horizon_days: 90,
+      formula: `${usd(arr)} × 18–42% non-renewal probability where adoption is below ${Math.round(T.adoption_floor * 100)}%`,
       basis: [
         `${dormant.toLocaleString('en-US')} dormant seats across ${shown.length} accounts`,
         `mean feature adoption ${Math.round(mean(shown.map((a) => a.usage.feature_adoption_pct)))}%`,
@@ -309,7 +317,11 @@ function renewalRisk(ds, ctx) {
     decomposition: Object.entries(mix).map(([k, v]) => ({ key: k, value: v, contribution: v / shown.length })),
     impact: {
       type: 'renewal_at_risk',
-      formula: `${usd(arr)} of renewals × 25% loss probability where a deterioration signal is present`,
+      low: Math.round(arr * 0.15), high: Math.round(arr * 0.35),
+      inputs: [{ label: 'renewals in window', value: arr, display: usd(arr) }],
+      range_factor: [0.15, 0.35],
+      time_horizon_days: Math.max(30, soonest.renewal_in_days),
+      formula: `${usd(arr)} × 15–35% loss probability where a deterioration signal is present`,
       basis: [
         `${shown.length} accounts renewing within ${T.renewal_window_days} days`,
         `soonest is ${soonest.renewal_in_days} days out`,
@@ -434,7 +446,11 @@ function concentratedCause(ds, ctx) {
     decomposition: tested.slice(0, 5).map((c) => ({ key: c.cat, value: c.arr, contribution: c.arr / tested.reduce((s2, x) => s2 + x.arr, 0) })),
     impact: {
       type: 'revenue_at_risk',
-      formula: `${usd(top.arr)} at-risk ARR concentrated in ${top.cat} x 30% loss probability if unaddressed`,
+      low: Math.round(top.arr * 0.18), high: Math.round(top.arr * 0.40),
+      inputs: [{ label: 'at-risk ARR on this cause', value: top.arr, display: usd(top.arr) }],
+      range_factor: [0.18, 0.40],
+      time_horizon_days: 60,
+      formula: `${usd(top.arr)} × 18–40% loss probability if unaddressed`,
       basis: [
         `${top.list.length} at-risk accounts whose dominant contact reason is ${top.cat}`,
         `${Math.round(top.p1 * 100)}% of at-risk vs ${Math.round(top.p0 * 100)}% of comparable accounts (z = ${top.z.toFixed(1)})`,

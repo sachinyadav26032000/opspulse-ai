@@ -242,6 +242,11 @@ export function detectDataQuality(ds, coverage, { asOf = ds.meta.as_of } = {}) {
       evidence: { gaps, blinded_signals: blinded, floor_pct: Math.round(COVERAGE_FLOOR * 100) },
       impact: {
         type: 'coverage_gap',
+        /* Uncosted BY DESIGN, declared the way the contract requires: a null
+           range_factor is the machine-readable statement of "this must not
+           carry a dollar figure", which is exactly the claim being made. */
+        low: null, high: null, inputs: [], range_factor: null,
+        time_horizon_days: 30,
         formula: 'Not costed — the exposure hidden by a blind spot cannot be measured from inside it',
         basis: gaps.map((g) => `${g.source_system}: ${g.coverage_pct}% coverage, ${g.records_used.toLocaleString('en-US')} records`),
         note: 'Putting a dollar figure on unmeasured risk would be the same error this finding is warning about.',
