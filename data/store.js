@@ -43,12 +43,35 @@ function saveSession(s) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch { /* quota or privacy mode — the demo still runs */ }
 }
 
+/**
+ * The as-of instant, rounded down to the start of the local day.
+ *
+ * This is product behaviour, not a demo convenience. A morning brief that
+ * reshuffles under someone who acted on it at 9am is worse than useless — they
+ * committed a decision against six named accounts, and by lunchtime the brief
+ * would be discussing six different ones.
+ *
+ * `generate(seed, asOf)` is sensitive to its input below day granularity: the
+ * same seed at 09:00, 14:30 and 22:30 on ONE day produced three different
+ * at-risk cohorts ranging $444K to $813K, even though the derived `day0` was
+ * identical in all three. Rounding the input is what makes the run stable,
+ * wherever inside the generator that sensitivity lives.
+ *
+ * Decisions therefore hold for a business day and refresh when the day turns,
+ * which is exactly the cadence a daily brief should have.
+ */
+function startOfLocalDay(ms) {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
 export function createStore(opts = {}) {
   const persisted = opts.fresh ? null : loadSession();
   let seed = opts.seed ?? persisted?.seed ?? 20260724;
-  // A session older than 12 hours gets a new as-of so "today" stays today.
-  const stale = persisted && Date.now() - persisted.as_of > 12 * 3600000;
-  let asOf = opts.asOf ?? (stale ? Date.now() : persisted?.as_of ?? Date.now());
+  // A session from a previous day gets a new as-of so "today" stays today.
+  const stale = persisted && startOfLocalDay(Date.now()) !== startOfLocalDay(persisted.as_of);
+  let asOf = startOfLocalDay(opts.asOf ?? (stale ? Date.now() : persisted?.as_of ?? Date.now()));
 
   let dataset = generate(seed, asOf);
   let engine = runEngine(dataset);
@@ -203,7 +226,7 @@ export function createStore(opts = {}) {
     /** New random world — the same four patterns, different everything else. */
     reseed(newSeed) {
       seed = newSeed ?? Math.floor(Math.random() * 2147483647);
-      asOf = Date.now();
+      asOf = startOfLocalDay(Date.now());
       dataset = generate(seed, asOf);
       rng = makeRng(seed ^ 0x5f3759df);
       counters = { added: 0, resolved: 0, escalated: 0, nps: 0, qa: 0, uploaded: 0 };

@@ -20,7 +20,7 @@
    Every number below is measured off the dataset. Nothing here is seeded.
    ========================================================================== */
 
-import { createInsight, STATUS } from './schema.js';
+import { createInsight, STATUS, CONFIDENCE_CUTOFF } from './schema.js';
 
 /** A source is materially incomplete below this. */
 export const COVERAGE_FLOOR = 0.70;
@@ -131,13 +131,17 @@ export function attachConfidence(insight, coverage) {
   }));
 
   const weakest = used.slice().sort((a, b) => a.coverage_pct - b.coverage_pct)[0];
-  const raw = Math.round(insight.why.confidence * 100);
+  /* FLOOR, not round. Rounding pushed a 59.6% compliance signal up to exactly
+     60% — the confidence floor — so the card read "60% confidence · held for
+     review" while the rule says held means below 60. Confidence is never
+     rounded up across its own governance boundary. */
+  const raw = Math.floor(insight.why.confidence * 100);
 
   /* Coverage caps the score rather than averaging into it. A signal computed
      from a source covering 33% of accounts is not 80% trustworthy no matter
      how clean its arithmetic — but neither is it 33%, because the records it
      DID read are sound. The cap is the midpoint of the two. */
-  const cap = weakest ? Math.round((weakest.coverage_pct + 100) / 2) : 100;
+  const cap = weakest ? Math.floor((weakest.coverage_pct + 100) / 2) : 100;
   const score = Math.min(raw, cap);
 
   const limiting_factor = !weakest || weakest.coverage_pct >= COVERAGE_FLOOR * 100
@@ -159,6 +163,16 @@ export function attachConfidence(insight, coverage) {
 
   // Keep the legacy field in step so nothing downstream disagrees with the card.
   insight.why.confidence = score / 100;
+
+  /* The confidence floor has to be re-applied AFTER the cap. Capping can push a
+     decision that cleared 60% on signal strength below the floor on coverage —
+     and an insight sitting at 55% that is not marked held would be auto-
+     actionable at a confidence the contract says is too low to act on. The
+     governance rule is about the published number, not the pre-cap one. */
+  if (insight.why.confidence < CONFIDENCE_CUTOFF && insight.status === STATUS.UNASSIGNED) {
+    insight.status = STATUS.HELD_FOR_REVIEW;
+    insight.confidence.held_by_coverage = true;
+  }
   return insight;
 }
 
