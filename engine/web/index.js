@@ -297,11 +297,26 @@ export function runEngine(ds, { asOf = ds.meta.as_of } = {}) {
      because of which module emitted it. */
   for (const ins of insights) ins._meta.is_revenue = isRevenueShaped(ins);
 
-  insights.sort((x, y) => {
-    const w = (i) => (i.expected_impact.range_low_usd == null ? 0
-      : (i.expected_impact.range_low_usd + i.expected_impact.range_high_usd) / 2);
-    return (w(y) - w(x)) || (y.severity_score - x.severity_score);
-  });
+  /* The revenue and data-quality detectors build their own _meta, so they must
+     be given the SAME priority the statistical path computes — severity x
+     confidence x urgency, with urgency falling off over a 120-day horizon.
+     Without it they sort as undefined and the feed order collapses. */
+  for (const ins of insights) {
+    if (ins._meta.priority != null) continue;
+    const urgency = clamp(1.25 - (ins._meta.horizon_days ?? ins.expected_impact.time_horizon_days ?? 90) / 120, 0.4, 1.25);
+    ins._meta.urgency = urgency;
+    ins._meta.priority = ins.severity_score * ins.why.confidence * urgency;
+  }
+
+  /* The FEED stays in priority order — severity x confidence x urgency — which
+     is the contract tools/verify.mjs asserts and what an operator wants when
+     working a list top-down.
+
+     Revenue ranking belongs to the BRIEF, not the feed, and briefSelection()
+     in assets/opspulse.js already does it. Re-sorting here as well was
+     redundant and broke the feed contract to achieve something that was
+     already happening one layer up. */
+  insights.sort((x, y) => y._meta.priority - x._meta.priority);
 
   const errors = [];
   insights.forEach((ins, i) => { const r = validateInsight(ins, i); if (!r.ok) errors.push(...r.errors); });
