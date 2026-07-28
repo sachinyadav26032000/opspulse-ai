@@ -40,6 +40,7 @@
 
 import { makeRng, allocate } from './rng.js';
 import { attachUsage } from './usage.js';
+import { attachBilling } from './billing.js';
 
 const DAY_MS = 86400000;
 export const DAYS = 90;
@@ -251,6 +252,40 @@ function categoryMix(d) {
  * @param {number} nowMs  "as of" instant — day 89 is the day containing it
  * @returns {object} dataset
  */
+/* ── Contract dates ───────────────────────────────────────────────────────
+   renewal_in_days used to be rnd.int(5, 360) — a flat random integer with no
+   relationship to anything. That made "my Q3 renewals" meaningless, because
+   renewals were uniform noise rather than a calendar.
+
+   Real B2B contracts have a term and close disproportionately at quarter ends,
+   so a renewal book is lumpy. Here the purchase date is snapped to a quarter
+   end ~70% of the time and the renewal is the next anniversary at the contract
+   term, which makes the quarterly distribution uneven the way a real book is.
+
+   DRAW BUDGET: exactly two, the same as before (days-ago, term). The quarter
+   snap is derived from the days-ago draw rather than taking a third, because
+   adding a draw here shifts every downstream value and silently regenerates
+   the world — that regression has already happened once on this branch. */
+const QUARTER_END_MONTH = [2, 5, 8, 11];   // Mar, Jun, Sep, Dec (0-indexed)
+
+function purchaseDate(nowMs, daysAgo) {
+  const raw = new Date(nowMs - daysAgo * DAY_MS);
+  // ~70% of contracts land on a quarter end; derived from the existing draw.
+  if (daysAgo % 10 >= 7) return raw;
+  const m = raw.getMonth();
+  const q = QUARTER_END_MONTH.reduce((best, qm) => (Math.abs(qm - m) < Math.abs(best - m) ? qm : best), QUARTER_END_MONTH[0]);
+  const snapped = new Date(raw.getFullYear(), q + 1, 0);   // last day of that month
+  return snapped;
+}
+
+/** Days from as-of to the next contract anniversary. Always in the future. */
+function daysToRenewal(purchasedMs, termMonths, nowMs) {
+  const r = new Date(purchasedMs);
+  let guard = 0;
+  while (r.getTime() <= nowMs && guard++ < 60) r.setMonth(r.getMonth() + termMonths);
+  return Math.max(1, Math.round((r.getTime() - nowMs) / DAY_MS));
+}
+
 export function generate(seed = 20260724, nowMs = Date.now()) {
   const rnd = makeRng(seed);
 
@@ -341,8 +376,16 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
       customer_age: rnd.int(22, 64),
       customer_gender: rnd.weighted({ Female: 0.47, Male: 0.47, 'Non-binary': 0.03, 'Prefer not to say': 0.03 }),
       product: rnd.pick(PRODUCTS),
-      purchased_at: iso(nowMs - rnd.int(35, 1400) * DAY_MS),
-      renewal_in_days: rnd.int(5, 360),
+      ...(() => {
+        const daysAgo = rnd.int(35, 1400);                                    // draw 1 (was: purchased_at)
+        const termMonths = rnd.weighted({ 12: 0.62, 24: 0.26, 36: 0.12 });    // draw 2 (was: renewal_in_days)
+        const purchased = purchaseDate(nowMs, daysAgo);
+        return {
+          purchased_at: iso(purchased.getTime()),
+          term_months: Number(termMonths),
+          renewal_in_days: daysToRenewal(purchased.getTime(), Number(termMonths), nowMs),
+        };
+      })(),
       csm: rnd.pick(agents).name,
     });
   }
@@ -806,6 +849,9 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
   /* Product usage, attached last: it is shaped against each account's real
      ticket and escalation history, which only exists by this point. */
   attachUsage(ds);
+
+  /* Billing terms, which turn a renewal date into an effective churn date. */
+  attachBilling(ds);
 
   return ds;
 }
