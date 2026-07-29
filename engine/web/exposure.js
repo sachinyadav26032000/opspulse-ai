@@ -55,6 +55,18 @@ export function buildExposedAccounts(ds, insight, limit = EXPOSURE_LIMIT) {
   return picked.map((a) => buildOne(ds, a));
 }
 
+/**
+ * The same account detail, for ONE account, with no insight context.
+ *
+ * The cohort table reaches accounts that no insight has flagged — that is the
+ * point of it, since a renewal with falling adoption may not have tripped any
+ * detector yet. Without this the row would have nowhere to go.
+ */
+export function buildAccountDetail(ds, accountId) {
+  const acct = ds.accounts.find((a) => a.account_id === accountId);
+  return acct ? buildOne(ds, acct) : null;
+}
+
 function buildOne(ds, acct) {
   const windowDays = ds.meta.days - ds.meta.recent_from;
   const tickets = ds.tickets.filter((t) => t.account_id === acct.account_id);

@@ -1,0 +1,158 @@
+/* ==========================================================================
+   Renewals × Adoption — the cohort a CS director actually works.
+   --------------------------------------------------------------------------
+   From the validation call, almost verbatim:
+
+     "What are my upcoming Q3 renewals? And add me another column which says
+      MAU — monthly active usage, or product adoption. Let's say it's less than
+      70 or 60%, and that's the cohort I go after."
+
+   Two controls, one table. This is deliberately NOT a report builder: the
+   workflow is one query run repeatedly, not twenty queries run once.
+
+   THREE SCOPE LEVELS, because "my renewals" means different books to different
+   people in the same org:
+
+     csm      an individual queue        ~40 accounts, ~6 renewing a quarter
+     region   a director's book          ~90 renewing a quarter   ← default
+     all      the VP rollup              ~360 renewing a quarter
+
+   Region is the default because it is the altitude the question was asked at.
+
+   The table is a WORKING LIST, not a decision — forty rows sorted by ARR is
+   correct here. Decision sizing applies to the brief item that points at this
+   surface, not to the surface itself.
+   ========================================================================== */
+
+const DAY = 86400000;
+
+/* Defaults. Task 4 relocates these to config/thresholds.js so a customer can
+   tune them at onboarding; until then this is the single place they live. */
+export const COHORT_DEFAULTS = {
+  adoption_risk_pct: 60,
+  scope: 'region',
+  window: 'quarter',
+};
+
+export const WINDOWS = [
+  { key: 'quarter', label: 'This quarter' },
+  { key: 'next_quarter', label: 'Next quarter' },
+  { key: 'd90', label: 'Next 90 days' },
+  { key: 'd180', label: 'Next 180 days' },
+];
+
+/** Day offsets from as-of for a named window. */
+export function windowRange(key, asOf) {
+  const d = new Date(asOf);
+  const q = Math.floor(d.getMonth() / 3);
+  const mk = (start, end) => ({
+    from: Math.max(0, Math.ceil((start - asOf) / DAY)),
+    to: Math.floor((end - asOf) / DAY),
+  });
+
+  if (key === 'quarter') {
+    const end = new Date(d.getFullYear(), q * 3 + 3, 0, 23, 59, 59);
+    return { ...mk(asOf, end.getTime()), label: `Q${q + 1} ${d.getFullYear()}` };
+  }
+  if (key === 'next_quarter') {
+    const s = new Date(d.getFullYear(), q * 3 + 3, 1);
+    const e = new Date(d.getFullYear(), q * 3 + 6, 0, 23, 59, 59);
+    const nq = (q + 1) % 4;
+    return { ...mk(s.getTime(), e.getTime()), label: `Q${nq + 1} ${s.getFullYear()}` };
+  }
+  const days = key === 'd180' ? 180 : 90;
+  return { from: 0, to: days, label: `next ${days} days` };
+}
+
+/** The scope options actually present in this dataset, largest book first. */
+export function scopeOptions(ds) {
+  const byRegion = tally(ds.accounts, (a) => a.region);
+  const byCsm = tally(ds.accounts, (a) => a.csm);
+  return {
+    all: [{ key: '*', label: 'All accounts', n: ds.accounts.length }],
+    region: byRegion,
+    csm: byCsm,
+  };
+}
+
+function tally(rows, get) {
+  const m = new Map();
+  for (const r of rows) m.set(get(r), (m.get(get(r)) || 0) + 1);
+  return [...m.entries()].map(([key, n]) => ({ key, label: key, n })).sort((a, b) => b.n - a.n);
+}
+
+/**
+ * Build the cohort.
+ *
+ * `at risk` is the ARR of accounts below the adoption threshold — not the
+ * whole renewal book. The distinction is the point of the screen: plenty of
+ * accounts renew, and only some of them are in trouble.
+ */
+export function buildCohort(ds, opts = {}) {
+  const asOf = ds.meta.as_of;
+  const scope = opts.scope || COHORT_DEFAULTS.scope;
+  const threshold = opts.adoption_risk_pct ?? COHORT_DEFAULTS.adoption_risk_pct;
+  const win = windowRange(opts.window || COHORT_DEFAULTS.window, asOf);
+
+  const options = scopeOptions(ds);
+  const scopeValue = opts.scopeValue || (scope === 'all' ? '*' : options[scope][0]?.key);
+
+  const inScope = ds.accounts.filter((a) => {
+    if (scope === 'all') return true;
+    if (scope === 'region') return a.region === scopeValue;
+    return a.csm === scopeValue;
+  });
+
+  const renewing = inScope.filter((a) => a.renewal_in_days >= win.from && a.renewal_in_days <= win.to);
+
+  const rows = renewing
+    .map((a) => {
+      const u = a.usage || {};
+      const b = a.billing || {};
+      const adoption = u.feature_adoption_pct ?? null;
+      return {
+        account_id: a.account_id,
+        account_name: a.company,
+        arr_usd: a.arr_usd,
+        plan: a.plan,
+        region: a.region,
+        owner: a.csm,
+        renewal_in_days: a.renewal_in_days,
+        renewal_date: b.renewal_date || null,
+        effective_churn_date: b.effective_churn_date || null,
+        effective_churn_in_days: b.effective_churn_in_days ?? a.renewal_in_days,
+        billing_channel: b.channel || null,
+        credit_days: b.credit_days ?? 0,
+        // True where the credit window changes which account to work first.
+        runway_differs: (b.credit_days ?? 0) > 0,
+        adoption_pct: adoption,
+        below_threshold: adoption != null && adoption < threshold,
+        usage_trend_30d: u.usage_trend_30d ?? null,
+        history: (u.usage_history || []).map((h) => h.adoption_pct),
+        seats_active_30d: u.seats_active_30d ?? null,
+        seats_provisioned: u.seats_provisioned ?? null,
+      };
+    })
+    .sort((x, y) => y.arr_usd - x.arr_usd);
+
+  const atRisk = rows.filter((r) => r.below_threshold);
+
+  return {
+    rows,
+    scope,
+    scopeValue,
+    scopeLabel: scope === 'all' ? 'All accounts' : scopeValue,
+    options,
+    window: win,
+    threshold,
+    summary: {
+      renewing: rows.length,
+      below: atRisk.length,
+      arr_at_risk: atRisk.reduce((s, r) => s + r.arr_usd, 0),
+      arr_total: rows.reduce((s, r) => s + r.arr_usd, 0),
+      offline_below: atRisk.filter((r) => r.runway_differs).length,
+      // Accounts whose real deadline sits in a later month than the renewal.
+      runway_gained: atRisk.filter((r) => r.runway_differs).reduce((s, r) => s + r.credit_days, 0),
+    },
+  };
+}

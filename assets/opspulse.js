@@ -26,6 +26,8 @@ import {
 import { KAGGLE_COLUMNS } from '../data/generator.js';
 import { toCsv } from '../data/csv.js';
 import { CONFIDENCE_CUTOFF, SIGNAL_TYPES } from '../engine/web/schema.js';
+import { buildCohort, WINDOWS, COHORT_DEFAULTS } from '../engine/web/cohort.js';
+import { buildAccountDetail } from '../engine/web/exposure.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -44,6 +46,7 @@ const IC = {
   ledger: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
   shield: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l8 3.5v5.7c0 4.3-3.2 7.6-8 8.8-4.8-1.2-8-4.5-8-8.8V6.5L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m8.8 12 2.2 2.2 4.2-4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   more: '<svg viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg>',
+  renew: '<svg viewBox="0 0 24 24" fill="none"><path d="M20 11A8 8 0 0 0 6.3 6.3L4 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 4v4.5H8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 13a8 8 0 0 0 13.7 4.7L20 15.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 20v-4.5h-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   sun: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
 };
 
@@ -160,6 +163,7 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     focus: null,   // signal_key returned from the workspace — highlighted, never auto-committed
     drillId: null,     // decision being drilled into (Level 2)
     drillAccount: null, // account being drilled into (Level 3)
+    cohort: { ...COHORT_DEFAULTS, scopeValue: null },
   };
 
   /* Coming back from the workspace via "Take action". We highlight the decision
@@ -203,12 +207,18 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
   const NAV = [
     { id: 'today', label: 'Today', icon: IC.sun },
     { id: 'feed', label: 'Decision Feed', icon: IC.feed, badge: () => store.engine.insights.length },
+    { id: 'cohort', label: 'Renewals', icon: IC.renew },
     { id: 'radar', label: 'Risk Radar', icon: IC.radar },
-    { id: 'dash', label: 'Workspace', icon: IC.home },
   ];
   /* Reachable, de-emphasised. Both are surfaces you go to on purpose rather
      than pass through, so neither earns a permanent slot. */
   const NAV_MORE = [
+    /* Workspace moved here to make room for Renewals, which is the workflow the
+       buyer actually described. Workspace is an investigation surface reached
+       from a decision card or the drill-down, not somewhere you navigate to
+       cold — and a fifth primary tab overflowed the header at 1280px, which
+       would bring back the silently-scrolling nav. One line to swap back. */
+    { id: 'dash', label: 'Workspace', icon: IC.home },
     { id: 'ledger', label: 'Decision Ledger', icon: IC.ledger, badge: () => store.decisions.filter((x) => x.status !== 'closed').length },
     { id: 'assurance', label: 'Assurance', icon: IC.shield },
   ];
@@ -1118,14 +1128,18 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
   function viewAccount() {
     const ins = drilledInsight();
     const wrap = el('div', 'lv-view drill-level');
-    const a = ins?._meta?.exposed_accounts?.find((x) => x.account_id === state.drillAccount);
-    if (!a) { wrap.appendChild(el('div', 'empty', 'That account is no longer in the current decision.')); return wrap; }
+    /* Reached either from a decision (Level 2) or straight from the cohort
+       table, where the account may not be flagged by any insight at all — which
+       is the point of that surface. Build the detail directly when there is no
+       decision context. */
+    const a = ins?._meta?.exposed_accounts?.find((x) => x.account_id === state.drillAccount)
+      || buildAccountDetail(ds(), state.drillAccount);
+    if (!a) { wrap.appendChild(el('div', 'empty', 'That account is no longer in the dataset.')); return wrap; }
 
-    wrap.appendChild(breadcrumb([
-      { label: 'Today', go: toBrief },
-      { label: ins._meta.title, go: toAccounts },
-      { label: a.account_name },
-    ]));
+    wrap.appendChild(breadcrumb(ins
+      ? [{ label: 'Today', go: toBrief }, { label: ins._meta.title, go: toAccounts }, { label: a.account_name }]
+      : [{ label: 'Renewals', go: () => { state.view = 'cohort'; state.drillAccount = null; render(); body.scrollTop = 0; } },
+         { label: a.account_name }]));
 
     const head = el('div', 'acct-head');
     head.innerHTML = `
@@ -1178,10 +1192,130 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     }
 
     const back = el('div', 'brief-cta');
-    const b = el('button', 'lv-btn', `← Back to the ${ins._meta.exposed_accounts.length} exposed accounts`);
-    b.addEventListener('click', toAccounts);
+    const b = el('button', 'lv-btn', ins
+      ? `← Back to the ${ins._meta.exposed_accounts.length} exposed accounts`
+      : '← Back to the renewals cohort');
+    b.addEventListener('click', ins ? toAccounts : () => { state.view = 'cohort'; state.drillAccount = null; render(); body.scrollTop = 0; });
     back.appendChild(b);
     wrap.appendChild(back);
+    return wrap;
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     RENEWALS × ADOPTION — the cohort a CS director works
+     ----------------------------------------------------------------------
+     "What are my upcoming Q3 renewals? Add me a column for adoption. Under
+      60%, and that's the cohort I go after."
+
+     Three controls, one table. Deliberately not a report builder: this is one
+     query run repeatedly, not twenty run once. The table is a WORKING LIST —
+     forty rows sorted by ARR is correct, and decision sizing applies to the
+     brief item that points here, not to this surface.
+     ══════════════════════════════════════════════════════════════════════ */
+  function viewCohort() {
+    const d = ds();
+    const c = buildCohort(d, state.cohort);
+    if (!state.cohort.scopeValue) state.cohort.scopeValue = c.scopeValue;
+
+    const wrap = el('div', 'lv-view');
+
+    /* ── Controls ── */
+    const tools = el('div', 'coh-tools');
+    const levelSeg = ['csm', 'region', 'all'].map((k) =>
+      `<button data-lvl="${k}" class="${c.scope === k ? 'on' : ''}">${k === 'csm' ? 'My queue' : k === 'region' ? 'Region' : 'All'}</button>`).join('');
+    tools.innerHTML = `
+      <div class="seg" id="cohLevel">${levelSeg}</div>
+      ${c.scope === 'all' ? '' : `<select class="coh-sel" id="cohScope">${
+        c.options[c.scope].map((o) => `<option value="${esc(o.key)}"${o.key === c.scopeValue ? ' selected' : ''}>${esc(o.label)} · ${o.n}</option>`).join('')}</select>`}
+      <select class="coh-sel" id="cohWin">${
+        WINDOWS.map((w) => `<option value="${w.key}"${w.key === state.cohort.window ? ' selected' : ''}>${esc(w.label)}</option>`).join('')}</select>
+      <label class="coh-thresh">Adoption below
+        <input id="cohThr" type="number" min="1" max="100" step="5" value="${c.threshold}" /><span>%</span>
+      </label>`;
+    wrap.appendChild(tools);
+
+    /* ── The one line that answers the question ── */
+    const sum = el('div', 'coh-summary');
+    const s2 = c.summary;
+    sum.innerHTML = `
+      <div class="cs-line">
+        <b>${fmt.int(s2.renewing)}</b> account${s2.renewing === 1 ? '' : 's'} renewing in <b>${esc(c.window.label)}</b>
+        <span class="sep">·</span>
+        <b class="risk">${fmt.int(s2.below)}</b> below <b>${c.threshold}%</b> adoption
+        <span class="sep">·</span>
+        <b class="risk">${esc(fmt.usdK(s2.arr_at_risk))}</b> at risk
+      </div>
+      <div class="cs-sub">${esc(c.scopeLabel)} · ${esc(fmt.usdK(s2.arr_total))} renewing in total${
+        s2.offline_below ? ` · ${s2.offline_below} of the at-risk accounts are offline-billed, carrying ${s2.runway_gained} extra days of runway between them` : ''}</div>`;
+    wrap.appendChild(sum);
+
+    /* ── The table ── */
+    const p = el('div', 'panel');
+    p.innerHTML = `<div class="panel-hd"><h3>Renewal book</h3><span class="hint">sorted by ARR · a working list, not a shortlist</span></div>`;
+    const bd = el('div', 'panel-bd tight');
+
+    if (!c.rows.length) {
+      bd.appendChild(el('div', 'empty', `No accounts in ${c.scopeLabel} renew in ${c.window.label}.`));
+    } else {
+      const head = el('div', 'coh-head');
+      head.innerHTML = `<span>Account</span><span class="r">ARR</span><span>Renewal</span><span>Effective churn</span>
+        <span class="r">Adoption</span><span>Trend</span><span>Owner</span>`;
+      bd.appendChild(head);
+
+      const list = el('div', 'coh-list');
+      for (const r of c.rows) {
+        const row = el('button', 'coh-row' + (r.below_threshold ? ' below' : ''));
+        row.innerHTML = `
+          <span class="cr-name">${esc(r.account_name)}<small>${esc(r.plan)} · ${esc(r.region)}</small></span>
+          <span class="r cr-arr">${esc(fmt.usd(r.arr_usd))}</span>
+          <span class="cr-ren">${esc(r.renewal_date || '—')}<small>${r.renewal_in_days}d</small></span>
+          <span class="cr-eff${r.runway_differs ? ' gained' : ''}">${esc(r.effective_churn_date || '—')}<small>${
+            r.runway_differs ? `+${r.credit_days}d · ${esc(r.billing_channel)}` : esc(r.billing_channel || 'same')}</small></span>
+          <span class="r cr-adopt">${r.adoption_pct == null ? '—' : r.adoption_pct + '%'}</span>
+          <span class="cr-trend">${sparkline(r.history, { color: r.below_threshold ? STATUS.critical : SERIES[2] })}<small>${
+            r.usage_trend_30d == null ? '' : (r.usage_trend_30d > 0 ? '+' : '') + Math.round(r.usage_trend_30d) + '%'}</small></span>
+          <span class="cr-owner">${esc(r.owner)}</span>`;
+        row.addEventListener('click', () => {
+          state.drillId = null;
+          state.drillAccount = r.account_id;
+          state.view = 'account';
+          render(); body.scrollTop = 0;
+        });
+        list.appendChild(row);
+      }
+      bd.appendChild(list);
+
+      const foot = el('p', 'muted');
+      foot.style.cssText = 'font-size:.74rem;margin:0;padding:calc(var(--u)*2);border-top:1px solid var(--line);line-height:1.55';
+      foot.innerHTML = `Accounts below the threshold carry a left rail. <b>Effective churn</b> is the renewal date plus any credit the billing terms allow — an offline account renewing in 20 days has 50 days of runway, so working the book by renewal date alone puts the wrong account first.`;
+      bd.appendChild(foot);
+    }
+
+    p.appendChild(bd);
+    wrap.appendChild(p);
+
+    /* Handlers bound synchronously, not in a setTimeout. The elements already
+       exist on `wrap` before it is inserted, so deferring buys nothing and
+       loses any click that lands before the next macrotask — which a user
+       switching scope immediately after the view paints will do. */
+    {
+      wrap.querySelectorAll('#cohLevel button').forEach((b) => b.addEventListener('click', () => {
+        state.cohort.scope = b.dataset.lvl;
+        state.cohort.scopeValue = null;   // re-default for the new level
+        render();
+      }));
+      const sc = wrap.querySelector('#cohScope');
+      if (sc) sc.addEventListener('change', () => { state.cohort.scopeValue = sc.value; render(); });
+      const wn = wrap.querySelector('#cohWin');
+      if (wn) wn.addEventListener('change', () => { state.cohort.window = wn.value; render(); });
+      const th = wrap.querySelector('#cohThr');
+      if (th) th.addEventListener('change', () => {
+        const v = Math.max(1, Math.min(100, Number(th.value) || COHORT_DEFAULTS.adoption_risk_pct));
+        state.cohort.adoption_risk_pct = v; render();
+      });
+    }
+
     return wrap;
   }
 
@@ -2386,7 +2520,8 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     renderNav();
     const scrollTop = body.scrollTop;
     body.innerHTML = '';
-    const v = state.view === 'accounts' ? viewAccounts()
+    const v = state.view === 'cohort' ? viewCohort()
+      : state.view === 'accounts' ? viewAccounts()
       : state.view === 'account' ? viewAccount()
       : state.view === 'today' ? viewToday()
       : state.view === 'dash' ? viewDashboard()

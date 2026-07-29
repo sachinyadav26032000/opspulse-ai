@@ -732,3 +732,79 @@
 /* The exposure figure on a brief card doubles as its drill affordance. */
 .chip.drill-link { border-color: rgba(34,211,238,.32); color: var(--text-soft); }
 .chip.drill-link:hover, .chip.drill-link:focus-visible { color: var(--cyan); border-color: var(--cyan); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RENEWALS × ADOPTION — the cohort table
+   Three controls, one table. Below-threshold rows carry a thin left rail and
+   nothing else: filled cells would turn a working list into an alarm board,
+   and a CSM scans forty of these at a time.
+   ══════════════════════════════════════════════════════════════════════════ */
+.coh-tools {
+  display: flex; align-items: center; gap: calc(var(--u) * 1.5); flex-wrap: wrap;
+  margin-bottom: calc(var(--u) * 2);
+}
+.coh-sel {
+  background: var(--panel); border: 1px solid var(--line-strong); color: var(--text-soft);
+  font: inherit; font-size: .8rem; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+}
+.coh-sel:focus-visible { outline: 2px solid var(--emerald); outline-offset: 2px; }
+.coh-thresh {
+  display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--text-dim);
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: 8px; padding: 5px 10px;
+}
+.coh-thresh input {
+  width: 52px; background: rgba(255,255,255,.05); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--text); font: inherit; font-size: .8rem; padding: 2px 6px; text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.coh-thresh input:focus { outline: 0; border-color: rgba(52,211,153,.4); }
+
+.coh-summary { margin-bottom: calc(var(--u) * 2); }
+.cs-line { font-size: 1.05rem; line-height: 1.5; color: var(--text-soft); }
+.cs-line b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.cs-line b.risk { color: var(--warn); }
+.cs-line .sep { color: var(--line-strong); margin: 0 6px; }
+.cs-sub { font-size: .78rem; color: var(--text-dim); margin-top: 5px; line-height: 1.5; }
+
+.coh-head, .coh-row {
+  display: grid;
+  grid-template-columns: minmax(140px,1.5fr) 88px 104px 132px 74px 96px minmax(96px,1fr);
+  gap: calc(var(--u) * 1.5); align-items: center;
+}
+.coh-head {
+  padding: calc(var(--u) * 1.25) calc(var(--u) * 2);
+  border-bottom: 1px solid var(--line);
+  font-size: .64rem; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--text-dim); font-weight: 700;
+}
+.coh-head .r, .coh-row .r { text-align: right; }
+.coh-list { display: grid; }
+.coh-row {
+  width: 100%; text-align: left; background: none; border: 0; color: inherit; font: inherit;
+  border-bottom: 1px solid var(--line); border-left: 2px solid transparent;
+  padding: calc(var(--u) * 1.5) calc(var(--u) * 2); cursor: pointer; transition: background .14s;
+}
+.coh-row:hover { background: rgba(255,255,255,.028); }
+.coh-row:focus-visible { outline: 2px solid var(--emerald); outline-offset: -2px; }
+/* the only marker for below-threshold — a rail, never a filled cell */
+.coh-row.below { border-left-color: var(--warn); }
+
+.cr-name { font-size: .84rem; font-weight: 600; color: var(--text); min-width: 0; }
+.cr-name small { display: block; font-size: .68rem; font-weight: 400; color: var(--text-dim); margin-top: 2px; }
+.cr-arr { font-size: .84rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cr-ren, .cr-eff { font-size: .76rem; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.cr-ren small, .cr-eff small { display: block; font-size: .66rem; color: var(--text-dim); margin-top: 2px; }
+/* where credit terms buy real runway — the gap IS the insight, so it is marked */
+.cr-eff.gained { color: var(--cyan); }
+.cr-eff.gained small { color: var(--cyan); opacity: .75; }
+.cr-adopt { font-size: .86rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.coh-row.below .cr-adopt { color: var(--warn); }
+.cr-trend { display: flex; flex-direction: column; gap: 2px; }
+.cr-trend small { font-size: .66rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.cr-owner { font-size: .74rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@container (max-width: 900px) {
+  .coh-head { display: none; }
+  .coh-row { grid-template-columns: 1fr auto; row-gap: 4px; }
+  .cr-ren, .cr-eff, .cr-trend, .cr-owner { grid-column: 1 / -1; }
+}
