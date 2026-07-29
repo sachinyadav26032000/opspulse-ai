@@ -48,11 +48,76 @@ visible. This is the other half.
 | `usage_trend_30d` | `(logins_30d − prior) / prior` | **derived** from the two above |
 | `last_login_at` | `as_of −` archetype recency | **seeded** |
 | `feature_adoption_pct` | archetype adoption band | **seeded** |
+| `usage_history[6]` | shape multipliers over 6 months | **seeded** — see below |
 | `_archetype` | assignment (see below) | **seeded**, internal only |
 
 `usage_trend_30d` is computed *back* from the two login counts, so the published
 trend is always exactly what the numbers say. Asserted across all 2,400
 accounts: `seats_active ≤ seats_provisioned`, and trend matches logins.
+
+### Six months of history — the "why is the usage less?" question
+
+From the validation call: *"Why is the usage less? What was the usage last week,
+and how have they been consuming the product over the last few months?"* A single
+30-day trend cannot answer that, so each account carries six monthly points.
+
+**The history is the source of truth, not a decoration drawn beside the card.**
+`seats_active_30d`, `logins_30d` and `usage_trend_30d` are all derived *from* the
+last two history points. Building them alongside the history instead produced 608
+accounts out of 2,400 whose sparkline contradicted their own trend figure.
+
+Two modelling traps worth recording, both hit during this work:
+
+- Shape multipliers are defined **relative to month 5**, not relative to today.
+  Defined against today they fight the trend and produce spikes — one account
+  read `25 24 23 22 63 11`.
+- Login counts are derived from the trend rather than rounded independently. On
+  small accounts independent rounding breaks the ratio: `1 → 2` publishes as
+  −50% while `12 → 23` publishes as −47.8%.
+
+A `recovering` shape is assigned at shape level to 18% of `healthy` and
+`engaged_noisy` accounts, so a rising sparkline is not automatically suspicious.
+
+Verified across 12,000 accounts over 5 seeds: zero contradictions between a
+sparkline and its published trend, at the precision each is displayed to.
+
+## 1b. Billing terms — `data/billing.js`
+
+From the same call: *"Payment frequency — is it an offline or online customer?
+Many companies on offline get 30 days extra credit, so the churn is not exactly
+on the same date."*
+
+| Field | Source | Status |
+|---|---|---|
+| `billing.channel` | 30% offline, leaning by plan (Enterprise +0.22, Growth +0.04, Starter −0.08) | **seeded** |
+| `billing.credit_days` | `{online: 0, offline: 30}` | **derived** from channel |
+| `billing.renewal_date` | `as_of + renewal_in_days` | **derived** |
+| `billing.effective_churn_date` | renewal date **+ credit days** | **derived** |
+| `billing.runway_differs` | `credit_days > 0` | **derived** |
+
+Both dates are surfaced, never one "corrected" date — the *gap* is the insight.
+An offline account renewing in 20 days has 50 days of runway; an online account
+renewing in 35 has 35. Sorted by renewal date a CSM works the offline one first
+and is wrong.
+
+Run as a **post-pass on its own RNG stream**. Adding draws to the account loop
+shifts every downstream value and silently regenerates the world; that happened
+once on this branch and broke pattern detection until it was traced.
+
+## 1c. Renewals derived from contracts, not drawn
+
+`renewal_in_days` was previously `rnd.int(5, 360)` — a uniform smear with no
+contract behind it, which made "what renews this quarter" meaningless.
+
+| Field | Source | Status |
+|---|---|---|
+| `purchased_at` | `rnd.int(35, 1400)` days ago, ~70% snapped to a quarter end | **seeded** |
+| `term_months` | weighted `{12: 0.62, 24: 0.26, 36: 0.12}` | **seeded** |
+| `renewal_in_days` | `purchased_at + term_months`, rolled forward | **derived** |
+
+Exactly two RNG draws, the same count the old line consumed, so the rest of the
+dataset is byte-identical. Renewals now cluster at quarter ends as real books do
+— Mar 690, Jun 478, Sep 425, Dec 384, against 26–68 in off-quarter months.
 
 ### Archetype assignment
 
@@ -103,17 +168,55 @@ fires only above a declared threshold in `THRESHOLDS`.
 | `churn_risk` | rule over escalations + sentiment | ARR floor $60k, ≥ 5 accounts |
 | `compliance_risk` | statutory deadline | deadline-driven |
 
-### Rule-based (4, new) — `engine/web/revenue.js`
+### Rule-based (5) — `engine/web/revenue.js`
 
-Thresholds declared in `REVENUE_THRESHOLDS`. These are **rules, not z-tests**,
-and `_meta.z` is set to `0` rather than faked.
+Thresholds now live in `config/thresholds.js` (see §2b) and are re-exported as
+`REVENUE_THRESHOLDS`. These are **rules, not z-tests**, and `_meta.z` is set to
+`0` rather than faked.
 
 | Detector | Rule |
 |---|---|
-| `silent_decline` | usage ≤ −25%, **zero tickets**, ARR ≥ $20k |
+| `silent_decline` | usage ≤ −25%, **no ticket in 30 days**, ARR ≥ $20k |
 | `adoption_failure` | seat activation < 40%, ≥ 20 seats, within onboarding window |
 | `renewal_risk` | renews ≤ 90d **and** any deterioration signal |
+| `renewal_cohort` | renews ≤ 90d **and** adoption < 60%, ≥ 10 accounts, **excluding whatever `renewal_risk` already named** |
 | `concentrated_cause` | **two-proportion z ≥ 2.5** — see §5 |
+
+`silent_decline` previously keyed on `tickets === 0` — *never* contacted. An
+account that raised a ticket four months ago and has since gone quiet while its
+usage falls is the textbook silent decline, and it was excluded. Keying on days
+since last contact took the matched set from 6 accounts to 23.
+
+`renewal_cohort` runs **after** `renewal_risk` and reads its account list, so
+the two never claim the same ARR. Reordering them in `DETECTORS` silently
+double-counts; the dependency is commented at the call site.
+
+## 2b. Thresholds — `config/thresholds.js`
+
+Every bar the product clears is written down once. The file draws a line the
+codebase previously did not:
+
+**`TUNABLE` — four business definitions a customer owns.** All four came out of
+the validation call. Editable at runtime from the Assurance panel, which re-runs
+the engine on change.
+
+| Dial | Default | Means |
+|---|---|---|
+| `adoption_risk_pct` | 60 | below this, adoption is "low" |
+| `renewal_window_days` | 90 | how far ahead a renewal is this quarter's problem |
+| `usage_decline_pct` | 25 | fall over 30 days that counts as a decline |
+| `silent_account_days` | 30 | no contact for this long is "silent" |
+
+**Everything else — statistical bars.** z-scores and minimum samples. These hold
+the false-positive rate down and are deliberately *not* exposed: two customers
+do not share a definition of "low adoption", but they do share a definition of
+significance.
+
+`REVENUE.adoption_floor` stays `0.40` and is **not** spliced from
+`adoption_risk_pct` (60). Same metric, two different bars: 40% is where adoption
+alone is a CRO-level decision, 60% is where a CSM's working list starts.
+Collapsing them would quadruple `adoption_failure`'s output while reading as a
+tidy-up.
 
 ### Meta (1, new) — `engine/web/confidence.js`
 
@@ -165,6 +268,33 @@ puts named accounts and their ARR at stake. It was previously set in one place
 in `revenue.js`, which meant the classifier was really "which file emitted
 this", and it tagged `churn_risk` as support-ops despite it being the largest
 revenue decision in the feed.
+
+### The cohort exception — `_meta.scope_is_full`
+
+Cutting to six is right when the decision is "work these six accounts". It is
+wrong when the recommended action covers the *whole* matched set. `renewal_cohort`
+says "run one adoption play across 128 accounts"; shrinking its economics to
+the six it names as examples would understate the decision by the size of its
+own cohort, and labelling the formula *"scoped to 6 of 128"* beside a
+full-cohort figure puts a label and a number that contradict each other on the
+same line.
+
+Such decisions set `_meta.scope_is_full`. Sizing then records `matched`/`shown`/
+`cut` for the drill-down but leaves the arithmetic and the headline alone, and
+`note` says so: *"the 6 largest by ARR are named here as examples."*
+
+### A reporting bug this surfaced
+
+`sizing.js` derived the cut ARR as `evidence.arr_at_risk − shown_arr`. But the
+revenue detectors set `arr_at_risk` to the **shown** ARR — their economics are
+already scoped, which is why `ratio` is 1 for them — so the subtraction yielded
+zero and the note printed *"the remaining 17 hold $0 and stay in the feed."*
+
+It read as correct for exactly as long as every revenue detector matched the six
+accounts it showed. The moment `silent_decline`'s fix took it from 6 matched to
+23, the note started stating a falsehood. `prioritise()` already sums the true
+totals; sizing now prefers them. All four decisions verified: `shown + cut =
+total`.
 
 ---
 
@@ -286,6 +416,47 @@ history integration touching how every existing surface is entered.
 Transitions are a 180ms fade-and-lift, wrapped in
 `prefers-reduced-motion: no-preference`. Motion encodes descent; it is not
 decoration.
+
+## 5c. The renewals × adoption cohort — `engine/web/cohort.js`
+
+The screen the validation call described: *"What are my upcoming Q3 renewals?
+And add me another column which says MAU... less than 70 or 60%, and that's the
+cohort I go after."*
+
+Three controls, one table. Deliberately **not** a report builder — this is one
+query run repeatedly, not twenty run once.
+
+**Three scope levels**, because "my renewals" means a different book to
+different people in the same org:
+
+| Level | Book | Renewals this quarter |
+|---|---|---|
+| `csm` | an individual queue | median **7** |
+| `region` | a director's book | ~**156** ← default |
+| `all` | the VP rollup | ~**398** |
+
+Region is the default because that is the altitude the question was asked at.
+
+Measured against this generator on seed 20250101: **59 distinct CSMs**, median
+book **38 accounts**, min 26 / max 95, median **7 renewals a quarter**. The call
+implied ~6 per CSM, so the generator needed no change. (Worth knowing: `csm` is
+drawn from the *support-agent* roster, which includes "new hire".)
+
+**The table is a working list, not a decision.** Forty rows sorted by ARR is
+correct here. Decision sizing applies to the brief item that *points* at this
+surface, not to the surface itself. Below-threshold rows carry a thin left rail
+and nothing else — filled cells would turn a working list into an alarm board,
+and a CSM scans forty of these at a time.
+
+`at risk` is the ARR of accounts **below the threshold**, not the whole renewal
+book. That distinction is the point of the screen: plenty of accounts renew, and
+only some of them are in trouble.
+
+The brief item forces scope to `all` and the window to 90 days when it opens
+this surface, so the card and the screen it opens cannot disagree. Landing on
+the region-scoped quarter default would show 48 accounts under a card that just
+said 128, and the first thing a reader concludes is that one of the numbers is
+wrong.
 
 ---
 

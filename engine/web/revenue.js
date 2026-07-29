@@ -28,6 +28,10 @@ export { REVENUE as REVENUE_THRESHOLDS } from '../../config/thresholds.js';
 import { REVENUE as REVENUE_THRESHOLDS } from '../../config/thresholds.js';
 
 const T = REVENUE_THRESHOLDS;
+/* The cohort dial, read at call time rather than captured, so the Assurance
+   panel reaches this detector without a reload. */
+import { TUNABLE } from '../../config/thresholds.js';
+const TUNABLE_ADOPTION = () => TUNABLE.adoption_risk_pct;
 const usd = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.round(n));
 const usdK = (n) => (Math.abs(n) >= 1e6 ? '$' + (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : '$' + Math.round(n / 1000) + 'K');
 const pct = (n) => `${n > 0 ? '+' : ''}${Math.round(n)}%`;
@@ -79,7 +83,7 @@ const acctRow = (a, extra = {}) => ({
 });
 
 /* Shared _meta scaffold so these render through the existing UI unchanged. */
-function metaFor({ title, metric_label, entity, accounts, sizing, observed, baseline, unit, evidence, impact, steps, effort, horizon, provenance, confParts, decomposition }) {
+function metaFor({ title, metric_label, entity, accounts, sizing, observed, baseline, unit, evidence, impact, steps, effort, horizon, provenance, confParts, decomposition, scope_is_full }) {
   return {
     title, metric_label, entity, unit: unit || 'count',
     observed, baseline,
@@ -97,6 +101,9 @@ function metaFor({ title, metric_label, entity, accounts, sizing, observed, base
     provenance,
     confidence_parts: confParts,
     sizing,
+    /* The action covers the whole matched set, not the named subset — see
+       applyDecisionSizing. */
+    scope_is_full: !!scope_is_full,
     accounts: accounts.map((a) => acctRow(a)),
     is_revenue: true,           // marks the persona split added in Task 3
   };
@@ -488,10 +495,128 @@ const CATEGORY_OWNER = {
 /* ══════════════════════════════════════════════════════════════════════════
    Assembly
    ══════════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
+   e. RENEWAL COHORT — the shape of the book, not six accounts in it
+   --------------------------------------------------------------------------
+   The decision the Freshworks director actually described:
+
+     "What are my upcoming Q3 renewals? And add me another column which says
+      MAU — monthly active usage, or product adoption. Let's say it's less
+      than 70 or 60%, and that's the cohort I go after."
+
+   renewalRisk above already names the six largest and says "build a defence
+   plan for each". This is the DIFFERENT decision underneath it: what to do
+   about the forty behind those six, which is a coverage question, not an
+   account question. Six get plans. Forty get a play.
+
+   It therefore EXCLUDES whatever renewalRisk already named, so the two cards
+   never claim the same dollar twice — a brief where the money sums to more
+   than the book is worse than a brief with one fewer card on it.
+   ══════════════════════════════════════════════════════════════════════════ */
+function renewalCohort(ds, ctx, prior) {
+  const threshold = TUNABLE_ADOPTION();
+  /* Already named individually by renewalRisk. Read off the prior detector's
+     result rather than recomputed, so the two can never drift apart. */
+  const named = new Set(
+    (prior.find((r) => r && r.signal_type === 'renewal_risk')?.accounts || []).map((a) => a.account_id),
+  );
+
+  const cohort = ds.accounts.filter((a) => {
+    if (!a.usage || named.has(a.account_id)) return false;
+    if (a.renewal_in_days < 0 || a.renewal_in_days > T.renewal_window_days) return false;
+    return a.usage.feature_adoption_pct < threshold;
+  });
+  /* A cohort has to be a cohort. Below this it is a short list, and a short
+     list is what renewalRisk is for. */
+  if (cohort.length < T.cohort_min) return null;
+
+  const { shown, sizing } = prioritise(cohort);
+  const arr = sizing.shown_arr;
+  const cohortArr = sizing.total_arr;
+  const soonest = cohort.slice().sort((a, b) => a.renewal_in_days - b.renewal_in_days)[0];
+  const meanAdopt = mean(cohort.map((a) => a.usage.feature_adoption_pct));
+
+  /* The billing modifier, straight from the call: "many companies on offline
+     get 30 days extra credit, so the churn is not exactly on the same date."
+     It changes the ORDER the book is worked, which is the only lever available
+     when the list is too long to work all at once. */
+  const offline = cohort.filter((a) => a.billing?.credit_days > 0);
+  const tight = cohort.filter((a) => (a.billing?.effective_churn_in_days ?? a.renewal_in_days) <= 30);
+
+  return {
+    signal_type: 'renewal_cohort',
+    /* The play covers all of them; the six named are examples. */
+    scope_is_full: true,
+    severity: 84,
+    confidence: 0.81,
+    title: `${cohort.length} renewals under ${threshold}% adoption`,
+    metric_label: `${usdK(cohortArr)} ARR · mean adoption ${Math.round(meanAdopt)}%`,
+    what_happened: `${cohort.length} accounts worth ${usd(cohortArr)} renew within ${T.renewal_window_days} days with product adoption below ${threshold}% — mean ${Math.round(meanAdopt)}%. This is on top of the ${named.size} accounts already named individually for renewal defence, not the same list. ${tight.length} of them reach their effective churn date inside 30 days.`,
+    root_cause: `Adoption below ${threshold}% at renewal means the buyer is being asked to re-purchase something their team is not using. The gap did not open this quarter — it is the accumulated result of seats provisioned and never activated — but the renewal calendar is what turns it into a revenue event with a date on it. At ${cohort.length} accounts this is past the size a per-account plan can cover, which makes it a coverage decision rather than ${cohort.length} account decisions.`,
+    action: `Run one adoption play across the cohort rather than ${cohort.length} individual plans. Sequence by effective churn date, not renewal date — ${offline.length} of these are offline-billed and carry credit terms that move their real deadline. Open Renewals to work the list.`,
+    owner_role: 'VP Customer Success',
+    playbook: 'PB-ADOPTION-COHORT-01',
+    expected_outcome: `Adoption above ${threshold}% on the cohort before renewal, measured as seats active against seats provisioned. Success is the cohort's mean moving, not a count of calls booked.`,
+    accounts: shown, sizing,
+    observed: Math.round(meanAdopt), baseline: threshold, unit: 'rate',
+    evidence: {
+      arr_at_risk: cohortArr,
+      shown_arr: arr,
+      cohort_size: cohort.length,
+      cohort_arr: cohortArr,
+      mean_adoption_pct: Math.round(meanAdopt),
+      offline_billed: offline.length,
+      inside_30_days: tight.length,
+      excluded_already_named: named.size,
+      accounts: shown.map((a) => acctRow(a, {
+        risk_reason: `${a.usage.feature_adoption_pct}% adoption`,
+        escalations: ctx.get(a.account_id).escal,
+      })),
+    },
+    decomposition: [
+      { key: 'offline-billed (extra runway)', value: offline.length, contribution: offline.length / cohort.length },
+      { key: 'online-billed (no credit)', value: cohort.length - offline.length, contribution: (cohort.length - offline.length) / cohort.length },
+    ],
+    impact: {
+      type: 'renewal_at_risk',
+      low: Math.round(cohortArr * 0.15), high: Math.round(cohortArr * 0.35),
+      inputs: [{ label: 'cohort ARR renewing in window', value: cohortArr, display: usd(cohortArr) }],
+      range_factor: [0.15, 0.35],
+      time_horizon_days: Math.max(30, soonest.renewal_in_days),
+      formula: `${usd(cohortArr)} × 15–35% loss probability where adoption is below ${threshold}% at renewal`,
+      basis: [
+        `${cohort.length} accounts renewing within ${T.renewal_window_days} days below ${threshold}% adoption`,
+        `mean adoption across the cohort is ${Math.round(meanAdopt)}%`,
+        `excludes the ${named.size} accounts already named by renewal defence`,
+      ],
+      note: `Loss probability is the same stated assumption renewal defence uses; it is not measured here. The adoption figures, the renewal dates and the credit terms are all measured. The ${named.size} accounts named individually are excluded so the two decisions do not claim the same ARR.`,
+    },
+    range: [cohortArr * 0.15, cohortArr * 0.35],
+    horizon: Math.max(30, soonest.renewal_in_days),
+    effort: 'medium',
+    steps: [
+      `Sort the cohort by effective churn date — ${offline.length} offline-billed accounts have credit terms that move their real deadline later than their renewal date.`,
+      'Run one adoption play across the cohort: a single enablement track, not per-account plans.',
+      `Escalate the ${tight.length} accounts whose effective churn date is inside 30 days to named ownership.`,
+      'Re-measure cohort mean adoption at 30 days; anything still below the bar goes to renewal defence individually.',
+    ],
+    provenance: {
+      renewal_date: 'accounts[].renewal_in_days, derived from purchased_at + term_months',
+      adoption: 'accounts[].usage.feature_adoption_pct',
+      billing_terms: 'accounts[].billing.credit_days and effective_churn_in_days',
+      already_named: 'renewal_risk._meta.exposed_accounts, excluded to prevent double-counting',
+    },
+    confParts: { statistical: 0.30, explained: 0.33, corroborated: 0.18 },
+  };
+}
+
 const DETECTORS = [
   ['silent_decline', silentDecline],
   ['adoption_failure', adoptionFailure],
   ['renewal_risk', renewalRisk],
+  /* AFTER renewal_risk, and depends on it: the cohort is defined as what that
+     detector did NOT name. Reordering these two silently double-counts ARR. */
+  ['renewal_cohort', renewalCohort],
   ['concentrated_cause', concentratedCause],
 ];
 
@@ -502,9 +627,13 @@ export function detectRevenue(ds, { asOf = ds.meta.as_of } = {}) {
   const ctx = contactIndex(ds);
   const insights = [];
   const ran = [];
+  /* Raw detector results, in run order. renewalCohort reads renewal_risk's
+     account list from here so the two cards cannot claim the same ARR. */
+  const prior = [];
 
   for (const [name, fn] of DETECTORS) {
-    const r = fn(ds, ctx);
+    const r = fn(ds, ctx, prior);
+    prior.push(r);
     ran.push({ detector: name, found: r ? 1 : 0 });
     if (!r) continue;
 
@@ -537,7 +666,7 @@ export function detectRevenue(ds, { asOf = ds.meta.as_of } = {}) {
         observed: r.observed, baseline: r.baseline, unit: r.unit,
         evidence: r.evidence, impact: r.impact, steps: r.steps, effort: r.effort,
         horizon: r.horizon, provenance: r.provenance, confParts: r.confParts,
-        decomposition: r.decomposition,
+        decomposition: r.decomposition, scope_is_full: r.scope_is_full,
       }),
     }));
     // Expected outcome is not a contract field; it rides on _meta with the evidence.

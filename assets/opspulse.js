@@ -722,6 +722,21 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     coaching_gap: 'quality', compliance_risk: 'compliance',
   }[t] || 'support');
 
+  /* Open the cohort surface from the brief. Scope and window are FORCED to
+     match the detector's own query — company-wide, and the same renewal window
+     it counted. Landing on the region-scoped quarter default would show 48
+     accounts under a card that just said 128, and the first thing the user
+     would conclude is that one of the two numbers is wrong. */
+  function openCohort() {
+    state.cohort.scope = 'all';
+    state.cohort.scopeValue = null;
+    state.cohort.window = 'd90';
+    delete state.cohort.adoption_risk_pct;   // follow the configured dial
+    state.view = 'cohort';
+    render();
+    body.scrollTop = 0;
+  }
+
   /* ══════════════════════════════════════════════════════════════════════
      SHARED CARD / EXPLORER RENDERERS
      ══════════════════════════════════════════════════════════════════════ */
@@ -735,7 +750,7 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
       <div class="metric">${esc(m.metric_label)}</div>
       <dl>
         <div><dt>Impact</dt><dd>${drillable(ins)
-          ? `<span class="drill-link" data-drill="1" role="button" tabindex="0" title="Open the ${m.exposed_accounts.length} exposed accounts">${fmt.int(m.affected_accounts)} customers${m.evidence.arr_at_risk ? ` · ${fmt.usdK(m.evidence.arr_at_risk)} ARR` : ''} <i>›</i></span>`
+          ? `<span class="drill-link" data-drill="1" role="button" tabindex="0" title="${m.scope_is_full ? `Open the ${fmt.int(m.affected_accounts)}-account cohort` : `Open the ${m.exposed_accounts.length} exposed accounts`}">${fmt.int(m.affected_accounts)} customers${m.evidence.arr_at_risk ? ` · ${fmt.usdK(m.evidence.arr_at_risk)} ARR` : ''} <i>›</i></span>`
           : `${fmt.int(m.affected_accounts)} customers${m.evidence.arr_at_risk ? ` · ${fmt.usdK(m.evidence.arr_at_risk)} ARR` : ''}`}</dd></div>
         <div><dt>Root cause <span class="muted">(hypothesis)</span></dt><dd>${esc(firstSentence(ins.why.root_cause))}</dd></div>
         <div><dt>Recommended action</dt><dd>${esc(ins.recommended_action.action)}</dd></div>
@@ -750,7 +765,10 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
       </div>`;
     const link = c.querySelector('[data-drill]');
     if (link) {
-      const go = (ev) => { ev.stopPropagation(); openAccounts(ins); };
+      /* A cohort-wide decision opens the cohort, not the six accounts it named
+         as examples — those six are illustrative, and landing on them would
+         answer a question the card didn't ask. */
+      const go = (ev) => { ev.stopPropagation(); if (ins.signal_type === 'renewal_cohort') openCohort(); else openAccounts(ins); };
       link.addEventListener('click', go);
       link.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(ev); } });
     }
@@ -1423,7 +1441,13 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
               <div class="bd-do">${esc(base)}</div>
               ${detail ? `<div class="bd-detail">${esc(detail)}</div>` : ''}
               <div class="bd-chips">
-                ${drillable(ins) ? `<span class="chip drill-link" data-drill="1" role="button" tabindex="0" title="Open the ${ins._meta.exposed_accounts.length} exposed accounts">${ins._meta.exposed_accounts.length} accounts · ${esc(fmt.usdK(ins._meta.exposed_accounts.reduce((s2, a) => s2 + a.arr_usd, 0)))} ARR <i>›</i></span>` : ''}
+                ${drillable(ins) ? (ins._meta.scope_is_full
+                  /* Cohort-wide: the chip must count the COHORT, because that
+                     is what the action covers and what the link opens. Showing
+                     "6 accounts" on a decision about 128 understates it by a
+                     factor of twenty and lands the user on the wrong screen. */
+                  ? `<span class="chip drill-link" data-drill="1" role="button" tabindex="0" title="Open the ${fmt.int(ins._meta.affected_accounts)}-account cohort">${fmt.int(ins._meta.affected_accounts)} accounts · ${esc(fmt.usdK(ins._meta.evidence.arr_at_risk))} ARR <i>›</i></span>`
+                  : `<span class="chip drill-link" data-drill="1" role="button" tabindex="0" title="Open the ${ins._meta.exposed_accounts.length} exposed accounts">${ins._meta.exposed_accounts.length} accounts · ${esc(fmt.usdK(ins._meta.exposed_accounts.reduce((s2, a) => s2 + a.arr_usd, 0)))} ARR <i>›</i></span>`) : ''}
                 <span class="chip">${esc(ins.recommended_action.owner_role)}</span>
                 <span class="chip">playbook ${esc(ins.recommended_action.playbook_id)}</span>
                 <span class="chip" title="${esc(ins.confidence ? ins.confidence.limiting_factor : '')}">${Math.round(ins.why.confidence * 100)}% confidence</span>
@@ -1436,7 +1460,7 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
 
       const dl = item.querySelector('[data-drill]');
       if (dl) {
-        const go = (ev) => { ev.stopPropagation(); openAccounts(ins); };
+        const go = (ev) => { ev.stopPropagation(); if (ins.signal_type === 'renewal_cohort') openCohort(); else openAccounts(ins); };
         dl.addEventListener('click', go);
         dl.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(ev); } });
       }

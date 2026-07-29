@@ -63,6 +63,8 @@ export const REVENUE = {
                                // OVER-REPRESENTED among at-risk accounts, not
                                // merely the largest of several equal buckets
   concentrated_base_min: 30,   // baseline accounts needed before the z means anything
+  cohort_min: 10,              // below this it is a list of accounts, not a cohort —
+                               // renewal_risk already names those individually
 
   /* NOT TUNABLE.adoption_risk_pct, deliberately. That dial (60%) is where a
      CSM's working list starts; this floor (40%) is where adoption is bad

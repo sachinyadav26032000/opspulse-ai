@@ -52,6 +52,33 @@ export function applyDecisionSizing(insight, size = DECISION_SIZE) {
   if (!(sizedArr > 0) || !(fullArr > 0)) return insight;
 
   const matched = m.affected_accounts ?? shown.length;
+
+  /* ── Cohort-wide decisions opt out of the rescale ──────────────────────
+     Most decisions are "work these six accounts", and their economics must
+     shrink to the six or the card overclaims. A cohort play is the opposite:
+     the recommended action covers the WHOLE matched set, the six named are
+     illustrative, and shrinking the money to them would understate the
+     decision by the size of its own cohort. Relabelling the formula "scoped
+     to 6 of 128" beside a full-cohort figure is worse still — the label and
+     the number contradict each other on the same line.
+
+     We still record matched/shown/cut so the drill-down can say which six it
+     is showing; we just don't touch the arithmetic or the title. */
+  if (m.scope_is_full) {
+    const cutFull = Math.max(0, matched - shown.length);
+    m.sizing = {
+      ...(m.sizing || {}),
+      matched, shown: shown.length, cut: cutFull, ratio: 1,
+      basis: 'whole cohort — named accounts are illustrative',
+      note: cutFull
+        ? `${matched} accounts in the cohort. The action covers all of them; the ${shown.length} largest by ARR are named here as examples.`
+        : `${matched} accounts in the cohort — all named.`,
+    };
+    m.evidence.arr_at_risk_full = m.sizing.total_arr ?? fullArr;
+    m.scoped_accounts = matched;
+    return insight;
+  }
+
   const ratio = Math.min(1, sizedArr / fullArr);
 
   /* Restate the money — INCLUDING the shown arithmetic.
