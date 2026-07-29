@@ -24,6 +24,8 @@
    surface, not to the surface itself.
    ========================================================================== */
 
+import { buildBookReasons } from './churn-reason.js';
+
 const DAY = 86400000;
 
 /* Defaults live in config/thresholds.js so a customer can tune them at
@@ -111,12 +113,24 @@ export function buildCohort(ds, opts = {}) {
 
   const renewing = inScope.filter((a) => a.renewal_in_days >= win.from && a.renewal_in_days <= win.to);
 
+  /* WHY each account is at risk, not just that it is. The director's follow-up
+     question — "why is the usage less?" — is a per-row question on this screen
+     and a mix question on the summary. Classified over the renewing set only,
+     since that is what the screen is about. */
+  const reasons = buildBookReasons(ds, renewing);
+
   const rows = renewing
     .map((a) => {
       const u = a.usage || {};
       const b = a.billing || {};
       const adoption = u.feature_adoption_pct ?? null;
+      const why = reasons.byId.get(a.account_id);
       return {
+        churn_reason: why.primary,
+        churn_contributing: why.contributing,
+        churn_evidence: why.evidence,
+        is_silent: why.is_silent,
+        silent_days: why.silent_days,
         account_id: a.account_id,
         account_name: a.company,
         arr_usd: a.arr_usd,
@@ -143,6 +157,17 @@ export function buildCohort(ds, opts = {}) {
     .sort((x, y) => y.arr_usd - x.arr_usd);
 
   const atRisk = rows.filter((r) => r.below_threshold);
+  /* The mix is computed over the AT-RISK rows, not the whole renewal book:
+     "48 at risk" is a number, "19 eroding, 12 never adopted, 9 service" is
+     four different plays and a staffing decision. */
+  const reasonMix = (() => {
+    const m = new Map();
+    for (const r of atRisk) {
+      const t = m.get(r.churn_reason.key) || { reason: r.churn_reason, n: 0, arr: 0 };
+      t.n++; t.arr += r.arr_usd; m.set(r.churn_reason.key, t);
+    }
+    return [...m.values()].sort((a, b) => b.arr - a.arr || b.n - a.n);
+  })();
   /* The cohort a play would cover: at-risk minus whatever is already owned
      individually. This is the figure the brief card carries. */
   const alsoNamed = atRisk.filter((r) => r.counted_elsewhere);
@@ -165,6 +190,8 @@ export function buildCohort(ds, opts = {}) {
       also_named_arr: alsoNamed.reduce((s, r) => s + r.arr_usd, 0),
       playable: playable.length,
       playable_arr: playable.reduce((s, r) => s + r.arr_usd, 0),
+      reason_mix: reasonMix,
+      silent_below: atRisk.filter((r) => r.is_silent).length,
       offline_below: atRisk.filter((r) => r.runway_differs).length,
       // Accounts whose real deadline sits in a later month than the renewal.
       runway_gained: atRisk.filter((r) => r.runway_differs).reduce((s, r) => s + r.credit_days, 0),

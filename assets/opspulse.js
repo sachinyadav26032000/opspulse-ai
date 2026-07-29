@@ -29,6 +29,7 @@ import { CONFIDENCE_CUTOFF, SIGNAL_TYPES } from '../engine/web/schema.js';
 import { buildCohort, WINDOWS, COHORT_DEFAULTS } from '../engine/web/cohort.js';
 import { TUNABLE, setTunable } from '../config/thresholds.js';
 import { buildAccountDetail } from '../engine/web/exposure.js';
+import { classifyAccount, buildContext } from '../engine/web/churn-reason.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -1178,9 +1179,27 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
       </dl>`;
     wrap.appendChild(head);
 
-    /* The answer to "why is this one leaving", in prominent type. */
+    /* The answer to "why is this one leaving", in prominent type — the label
+       first, then the sentence that evidences it. The label is what groups
+       across a book; the sentence is what convinces one reader about one
+       account. Neither replaces the other, so both are here. */
+    const acct = ds().accounts.find((x) => x.account_id === a.account_id);
+    /* Rebuilt per render rather than memoised on `state`. A cached context
+       goes stale the moment the store ticks — new tickets change the contact
+       facts this classification rests on, and a drill-down showing "silent
+       41d" for an account that raised a ticket an hour ago is exactly the
+       kind of quiet contradiction this codebase can least afford. 3ms over
+       10k tickets is not worth the risk. */
+    const cls = acct ? classifyAccount(acct, buildContext(ds()).get(a.account_id) || {}) : null;
     const why = el('div', 'acct-why');
-    why.innerHTML = `<div class="aw-lbl">Why this account is at risk</div><p>${esc(a.risk_reason)}</p>`;
+    why.innerHTML = `<div class="aw-lbl">Why this account is at risk</div>
+      ${cls && cls.primary.key !== 'none' ? `<div class="aw-tags">
+        <span class="cr-chip r-${cls.primary.key}" title="${esc(cls.primary.detail)}">${esc(cls.primary.label)}</span>
+        ${cls.contributing.map((c) => `<span class="cr-chip muted r-${c.key}" title="${esc(c.detail)}">also ${esc(c.short.toLowerCase())}</span>`).join('')}
+        ${cls.is_silent ? `<span class="cr-silent">silent ${cls.silent_days}d</span>` : ''}
+      </div>` : ''}
+      <p>${esc(a.risk_reason)}</p>
+      ${cls && cls.evidence.length ? `<ul class="aw-ev">${cls.evidence.map((e) => `<li><b>${esc(e.label)}</b> <span>${esc(e.value)}</span><small>${esc(e.source)}</small></li>`).join('')}</ul>` : ''}`;
     wrap.appendChild(why);
 
     const ev = el('div', 'panel');
@@ -1276,6 +1295,11 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
       </div>
       <div class="cs-sub">${esc(c.scopeLabel)} · ${esc(fmt.usdK(s2.arr_total))} renewing in total${
         s2.offline_below ? ` · ${s2.offline_below} of the at-risk accounts are offline-billed, carrying ${s2.runway_gained} extra days of runway between them` : ''}</div>
+      ${s2.reason_mix?.length ? `<div class="cs-why">
+        <span class="cw-lbl">Why</span>
+        ${s2.reason_mix.map((m) => `<span class="cw-item" title="${esc(m.reason.detail)}"><i class="cw-dot r-${m.reason.key}"></i><b>${fmt.int(m.n)}</b> ${esc(m.reason.short.toLowerCase())} <em>${esc(fmt.usdK(m.arr))}</em></span>`).join('')}
+        ${s2.silent_below ? `<span class="cw-item silent" title="No support contact inside the silence window"><b>${fmt.int(s2.silent_below)}</b> of them silent</span>` : ''}
+      </div>` : ''}
       ${s2.also_named ? `<div class="cs-recon"><b>${fmt.int(s2.below)}</b> below threshold
         <span class="op">−</span> <b>${fmt.int(s2.also_named)}</b> already named individually under <b>renewal defence</b>
         <span class="op">=</span> <b class="ok">${fmt.int(s2.playable)}</b> covered by the adoption play${
@@ -1292,7 +1316,7 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     } else {
       const head = el('div', 'coh-head');
       head.innerHTML = `<span>Account</span><span class="r">ARR</span><span>Renewal</span><span>Effective churn</span>
-        <span class="r">Adoption</span><span>Trend</span><span>Owner</span>`;
+        <span class="r">Adoption</span><span>Trend</span><span>Why</span><span>Owner</span>`;
       bd.appendChild(head);
 
       const list = el('div', 'coh-list');
@@ -1307,6 +1331,10 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
           <span class="r cr-adopt">${r.adoption_pct == null ? '—' : r.adoption_pct + '%'}</span>
           <span class="cr-trend">${sparkline(r.history, { color: r.below_threshold ? STATUS.critical : SERIES[2] })}<small>${
             r.usage_trend_30d == null ? '' : (r.usage_trend_30d > 0 ? '+' : '') + Math.round(r.usage_trend_30d) + '%'}</small></span>
+          <span class="cr-why">${r.churn_reason.key === 'none'
+            ? '<i class="cr-none">—</i>'
+            : `<span class="cr-chip r-${r.churn_reason.key}" title="${esc(r.churn_reason.detail)}">${esc(r.churn_reason.short)}</span>`}${
+            r.is_silent ? `<span class="cr-silent" title="No support contact for ${r.silent_days} days — invisible to every ticket-based tool">silent</span>` : ''}</span>
           <span class="cr-owner">${esc(r.owner)}</span>`;
         row.addEventListener('click', () => {
           state.drillId = null;
@@ -2387,6 +2415,8 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
       { k: 'renewal_window_days', label: 'Renewal window', unit: 'days', hint: 'how far ahead a renewal is this quarter\u2019s problem',
         sel: (v) => d.accounts.filter((a) => a.renewal_in_days >= 0 && a.renewal_in_days <= v) },
       { k: 'usage_decline_pct', label: 'Usage decline at', unit: '%', hint: 'fall over 30 days that counts as a decline',
+        sel: (v) => d.accounts.filter((a) => a.usage && a.usage.usage_trend_30d <= -v) },
+      { k: 'usage_cliff_pct', label: 'Collapse at', unit: '%', hint: 'a 30-day fall this steep is a cliff, not a drift',
         sel: (v) => d.accounts.filter((a) => a.usage && a.usage.usage_trend_30d <= -v) },
       { k: 'silent_account_days', label: 'Silent after', unit: 'days', hint: 'no support contact for this long',
         sel: (v) => d.accounts.filter((a) => quietFor(a) >= v) },

@@ -426,6 +426,74 @@ Transitions are a 180ms fade-and-lift, wrapped in
 `prefers-reduced-motion: no-preference`. Motion encodes descent; it is not
 decoration.
 
+## 5bb. Churn reason taxonomy — `engine/web/churn-reason.js`
+
+`exposure.js` writes a `risk_reason` SENTENCE per account, and it is good
+prose. But prose does not group. You cannot count it, rank it, or answer *"what
+are the top three reasons my book is at risk this quarter"* — which is the
+question that follows *"why is the usage less?"* once there is a list. Forty
+sentences is forty things to read; four reasons with counts is a decision.
+
+One PRIMARY reason per account from a closed vocabulary, in precedence order.
+The order is an argument about **evidence quality**, not severity — a customer
+telling you they intend to leave outranks anything inferred from telemetry:
+
+| Reason | Fires when |
+|---|---|
+| `explicit_intent` | a cancellation case is on record — the only one the customer *stated* |
+| `never_adopted` | adoption below `adoption_decision_threshold`, peak also below it, **and not declining now** |
+| `usage_cliff` | 30-day fall ≥ `usage_cliff_pct` (45%) |
+| `usage_erosion` | 30-day fall ≥ `usage_decline_pct` (25%) |
+| `service_failure` | repeat escalations **and** the relationship souring elsewhere |
+| `sentiment` | detractor NPS or falling CSAT, **unless** usage is actively healthy |
+| `none` | nothing qualifies — not the nearest-looking label |
+
+### Three decisions that took iterations
+
+**Silence is a flag, not a reason.** It was tempting as a seventh category, but
+it answers a different question: usage erosion is why the account is leaving,
+silence is why nobody noticed. Competing with the causes would hide a cause
+every time both were true.
+
+**`service_failure` needs corroboration.** A first pass labelled 149 `healthy`
+and 42 `engaged_noisy` accounts as service failures — and `engaged_noisy`
+exists in this dataset *specifically* so a model can be caught treating contact
+volume as risk. It now requires escalations **and** deterioration elsewhere.
+0.4% / 0.5% false-positive rate after the fix.
+
+**`never_adopted` is separated from a cliff by USAGE, not adoption.** Testing
+the adoption history alone stole 47 of 127 genuine cliffs: those accounts read
+35%→27% adoption, an 8-point drift, while their usage fell 71% over the same
+window. Adoption is how MUCH of the product they touch; usage is how OFTEN. A
+customer can keep using the same three features far less, and only the second
+number shows the collapse.
+
+### It never reads the answer key
+
+The classifier does not touch `_archetype` — same discipline as every detector.
+That is what makes scoring it a measurement rather than a tautology. Across 3
+seeds: cliffs **88%**, never-adopted **98%**, false positives on healthy and
+engaged-but-noisy **0.4%** and **0.5%**.
+
+**Slow declines are scored against the RULE, not the archetype label**, and
+this is the subtle one. The generator's `slow_decline` band runs 0% to −50%
+with a median of −20%, so *any* threshold inside that band recovers exactly the
+share above it — at the configured 25% that is ~55%. Asserting "recovers ≥55%
+of slow declines" therefore measures where a customer-tunable dial sits, not
+whether the classifier works. What is a genuine correctness property, and what
+is asserted instead:
+
+- every account clearing the bar with no higher-precedence reason **is**
+  labelled erosion — 100%;
+- nothing below the bar is called erosion — 0 false;
+- the ones under the bar fall to `none` or a higher-precedence reason, **never
+  to a wrong usage label** — 0.
+
+65 of the apparent "misses" were never misses at all: they are accounts where
+`explicit_intent` or `service_failure` correctly outranked erosion.
+
+---
+
 ## 5c. The renewals × adoption cohort — `engine/web/cohort.js`
 
 The screen the validation call described: *"What are my upcoming Q3 renewals?

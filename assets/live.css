@@ -768,7 +768,8 @@
 
 .coh-head, .coh-row {
   display: grid;
-  grid-template-columns: minmax(140px,1.5fr) 88px 104px 132px 74px 96px minmax(96px,1fr);
+  /* Account · ARR · Renewal · Effective churn · Adoption · Trend · Why · Owner */
+  grid-template-columns: minmax(132px,1.4fr) 84px 98px 126px 68px 84px 104px minmax(80px,.9fr);
   gap: calc(var(--u) * 1.5); align-items: center;
 }
 .coh-head {
@@ -852,3 +853,57 @@
 .cs-recon b.ok { color: var(--cyan); }
 .cs-recon .op { color: var(--text-dim); margin: 0 3px; font-weight: 700; }
 .cs-recon .why { display: block; font-size: .72rem; opacity: .8; margin-top: 3px; }
+
+/* ── Churn reason taxonomy ──────────────────────────────────────────────────
+   One chip per row answering "why", and a mix line answering it for the book.
+   Hues are assigned per REASON and never by rank, so filtering the table
+   cannot repaint the survivors. Deliberately muted: this is a label on a
+   working list, not a status light — six saturated chips down a column of
+   forty rows would out-shout the ARR the list is sorted by. */
+.cr-chip {
+  display: inline-block; padding: 2px 7px; border-radius: 4px;
+  font-size: .66rem; font-weight: 700; letter-spacing: .02em; white-space: nowrap;
+  border: 1px solid currentColor; background: rgba(255,255,255,.03);
+}
+.cr-none { color: var(--text-dim); font-style: normal; }
+.cr-why { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; min-width: 0; }
+.cr-silent {
+  font-size: .6rem; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-dim); border-bottom: 1px dotted var(--line-strong);
+}
+
+/* One hue per reason. Intent is the only one the CUSTOMER stated rather than
+   us inferring, so it alone gets the critical hue. */
+.r-explicit_intent { color: #f87171; }
+.r-never_adopted   { color: #fbbf24; }
+.r-usage_cliff     { color: #fb923c; }
+.r-usage_erosion   { color: #38bdf8; }
+.r-service_failure { color: #a78bfa; }
+.r-sentiment       { color: #94a3b8; }
+.r-none            { color: var(--text-dim); }
+
+.cs-why {
+  display: flex; align-items: center; gap: calc(var(--u) * 1.75); flex-wrap: wrap;
+  margin-top: calc(var(--u) * 1.25); padding-top: calc(var(--u) * 1.25);
+  border-top: 1px solid var(--line); font-size: .78rem; color: var(--text-dim);
+}
+.cs-why .cw-lbl {
+  font-size: .62rem; text-transform: uppercase; letter-spacing: .12em;
+  font-weight: 800; color: var(--text-dim);
+}
+.cw-item { display: inline-flex; align-items: center; gap: 5px; }
+.cw-item b { color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.cw-item em { font-style: normal; opacity: .65; font-variant-numeric: tabular-nums; }
+.cw-item.silent { opacity: .8; border-left: 1px solid var(--line); padding-left: calc(var(--u) * 1.75); }
+.cw-dot { width: 7px; height: 7px; border-radius: 2px; background: currentColor; }
+
+@container (max-width: 900px) { .cr-why { grid-column: 1 / -1; flex-direction: row; } }
+
+/* The taxonomy label on one account, above the sentence that evidences it. */
+.aw-tags { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin: 0 0 calc(var(--u) * 1.25); }
+.cr-chip.muted { opacity: .68; font-weight: 600; }
+.aw-ev { list-style: none; margin: calc(var(--u) * 1.5) 0 0; padding: calc(var(--u) * 1.25) 0 0; border-top: 1px solid var(--line); display: grid; gap: 7px; }
+.aw-ev li { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: .78rem; color: var(--text-dim); }
+.aw-ev b { color: var(--text-soft); font-weight: 600; }
+.aw-ev span { color: var(--text); font-variant-numeric: tabular-nums; }
+.aw-ev small { font-size: .68rem; opacity: .62; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }

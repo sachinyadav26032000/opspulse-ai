@@ -44,6 +44,8 @@ export const TUNABLE = {
   usage_decline_pct: 25,
   /** No contact in this many days makes an account "silent". */
   silent_account_days: 30,
+  /** A 30-day fall of at least this much is a collapse, not a drift. */
+  usage_cliff_pct: 45,
 };
 
 /* ── Detection: statistical bars ─────────────────────────────────────────
@@ -84,6 +86,7 @@ export const REVENUE = {
   get silent_usage_drop() { return -TUNABLE.usage_decline_pct; },
   get silent_account_days() { return TUNABLE.silent_account_days; },
   get renewal_window_days() { return TUNABLE.renewal_window_days; },
+  get usage_cliff_pct() { return TUNABLE.usage_cliff_pct; },
   /* % of provisioned seats active. NOT the worklist threshold — see TUNABLE. */
   get adoption_decision_threshold() { return TUNABLE.adoption_decision_threshold; },
 };
