@@ -1,0 +1,12 @@
+{
+  "name": "opspulse-dom-tests",
+  "private": true,
+  "type": "module",
+  "description": "jsdom suites for the OpsPulse UI. Scoped here on purpose: the product itself has no dependencies and no build step, and nothing at the repo root should imply otherwise.",
+  "scripts": {
+    "test": "./run-all.sh"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}
