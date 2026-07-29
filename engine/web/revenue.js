@@ -31,7 +31,7 @@ const T = REVENUE_THRESHOLDS;
 /* The cohort dial, read at call time rather than captured, so the Assurance
    panel reaches this detector without a reload. */
 import { TUNABLE } from '../../config/thresholds.js';
-const TUNABLE_ADOPTION = () => TUNABLE.adoption_risk_pct;
+const TUNABLE_ADOPTION = () => TUNABLE.adoption_worklist_threshold;
 const usd = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.round(n));
 const usdK = (n) => (Math.abs(n) >= 1e6 ? '$' + (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : '$' + Math.round(n / 1000) + 'K');
 const pct = (n) => `${n > 0 ? '+' : ''}${Math.round(n)}%`;
@@ -196,7 +196,7 @@ function adoptionFailure(ds, ctx) {
     if (a.usage.seats_provisioned < T.adoption_min_seats) return false;
     const rate = a.usage.seats_active_30d / a.usage.seats_provisioned;
     const daysSince = Math.round((asOf - Date.parse(a.purchased_at)) / DAY);
-    return rate < T.adoption_floor && daysSince <= T.onboarding_window_days;
+    return rate * 100 < T.adoption_decision_threshold && daysSince <= T.onboarding_window_days;
   });
   if (matched.length < T.min_accounts) return null;
 
@@ -221,7 +221,7 @@ function adoptionFailure(ds, ctx) {
     expected_outcome: `Activation of a material share of ${dormant.toLocaleString('en-US')} dormant seats, protecting ${usd(arr)}. Measured as seats_active_30d rising, not as sessions delivered.`,
     accounts: shown, sizing,
     observed: Math.round(mean(shown.map((a) => a.usage.seats_active_30d / a.usage.seats_provisioned * 100))),
-    baseline: Math.round(T.adoption_floor * 100), unit: 'rate',
+    baseline: T.adoption_decision_threshold, unit: 'rate',
     evidence: {
       arr_at_risk: arr,
       dormant_seats: dormant,
@@ -238,7 +238,7 @@ function adoptionFailure(ds, ctx) {
       inputs: [{ label: 'ARR at risk', value: arr, display: usd(arr) }],
       range_factor: [0.18, 0.42],
       time_horizon_days: 90,
-      formula: `${usd(arr)} × 18–42% non-renewal probability where adoption is below ${Math.round(T.adoption_floor * 100)}%`,
+      formula: `${usd(arr)} × 18–42% non-renewal probability where adoption is below ${T.adoption_decision_threshold}%`,
       basis: [
         `${dormant.toLocaleString('en-US')} dormant seats across ${shown.length} accounts`,
         `mean feature adoption ${Math.round(mean(shown.map((a) => a.usage.feature_adoption_pct)))}%`,
@@ -276,7 +276,7 @@ function renewalRisk(ds, ctx) {
     const adoption = a.usage.seats_active_30d / a.usage.seats_provisioned;
     return a.usage.usage_trend_30d <= T.renewal_deterioration
       || c.escal >= 1
-      || adoption < T.adoption_floor;
+      || adoption * 100 < T.adoption_decision_threshold;
   });
   if (matched.length < T.min_accounts) return null;
 
@@ -288,7 +288,7 @@ function renewalRisk(ds, ctx) {
     const adoption = a.usage.seats_active_30d / a.usage.seats_provisioned;
     if (a.usage.usage_trend_30d <= T.renewal_deterioration) return 'usage decline';
     if (c.escal >= 1) return 'escalation history';
-    if (adoption < T.adoption_floor) return 'low seat activation';
+    if (adoption * 100 < T.adoption_decision_threshold) return 'low seat activation';
     return 'other';
   });
   const mix = {};
@@ -362,7 +362,7 @@ function concentratedCause(ds, ctx) {
   const atRisk = ds.accounts.filter((a) => {
     if (!a.usage || a.arr_usd < T.arr_floor) return false;
     const adoption = a.usage.seats_active_30d / a.usage.seats_provisioned;
-    return a.usage.usage_trend_30d <= T.renewal_deterioration || adoption < T.adoption_floor;
+    return a.usage.usage_trend_30d <= T.renewal_deterioration || adoption * 100 < T.adoption_decision_threshold;
   });
   if (atRisk.length < T.concentrated_min) return null;
 
@@ -543,6 +543,21 @@ function renewalCohort(ds, ctx, prior) {
   const offline = cohort.filter((a) => a.billing?.credit_days > 0);
   const tight = cohort.filter((a) => (a.billing?.effective_churn_in_days ?? a.renewal_in_days) <= 30);
 
+  /* The full below-threshold set, including what renewal defence owns. Carried
+     so the card can show its own subtraction and reconcile against the cohort
+     surface, which lists all of them. */
+  const belowAll = ds.accounts.filter((a) => a.usage
+    && a.renewal_in_days >= 0 && a.renewal_in_days <= T.renewal_window_days
+    && a.usage.feature_adoption_pct < threshold);
+  const belowTotal = belowAll.length;
+  const belowArr = belowAll.reduce((s, a) => s + a.arr_usd, 0);
+  /* Only the named accounts that are ALSO below the threshold. renewal defence
+     names six, but most are named for usage decline or an escalation rather
+     than adoption, so subtracting all six from the below-threshold set does not
+     close: 130 − 6 = 124, and the cohort is 128. The overlap is what to
+     subtract, and it is what the surface marks. */
+  const namedBelow = belowAll.filter((a) => named.has(a.account_id));
+
   return {
     signal_type: 'renewal_cohort',
     /* The play covers all of them; the six named are examples. */
@@ -551,7 +566,10 @@ function renewalCohort(ds, ctx, prior) {
     confidence: 0.81,
     title: `${cohort.length} renewals under ${threshold}% adoption`,
     metric_label: `${usdK(cohortArr)} ARR · mean adoption ${Math.round(meanAdopt)}%`,
-    what_happened: `${cohort.length} accounts worth ${usd(cohortArr)} renew within ${T.renewal_window_days} days with product adoption below ${threshold}% — mean ${Math.round(meanAdopt)}%. This is on top of the ${named.size} accounts already named individually for renewal defence, not the same list. ${tight.length} of them reach their effective churn date inside 30 days.`,
+    /* The arithmetic is stated on the card, not just performed. A reader who
+       opens the cohort surface sees the larger number; showing the deduction
+       here is what makes the two agree instead of merely differ. */
+    what_happened: `${belowTotal} accounts worth ${usd(belowArr)} renew within ${T.renewal_window_days} days with product adoption below ${threshold}% — mean ${Math.round(meanAdopt)}%. ${namedBelow.length} of them are already named individually under renewal defence, leaving ${cohort.length} worth ${usd(cohortArr)} for this play. ${tight.length} reach their effective churn date inside 30 days.`,
     root_cause: `Adoption below ${threshold}% at renewal means the buyer is being asked to re-purchase something their team is not using. The gap did not open this quarter — it is the accumulated result of seats provisioned and never activated — but the renewal calendar is what turns it into a revenue event with a date on it. At ${cohort.length} accounts this is past the size a per-account plan can cover, which makes it a coverage decision rather than ${cohort.length} account decisions.`,
     action: `Run one adoption play across the cohort rather than ${cohort.length} individual plans. Sequence by effective churn date, not renewal date — ${offline.length} of these are offline-billed and carry credit terms that move their real deadline. Open Renewals to work the list.`,
     owner_role: 'VP Customer Success',
@@ -567,7 +585,10 @@ function renewalCohort(ds, ctx, prior) {
       mean_adoption_pct: Math.round(meanAdopt),
       offline_billed: offline.length,
       inside_30_days: tight.length,
-      excluded_already_named: named.size,
+      excluded_already_named: namedBelow.length,
+      below_threshold_total: belowTotal,
+      below_threshold_arr: belowArr,
+      reconciliation: `${belowTotal} below ${threshold}% − ${namedBelow.length} named under renewal defence = ${cohort.length} in this play`,
       accounts: shown.map((a) => acctRow(a, {
         risk_reason: `${a.usage.feature_adoption_pct}% adoption`,
         escalations: ctx.get(a.account_id).escal,
@@ -587,7 +608,7 @@ function renewalCohort(ds, ctx, prior) {
       basis: [
         `${cohort.length} accounts renewing within ${T.renewal_window_days} days below ${threshold}% adoption`,
         `mean adoption across the cohort is ${Math.round(meanAdopt)}%`,
-        `excludes the ${named.size} accounts already named by renewal defence`,
+        `${belowTotal} accounts are below ${threshold}%; ${namedBelow.length} are named individually under renewal defence, leaving ${cohort.length} here`,
       ],
       note: `Loss probability is the same stated assumption renewal defence uses; it is not measured here. The adoption figures, the renewal dates and the credit terms are all measured. The ${named.size} accounts named individually are excluded so the two decisions do not claim the same ARR.`,
     },

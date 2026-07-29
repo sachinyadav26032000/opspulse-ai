@@ -89,8 +89,16 @@ function tally(rows, get) {
 export function buildCohort(ds, opts = {}) {
   const asOf = ds.meta.as_of;
   const scope = opts.scope || COHORT_DEFAULTS.scope;
-  const threshold = opts.adoption_risk_pct ?? COHORT_DEFAULTS.adoption_risk_pct;
+  const threshold = opts.adoption_worklist_threshold ?? COHORT_DEFAULTS.adoption_worklist_threshold;
   const win = windowRange(opts.window || COHORT_DEFAULTS.window, asOf);
+
+  /* Accounts a decision elsewhere already names individually. They stay ON the
+     list — hiding them made the surface say 104 where the card said 100, and a
+     reader's first conclusion is that one of the two numbers is wrong. Showing
+     all of them with four marked is visible arithmetic: it demonstrates that
+     the two decisions deliberately don't double-count, rather than asking the
+     reader to take it on trust. */
+  const countedElsewhere = new Set(opts.counted_elsewhere || []);
 
   const options = scopeOptions(ds);
   const scopeValue = opts.scopeValue || (scope === 'all' ? '*' : options[scope][0]?.key);
@@ -125,6 +133,7 @@ export function buildCohort(ds, opts = {}) {
         runway_differs: (b.credit_days ?? 0) > 0,
         adoption_pct: adoption,
         below_threshold: adoption != null && adoption < threshold,
+        counted_elsewhere: countedElsewhere.has(a.account_id),
         usage_trend_30d: u.usage_trend_30d ?? null,
         history: (u.usage_history || []).map((h) => h.adoption_pct),
         seats_active_30d: u.seats_active_30d ?? null,
@@ -134,6 +143,10 @@ export function buildCohort(ds, opts = {}) {
     .sort((x, y) => y.arr_usd - x.arr_usd);
 
   const atRisk = rows.filter((r) => r.below_threshold);
+  /* The cohort a play would cover: at-risk minus whatever is already owned
+     individually. This is the figure the brief card carries. */
+  const alsoNamed = atRisk.filter((r) => r.counted_elsewhere);
+  const playable = atRisk.filter((r) => !r.counted_elsewhere);
 
   return {
     rows,
@@ -148,6 +161,10 @@ export function buildCohort(ds, opts = {}) {
       below: atRisk.length,
       arr_at_risk: atRisk.reduce((s, r) => s + r.arr_usd, 0),
       arr_total: rows.reduce((s, r) => s + r.arr_usd, 0),
+      also_named: alsoNamed.length,
+      also_named_arr: alsoNamed.reduce((s, r) => s + r.arr_usd, 0),
+      playable: playable.length,
+      playable_arr: playable.reduce((s, r) => s + r.arr_usd, 0),
       offline_below: atRisk.filter((r) => r.runway_differs).length,
       // Accounts whose real deadline sits in a later month than the renewal.
       runway_gained: atRisk.filter((r) => r.runway_differs).reduce((s, r) => s + r.credit_days, 0),

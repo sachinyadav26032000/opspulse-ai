@@ -299,6 +299,25 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
   /* ---- 1. Agents ------------------------------------------------------- */
   const agents = [];
   const AGENT_N = 62, NEW_HIRE_N = 14;
+
+  /* Unique agent names, on their OWN rng stream — same discipline as the
+     company names below, and for the same reason: uniqueness must not be able
+     to move the data.
+
+     `${rnd.pick(FIRST)} ${rnd.pick(LAST)}` collided 2-3 times in 62 on most
+     seeds. That was harmless while a name was only a label, and stopped being
+     harmless the moment renewal books were grouped BY CSM NAME: two people
+     called Vikram Sandoval merged into one 91-account book, which is not a
+     book size that exists in a real CS org. The two draws are still consumed
+     below so the stream is untouched. */
+  const agentNames = (() => {
+    const r = makeRng((seed ^ 0x5e1a09) >>> 0);
+    const all = [];
+    for (const f of FIRST) for (const l of LAST) all.push(`${f} ${l}`);
+    r.shuffle(all);
+    return all;
+  })();
+  let agentNameCursor = 0;
   for (let i = 0; i < AGENT_N; i++) {
     const isNew = i >= AGENT_N - NEW_HIRE_N;
     const team = TEAMS[i % TEAMS.length];
@@ -307,7 +326,8 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
       : rnd.int(210, 2100);
     agents.push({
       agent_id: 'AG' + pad(i + 1, 3),
-      name: `${rnd.pick(FIRST)} ${rnd.pick(LAST)}`,
+      // the two original draws, consumed for stream parity, result discarded
+      name: (rnd.pick(FIRST), rnd.pick(LAST), agentNames[agentNameCursor++]),
       team,
       role: isNew ? 'Support Agent (new hire)' : rnd.chance(0.15) ? 'Senior Agent' : 'Support Agent',
       cohort: isNew ? 'new_hire' : 'tenured',
@@ -319,6 +339,14 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
   }
   const agentsByTeam = {};
   for (const t of TEAMS) agentsByTeam[t] = agents.filter((a) => a.team === t);
+
+  /* CSM roster — tenured only. A new hire ~46 days into the job does not own a
+     book of forty accounts and their upcoming renewals; assigning them one
+     makes every per-CSM view read wrong to anyone who has run a CS org.
+     Filtering the pool does not change the RNG stream: rnd.pick consumes one
+     draw whatever the pool length, so only the name drawn changes. 48 CSMs at
+     a median of ~50 accounts, inside the 30-80 book-size benchmark. */
+  const csmPool = agents.filter((a) => a.cohort === 'tenured');
 
   /* ---- 2. Accounts ----------------------------------------------------- */
 
@@ -386,7 +414,7 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
           renewal_in_days: daysToRenewal(purchased.getTime(), Number(termMonths), nowMs),
         };
       })(),
-      csm: rnd.pick(agents).name,
+      csm: rnd.pick(csmPool).name,
     });
   }
   const accountById = new Map(accounts.map((a) => [a.account_id, a]));

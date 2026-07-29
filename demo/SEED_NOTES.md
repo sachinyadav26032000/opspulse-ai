@@ -177,9 +177,9 @@ Thresholds now live in `config/thresholds.js` (see §2b) and are re-exported as
 | Detector | Rule |
 |---|---|
 | `silent_decline` | usage ≤ −25%, **no ticket in 30 days**, ARR ≥ $20k |
-| `adoption_failure` | seat activation < 40%, ≥ 20 seats, within onboarding window |
+| `adoption_failure` | seat activation < `adoption_decision_threshold` (40%), ≥ 20 seats, within onboarding window |
 | `renewal_risk` | renews ≤ 90d **and** any deterioration signal |
-| `renewal_cohort` | renews ≤ 90d **and** adoption < 60%, ≥ 10 accounts, **excluding whatever `renewal_risk` already named** |
+| `renewal_cohort` | renews ≤ 90d **and** adoption < `adoption_worklist_threshold` (60%), ≥ 10 accounts, **excluding whatever `renewal_risk` already named** |
 | `concentrated_cause` | **two-proportion z ≥ 2.5** — see §5 |
 
 `silent_decline` previously keyed on `tickets === 0` — *never* contacted. An
@@ -202,7 +202,8 @@ the engine on change.
 
 | Dial | Default | Means |
 |---|---|---|
-| `adoption_risk_pct` | 60 | below this, adoption is "low" |
+| `adoption_worklist_threshold` | 60% | below this, an account joins the renewals working list |
+| `adoption_decision_threshold` | 40% | below this, low adoption is a decision in its own right |
 | `renewal_window_days` | 90 | how far ahead a renewal is this quarter's problem |
 | `usage_decline_pct` | 25 | fall over 30 days that counts as a decline |
 | `silent_account_days` | 30 | no contact for this long is "silent" |
@@ -212,11 +213,19 @@ the false-positive rate down and are deliberately *not* exposed: two customers
 do not share a definition of "low adoption", but they do share a definition of
 significance.
 
-`REVENUE.adoption_floor` stays `0.40` and is **not** spliced from
-`adoption_risk_pct` (60). Same metric, two different bars: 40% is where adoption
-alone is a CRO-level decision, 60% is where a CSM's working list starts.
-Collapsing them would quadruple `adoption_failure`'s output while reading as a
-tidy-up.
+**Two adoption thresholds, and the names say which is which.** Formerly
+`adoption_risk_pct` (60) and `adoption_floor` (0.40) — a percentage and a ratio,
+under names that gave no clue they were the same metric at different bars. Both
+are now percentages, because that is the unit a customer states them in at
+onboarding.
+
+- `adoption_worklist_threshold` (60%) — where a CSM's working list starts. Wide
+  by design; a list to work through is allowed to be long.
+- `adoption_decision_threshold` (40%) — where adoption **alone** is bad enough
+  to be a CRO-level decision. Necessarily stricter, or every card is this card.
+
+They are deliberately not collapsed into one: doing so would quadruple
+`adoption_failure`'s output while reading as a tidy-up.
 
 ### Meta (1, new) — `engine/web/confidence.js`
 
@@ -437,10 +446,22 @@ different people in the same org:
 
 Region is the default because that is the altitude the question was asked at.
 
-Measured against this generator on seed 20250101: **59 distinct CSMs**, median
-book **38 accounts**, min 26 / max 95, median **7 renewals a quarter**. The call
-implied ~6 per CSM, so the generator needed no change. (Worth knowing: `csm` is
-drawn from the *support-agent* roster, which includes "new hire".)
+Measured across 5 seeds: **48 distinct CSMs**, book size **32–68** (median ~50),
+median **7 renewals a quarter** — the call implied ~6 per CSM, and book sizes
+sit inside the 30–80 benchmark.
+
+Two fixes were needed to get there:
+
+- **CSMs are drawn from tenured agents only.** A new hire ~46 days into the job
+  does not own a book of forty accounts and their renewals. `csmPool` filters
+  on `cohort === 'tenured'`; `rnd.pick` consumes one draw whatever the pool
+  length, so the RNG stream is untouched.
+- **Agent names are now unique.** `${rnd.pick(FIRST)} ${rnd.pick(LAST)}`
+  collided 2–3 times in 62 on most seeds. Harmless while a name was only a
+  label; not harmless once renewal books are grouped **by CSM name** — two
+  people called Vikram Sandoval merged into one 91-account book, which is not a
+  book size that exists in a real CS org. Deduped on its own RNG stream, with
+  the two original draws still consumed, exactly as the company names are.
 
 **The table is a working list, not a decision.** Forty rows sorted by ARR is
 correct here. Decision sizing applies to the brief item that *points* at this
@@ -457,6 +478,28 @@ this surface, so the card and the screen it opens cannot disagree. Landing on
 the region-scoped quarter default would show 48 accounts under a card that just
 said 128, and the first thing a reader concludes is that one of the numbers is
 wrong.
+
+### Visible arithmetic, not differing numbers
+
+The cohort surface lists **every** below-threshold account, including the ones
+`renewal_risk` already owns. Those rows carry a `renewal defence` tag and stay
+in place; nothing is hidden. Card and surface both show the subtraction:
+
+```
+104 below 60%  −  4 named under renewal defence  =  100 in this play
+```
+
+Filtering the four out instead would make the surface read 100 where an earlier
+reading said 104, and a reader's first conclusion is that one of the numbers is
+wrong. Showing all of them with four marked *demonstrates* that the two
+decisions don't double-count, rather than asking anyone to take it on trust.
+
+**Subtract the overlap, not the whole named set.** `renewal_risk` names six
+accounts, but most are named for usage decline or an escalation rather than
+adoption — only the ones that are *also* below the threshold are double-counting
+candidates. Subtracting all six gives `130 − 6 = 124` against a cohort of 128,
+and the arithmetic visibly fails to close. Two marks, two facts: the left rail
+means below threshold, the tag means already owned elsewhere.
 
 ---
 

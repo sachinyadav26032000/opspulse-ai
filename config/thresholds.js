@@ -23,8 +23,21 @@
    These four came directly out of the validation call. Each is a business
    definition, not a statistical one. */
 export const TUNABLE = {
-  /** Below this % of provisioned seats active, adoption is "low". */
-  adoption_risk_pct: 60,
+  /* TWO adoption thresholds, deliberately, and the names now say which is
+     which. Both are percentages, because that is the unit a customer states
+     them in at onboarding — "we start worrying at sixty".
+
+       worklist   where a CSM's working list starts. Wide by design: this is a
+                  list to work through, and it is allowed to be long.
+       decision   where adoption ALONE is bad enough to be a CRO-level
+                  decision. Necessarily stricter, or every card is this card.
+
+     Same metric, two different bars. Collapsing them would quadruple
+     adoption_failure's output while looking like a tidy-up. */
+  /** Below this % adoption, an account joins the renewals working list. */
+  adoption_worklist_threshold: 60,
+  /** Below this % adoption, low adoption is a decision in its own right. */
+  adoption_decision_threshold: 40,
   /** How far ahead a renewal has to be before it stops being this quarter's problem. */
   renewal_window_days: 90,
   /** A usage fall of at least this many % over 30 days is a decline. */
@@ -66,24 +79,19 @@ export const REVENUE = {
   cohort_min: 10,              // below this it is a list of accounts, not a cohort —
                                // renewal_risk already names those individually
 
-  /* NOT TUNABLE.adoption_risk_pct, deliberately. That dial (60%) is where a
-     CSM's working list starts; this floor (40%) is where adoption is bad
-     enough to be a CRO-level decision on its own. Same metric, two different
-     bars, and collapsing them would quadruple this detector's output while
-     looking like a tidy-up. */
-  adoption_floor: 0.40,        // active seats / provisioned
-
   /* Spliced from TUNABLE. Stored negative because the detector compares a
      signed trend; the dial a human turns stays positive. */
   get silent_usage_drop() { return -TUNABLE.usage_decline_pct; },
   get silent_account_days() { return TUNABLE.silent_account_days; },
   get renewal_window_days() { return TUNABLE.renewal_window_days; },
+  /* % of provisioned seats active. NOT the worklist threshold — see TUNABLE. */
+  get adoption_decision_threshold() { return TUNABLE.adoption_decision_threshold; },
 };
 
 /* ── The renewals × adoption cohort ──────────────────────────────────────
    Consumed by engine/web/cohort.js. */
 export const COHORT = {
-  get adoption_risk_pct() { return TUNABLE.adoption_risk_pct; },
+  get adoption_worklist_threshold() { return TUNABLE.adoption_worklist_threshold; },
   scope: 'region',   // csm | region | all — the altitude the question is asked at
   window: 'quarter',
 };

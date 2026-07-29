@@ -164,7 +164,7 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     focus: null,   // signal_key returned from the workspace — highlighted, never auto-committed
     drillId: null,     // decision being drilled into (Level 2)
     drillAccount: null, // account being drilled into (Level 3)
-    /* adoption_risk_pct is deliberately ABSENT, not copied from COHORT_DEFAULTS.
+    /* adoption_worklist_threshold is deliberately ABSENT, not copied from COHORT_DEFAULTS.
        buildCohort falls back to config when it is undefined, so the Assurance
        dial reaches this view; spreading it here would snapshot 60 at mount and
        silently ignore the dial forever. It is set only once the user edits the
@@ -731,7 +731,7 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     state.cohort.scope = 'all';
     state.cohort.scopeValue = null;
     state.cohort.window = 'd90';
-    delete state.cohort.adoption_risk_pct;   // follow the configured dial
+    delete state.cohort.adoption_worklist_threshold;   // follow the configured dial
     state.view = 'cohort';
     render();
     body.scrollTop = 0;
@@ -1239,7 +1239,11 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
      ══════════════════════════════════════════════════════════════════════ */
   function viewCohort() {
     const d = ds();
-    const c = buildCohort(d, state.cohort);
+    /* Whoever renewal defence names individually. Read off the live insight so
+       the surface and the brief card can never drift apart. */
+    const namedElsewhere = (eng().insights.find((i) => i.signal_type === 'renewal_risk')
+      ?._meta.exposed_accounts || []).map((a) => a.account_id);
+    const c = buildCohort(d, { ...state.cohort, counted_elsewhere: namedElsewhere });
     if (!state.cohort.scopeValue) state.cohort.scopeValue = c.scopeValue;
 
     const wrap = el('div', 'lv-view');
@@ -1271,7 +1275,11 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
         <b class="risk">${esc(fmt.usdK(s2.arr_at_risk))}</b> at risk
       </div>
       <div class="cs-sub">${esc(c.scopeLabel)} · ${esc(fmt.usdK(s2.arr_total))} renewing in total${
-        s2.offline_below ? ` · ${s2.offline_below} of the at-risk accounts are offline-billed, carrying ${s2.runway_gained} extra days of runway between them` : ''}</div>`;
+        s2.offline_below ? ` · ${s2.offline_below} of the at-risk accounts are offline-billed, carrying ${s2.runway_gained} extra days of runway between them` : ''}</div>
+      ${s2.also_named ? `<div class="cs-recon"><b>${fmt.int(s2.below)}</b> below threshold
+        <span class="op">−</span> <b>${fmt.int(s2.also_named)}</b> already named individually under <b>renewal defence</b>
+        <span class="op">=</span> <b class="ok">${fmt.int(s2.playable)}</b> covered by the adoption play${
+        ''} <span class="why">the ${s2.also_named} are still listed below, marked — they are not counted twice</span></div>` : ''}`;
     wrap.appendChild(sum);
 
     /* ── The table ── */
@@ -1289,9 +1297,9 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
 
       const list = el('div', 'coh-list');
       for (const r of c.rows) {
-        const row = el('button', 'coh-row' + (r.below_threshold ? ' below' : ''));
+        const row = el('button', 'coh-row' + (r.below_threshold ? ' below' : '') + (r.counted_elsewhere ? ' named-elsewhere' : ''));
         row.innerHTML = `
-          <span class="cr-name">${esc(r.account_name)}<small>${esc(r.plan)} · ${esc(r.region)}</small></span>
+          <span class="cr-name">${esc(r.account_name)}${r.counted_elsewhere ? '<span class="cr-tag" title="Already named individually under renewal defence — counted there, not here">renewal defence</span>' : ''}<small>${esc(r.plan)} · ${esc(r.region)}</small></span>
           <span class="r cr-arr">${esc(fmt.usd(r.arr_usd))}</span>
           <span class="cr-ren">${esc(r.renewal_date || '—')}<small>${r.renewal_in_days}d</small></span>
           <span class="cr-eff${r.runway_differs ? ' gained' : ''}">${esc(r.effective_churn_date || '—')}<small>${
@@ -1335,8 +1343,8 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
       if (wn) wn.addEventListener('change', () => { state.cohort.window = wn.value; render(); });
       const th = wrap.querySelector('#cohThr');
       if (th) th.addEventListener('change', () => {
-        const v = Math.max(1, Math.min(100, Number(th.value) || COHORT_DEFAULTS.adoption_risk_pct));
-        state.cohort.adoption_risk_pct = v; render();
+        const v = Math.max(1, Math.min(100, Number(th.value) || COHORT_DEFAULTS.adoption_worklist_threshold));
+        state.cohort.adoption_worklist_threshold = v; render();
       });
     }
 
@@ -2372,8 +2380,10 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     const quietFor = (a) => d.meta.days - 1 - lastSeen.get(a.account_id);
 
     const DIALS = [
-      { k: 'adoption_risk_pct', label: 'Low adoption below', unit: '%', hint: 'active seats as a share of provisioned',
+      { k: 'adoption_worklist_threshold', label: 'Worklist: adoption below', unit: '%', hint: 'joins the renewals working list',
         sel: (v) => d.accounts.filter((a) => a.usage && a.usage.feature_adoption_pct < v) },
+      { k: 'adoption_decision_threshold', label: 'Decision: adoption below', unit: '%', hint: 'low adoption becomes a decision on its own',
+        sel: (v) => d.accounts.filter((a) => a.usage && (a.usage.seats_active_30d / a.usage.seats_provisioned) * 100 < v) },
       { k: 'renewal_window_days', label: 'Renewal window', unit: 'days', hint: 'how far ahead a renewal is this quarter\u2019s problem',
         sel: (v) => d.accounts.filter((a) => a.renewal_in_days >= 0 && a.renewal_in_days <= v) },
       { k: 'usage_decline_pct', label: 'Usage decline at', unit: '%', hint: 'fall over 30 days that counts as a decline',
