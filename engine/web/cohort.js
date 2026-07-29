@@ -26,13 +26,11 @@
 
 const DAY = 86400000;
 
-/* Defaults. Task 4 relocates these to config/thresholds.js so a customer can
-   tune them at onboarding; until then this is the single place they live. */
-export const COHORT_DEFAULTS = {
-  adoption_risk_pct: 60,
-  scope: 'region',
-  window: 'quarter',
-};
+/* Defaults live in config/thresholds.js so a customer can tune them at
+   onboarding — "less than 70 or 60%" was said as one phrase on the call, which
+   is what a dial sounds like. Re-exported under the original name. */
+export { COHORT as COHORT_DEFAULTS } from '../../config/thresholds.js';
+import { COHORT as COHORT_DEFAULTS } from '../../config/thresholds.js';
 
 export const WINDOWS = [
   { key: 'quarter', label: 'This quarter' },

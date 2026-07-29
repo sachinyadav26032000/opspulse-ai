@@ -92,17 +92,30 @@ export function applyDecisionSizing(insight, size = DECISION_SIZE) {
   }
 
   const cut = Math.max(0, matched - shown.length);
+
+  /* The book-ends come from the detector when it recorded them, NOT from
+     `fullArr`. The revenue detectors set evidence.arr_at_risk to the SHOWN
+     ARR — their economics are already scoped, which is why `ratio` is 1 for
+     them — so deriving cut_arr as fullArr − sizedArr yields zero and prints
+     "the remaining 17 hold $0". That read as correct for as long as every
+     revenue detector matched exactly the six accounts it showed; the moment
+     one matched more, the note started stating a falsehood. prioritise()
+     already sums the true totals, so prefer them. */
+  const prior = m.sizing || {};
+  const totalArr = prior.total_arr ?? fullArr;
+  const cutArr = prior.cut_arr ?? Math.max(0, fullArr - sizedArr);
+
   m.sizing = {
     matched,
     shown: shown.length,
     cut,
-    total_arr: fullArr,
+    total_arr: totalArr,
     shown_arr: sizedArr,
-    cut_arr: Math.max(0, fullArr - sizedArr),
+    cut_arr: cutArr,
     ratio,
     basis: 'revenue exposure, descending',
     note: cut
-      ? `${matched} accounts matched. This decision is scoped to the ${shown.length} largest by ARR (${money(sizedArr)}); the remaining ${cut} hold ${money(fullArr - sizedArr)} and stay in the feed.`
+      ? `${matched} accounts matched. This decision is scoped to the ${shown.length} largest by ARR (${money(sizedArr)}); the remaining ${cut} hold ${money(cutArr)} and stay in the feed.`
       : `${matched} accounts matched — all in scope.`,
   };
 

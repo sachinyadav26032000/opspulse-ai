@@ -22,22 +22,10 @@ import { createInsight, STATUS, CONFIDENCE_CUTOFF } from './schema.js';
 
 const DAY = 86400000;
 
-/** Declared, not buried — a reviewer can argue with this block. */
-export const REVENUE_THRESHOLDS = {
-  arr_floor: 20000,            // below this it is not a CRO-level decision
-  decision_size: 6,            // 4-6 named accounts per decision
-  min_accounts: 3,             // fewer than this is not a pattern
-  silent_usage_drop: -25,      // % change over 30d
-  adoption_floor: 0.40,        // active seats / provisioned
-  adoption_min_seats: 20,      // small seat counts are noise
-  onboarding_window_days: 400, // "since onboarding" horizon
-  renewal_window_days: 90,
-  renewal_deterioration: -12,  // % usage change that counts as deterioration
-  concentrated_min: 3,         // accounts sharing one cause before it is one
-  concentrated_z: 2.5,         // two-proportion z: the category must be genuinely
-                               // OVER-REPRESENTED among at-risk accounts, not
-                               // merely the largest of several equal buckets
-};
+/* Thresholds live in config/thresholds.js. Re-exported under the original
+   name because callers import it from here. */
+export { REVENUE as REVENUE_THRESHOLDS } from '../../config/thresholds.js';
+import { REVENUE as REVENUE_THRESHOLDS } from '../../config/thresholds.js';
 
 const T = REVENUE_THRESHOLDS;
 const usd = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.round(n));
@@ -48,8 +36,8 @@ const mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
 /* ── Contact history, once, shared by all four detectors ─────────────────── */
 function contactIndex(ds) {
   const m = new Map();
-  for (const a of ds.accounts) m.set(a.account_id, { tickets: 0, recent: 0, escal: 0 });
-  for (const t of ds.tickets) { const c = m.get(t.account_id); if (c) { c.tickets++; if (t.day_index >= ds.meta.recent_from) c.recent++; } }
+  for (const a of ds.accounts) m.set(a.account_id, { tickets: 0, recent: 0, escal: 0, last_day: -Infinity });
+  for (const t of ds.tickets) { const c = m.get(t.account_id); if (c) { c.tickets++; if (t.day_index >= ds.meta.recent_from) c.recent++; if (t.day_index > c.last_day) c.last_day = t.day_index; } }
   for (const e of ds.escalations) { const c = m.get(e.account_id); if (c) c.escal++; }
   return m;
 }
@@ -122,7 +110,12 @@ function silentDecline(ds, ctx) {
     const c = ctx.get(a.account_id);
     return a.usage
       && a.usage.usage_trend_30d <= T.silent_usage_drop
-      && c.tickets === 0
+      /* Silent means NOT HEARD FROM LATELY, not never-heard-from. An account
+         that raised a ticket four months ago and has since gone quiet while
+         its usage falls is the textbook case; keying on `tickets === 0`
+         excluded it and left the detector watching only accounts that had
+         never once made contact. */
+      && (ds.meta.days - 1 - c.last_day) >= T.silent_account_days
       && a.arr_usd >= T.arr_floor;
   });
   if (matched.length < T.min_accounts) return null;
@@ -136,10 +129,10 @@ function silentDecline(ds, ctx) {
     signal_type: 'silent_decline',
     severity: 92,
     confidence: 0.82,
-    title: `Silent decline — ${shown.length} accounts, no support contact`,
+    title: `Silent decline — ${shown.length} accounts, quiet ${T.silent_account_days}+ days`,
     metric_label: `${pct(avgDrop)} usage · ${usdK(arr)} ARR`,
     what_happened: `${shown.length} accounts worth ${usd(arr)} have cut product usage by an average of ${Math.abs(Math.round(avgDrop))}% over 30 days without raising a single support ticket. The earliest renewal is ${soonest.company} in ${soonest.renewal_in_days} days.`,
-    root_cause: `These accounts are disengaging quietly rather than complaining. Because no ticket, call or survey response exists for any of them, they are invisible to every contact-based signal in the platform — the decline is only detectable in product usage.`,
+    root_cause: `These accounts are disengaging quietly rather than complaining. None has raised a ticket in ${T.silent_account_days} days, so they are invisible to every contact-based signal in the platform — the decline is only detectable in product usage.`,
     action: `Assign a CSM outreach to each of the ${shown.length} accounts this week, led by ${soonest.company} (${soonest.renewal_in_days} days to renewal). Open with a usage review, not a satisfaction check — there is no dissatisfaction on record to discuss.`,
     owner_role: 'Head of Customer Success',
     playbook: 'PB-SILENT-DECLINE-01',
@@ -163,7 +156,7 @@ function silentDecline(ds, ctx) {
       basis: [
         `${shown.length} accounts, ${usd(arr)} combined ARR`,
         `mean usage change ${pct(avgDrop)} over 30 days`,
-        'zero support contact — no offsetting engagement signal',
+        `no support contact in ${T.silent_account_days}+ days — no offsetting engagement signal`,
       ],
       note: 'The 35% conversion is a stated assumption, not a measurement. It is the widest source of uncertainty in this figure.',
     },
@@ -179,7 +172,7 @@ function silentDecline(ds, ctx) {
     provenance: {
       usage_trend: 'accounts[].usage.logins_30d vs logins_prior_30d',
       arr: 'accounts[].arr_usd',
-      contact_history: 'tickets[] filtered by account_id (count = 0)',
+      contact_history: `tickets[] filtered by account_id (max day_index at least ${T.silent_account_days} days old)`,
       renewal: 'accounts[].renewal_in_days',
     },
     confParts: { statistical: 0.30, explained: 0.34, corroborated: 0.18 },
@@ -384,7 +377,7 @@ function concentratedCause(ds, ctx) {
   const withCat = (list) => list.filter((a) => catOf.has(a.account_id));
   const riskWithCat = withCat(atRisk);
   const baseWithCat = withCat(ds.accounts.filter((a) => a.arr_usd >= T.arr_floor));
-  if (riskWithCat.length < T.concentrated_min || baseWithCat.length < 30) return null;
+  if (riskWithCat.length < T.concentrated_min || baseWithCat.length < T.concentrated_base_min) return null;
 
   const share = (list, cat) => list.filter((a) => catOf.get(a.account_id) === cat).length / list.length;
   const categories = [...new Set(baseWithCat.map((a) => catOf.get(a.account_id)))];

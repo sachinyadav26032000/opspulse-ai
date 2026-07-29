@@ -808,3 +808,25 @@
   .coh-row { grid-template-columns: 1fr auto; row-gap: 4px; }
   .cr-ren, .cr-eff, .cr-trend, .cr-owner { grid-column: 1 / -1; }
 }
+
+/* ── Threshold dials (Assurance) ────────────────────────────────────────────
+   Four business definitions, editable, sitting beside the counts they produce.
+   Laid out as a grid rather than a form so the hints read as a column of
+   explanation instead of four stranded captions. */
+.thr-grid { display: grid; gap: calc(var(--u) * 1.25); }
+.thr-row {
+  display: grid; grid-template-columns: minmax(150px, 1fr) auto; gap: 4px calc(var(--u) * 2);
+  align-items: center; padding-bottom: calc(var(--u) * 1.25); border-bottom: 1px solid var(--line);
+}
+.thr-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.thr-row label { font-size: .84rem; color: var(--text-soft); }
+.thr-row small { grid-column: 1 / -1; font-size: .7rem; color: var(--text-dim); line-height: 1.45; }
+.thr-in {
+  display: flex; align-items: center; gap: 5px; font-size: .78rem; color: var(--text-dim);
+}
+.thr-in input {
+  width: 64px; background: rgba(255,255,255,.05); border: 1px solid var(--line-strong);
+  border-radius: 6px; color: var(--text); font: inherit; font-size: .84rem; font-weight: 700;
+  padding: 4px 8px; text-align: right; font-variant-numeric: tabular-nums;
+}
+.thr-in input:focus { outline: 0; border-color: rgba(52,211,153,.5); }

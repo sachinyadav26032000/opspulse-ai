@@ -18,18 +18,11 @@ import {
   npsOf, openTickets,
 } from './aggregate.js';
 
-/** Thresholds are declared, not buried — a reviewer can argue with this block. */
-export const THRESHOLDS = {
-  min_sample: 40,          // no anomaly is raised below this many recent records
-  rate_z: 2.5,             // two-proportion z
-  cohort_t: 2.5,           // Welch t between cohorts
-  qa_gap_pts: 8,           // minimum QA point gap worth coaching on
-  volume_lift: 1.35,       // emerging topic must be ≥35% above its own baseline
-  backlog_slope: 3,        // tickets/day of sustained queue growth
-  nps_drop_pts: 8,
-  csat_drop: 0.25,         // mean stars
-  churn_arr_floor: 60000,  // ARR below which churn risk isn't worth a card
-};
+/* Thresholds live in config/thresholds.js — one file for every bar the
+   product has to clear, so a reviewer can argue with all of them at once.
+   Re-exported under the original name because callers import it from here. */
+export { DETECTION as THRESHOLDS } from '../../config/thresholds.js';
+import { DETECTION as THRESHOLDS } from '../../config/thresholds.js';
 
 function mkSeries(days, values) { return { days: values.map((_, i) => i), values }; }
 

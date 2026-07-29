@@ -167,7 +167,7 @@
     </div>
 
     <p class="dim" style="margin-top:18px;font-size:.86rem;max-width:80ch">
-      A global minimum sample of <strong style="color:var(--text-soft)">40 recent records</strong> applies before any anomaly is raised, regardless of how extreme the signal looks. Thresholds are declared in one block in <code style="color:var(--cyan)">engine/web/detect.js</code> rather than buried at their call sites, specifically so a reviewer can disagree with them in one place. On Enterprise they are configurable under review.
+      A global minimum sample of <strong style="color:var(--text-soft)">40 recent records</strong> applies before any anomaly is raised, regardless of how extreme the signal looks. Thresholds are declared in one file — <code style="color:var(--cyan)">config/thresholds.js</code> — rather than buried at their call sites, specifically so a reviewer can disagree with them in one place. That file separates the four <strong style="color:var(--text-soft)">business dials</strong> a customer owns (what counts as low adoption, how far ahead a renewal matters, what size of usage fall is a decline, how long silence lasts before it means something) from the <strong style="color:var(--text-soft)">statistical bars</strong> above, which exist to hold the false-positive rate down and are ours to defend rather than yours to turn. Two customers do not share a definition of "low adoption"; they do share a definition of significance.
     </p>
   </div>
 </section>

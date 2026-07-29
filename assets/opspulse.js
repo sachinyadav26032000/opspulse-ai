@@ -27,6 +27,7 @@ import { KAGGLE_COLUMNS } from '../data/generator.js';
 import { toCsv } from '../data/csv.js';
 import { CONFIDENCE_CUTOFF, SIGNAL_TYPES } from '../engine/web/schema.js';
 import { buildCohort, WINDOWS, COHORT_DEFAULTS } from '../engine/web/cohort.js';
+import { TUNABLE, setTunable } from '../config/thresholds.js';
 import { buildAccountDetail } from '../engine/web/exposure.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -163,7 +164,12 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     focus: null,   // signal_key returned from the workspace — highlighted, never auto-committed
     drillId: null,     // decision being drilled into (Level 2)
     drillAccount: null, // account being drilled into (Level 3)
-    cohort: { ...COHORT_DEFAULTS, scopeValue: null },
+    /* adoption_risk_pct is deliberately ABSENT, not copied from COHORT_DEFAULTS.
+       buildCohort falls back to config when it is undefined, so the Assurance
+       dial reaches this view; spreading it here would snapshot 60 at mount and
+       silently ignore the dial forever. It is set only once the user edits the
+       cohort's own field, which then means "I want this view different". */
+    cohort: { scope: COHORT_DEFAULTS.scope, window: COHORT_DEFAULTS.window, scopeValue: null },
   };
 
   /* Coming back from the workspace via "Take action". We highlight the decision
@@ -2323,6 +2329,60 @@ export function mountOpsPulse(root, store, { onOpenTicket, user } = {}) {
     bd.appendChild(k);
     p.appendChild(bd);
     wrap.appendChild(p);
+
+    /* ── The dials a customer owns ──────────────────────────────────────
+       Four numbers, editable, that re-run the engine on change. They sit in
+       Assurance rather than a settings modal on purpose: the honest place to
+       show someone what a threshold does is beside the size of the set it
+       selects. Each dial therefore carries its OWN live count — the headline
+       KPIs above barely move when a dial turns (a detector that was already
+       firing keeps firing, it just sweeps more accounts), so pointing at them
+       would have been a claim the numbers don't support. */
+    const tp = el('div', 'panel');
+    tp.innerHTML = `<div class="panel-hd"><h3>Thresholds</h3><span class="hint">business definitions · yours to set</span></div>`;
+    const tb = el('div', 'panel-bd');
+    /* Days since each account last raised a ticket — the one input none of the
+       account records carry directly. Built once for the silent dial. */
+    const lastSeen = new Map(d.accounts.map((a) => [a.account_id, -Infinity]));
+    for (const t of d.tickets) if (t.day_index > lastSeen.get(t.account_id)) lastSeen.set(t.account_id, t.day_index);
+    const quietFor = (a) => d.meta.days - 1 - lastSeen.get(a.account_id);
+
+    const DIALS = [
+      { k: 'adoption_risk_pct', label: 'Low adoption below', unit: '%', hint: 'active seats as a share of provisioned',
+        sel: (v) => d.accounts.filter((a) => a.usage && a.usage.feature_adoption_pct < v) },
+      { k: 'renewal_window_days', label: 'Renewal window', unit: 'days', hint: 'how far ahead a renewal is this quarter\u2019s problem',
+        sel: (v) => d.accounts.filter((a) => a.renewal_in_days >= 0 && a.renewal_in_days <= v) },
+      { k: 'usage_decline_pct', label: 'Usage decline at', unit: '%', hint: 'fall over 30 days that counts as a decline',
+        sel: (v) => d.accounts.filter((a) => a.usage && a.usage.usage_trend_30d <= -v) },
+      { k: 'silent_account_days', label: 'Silent after', unit: 'days', hint: 'no support contact for this long',
+        sel: (v) => d.accounts.filter((a) => quietFor(a) >= v) },
+    ];
+    const grid = el('div', 'thr-grid');
+    for (const d of DIALS) {
+      const row = el('div', 'thr-row');
+      const hit = d.sel(TUNABLE[d.k]);
+      const hitArr = hit.reduce((s2, a) => s2 + (a.arr_usd || 0), 0);
+      row.innerHTML = `<label for="thr_${d.k}">${esc(d.label)}</label>
+        <span class="thr-in"><input id="thr_${d.k}" type="number" min="1" max="${d.k.endsWith('_pct') ? 100 : 400}" step="${d.k.endsWith('_pct') ? 5 : 10}" value="${TUNABLE[d.k]}" /><span>${esc(d.unit)}</span></span>
+        <small>${esc(d.hint)} &middot; <b class="thr-n">selects ${fmt.int(hit.length)} account${hit.length === 1 ? '' : 's'}</b> holding ${esc(fmt.usdK(hitArr))}</small>`;
+      const inp = row.querySelector('input');
+      inp.addEventListener('change', () => {
+        try { setTunable(d.k, inp.value); } catch { inp.value = TUNABLE[d.k]; return; }
+        /* Re-run the engine rather than patching the view: these feed nine
+           detectors, and re-deriving is the only way the numbers on screen
+           stay consistent with each other. */
+        store.recompute('thresholds');
+        render();
+      });
+      grid.appendChild(row);
+    }
+    tb.appendChild(grid);
+    const tnote = el('p', 'muted');
+    tnote.style.cssText = 'font-size:.74rem;margin:calc(var(--u)*1.5) 0 0;line-height:1.55';
+    tnote.innerHTML = 'These four are business definitions \u2014 two customers do not share a meaning of \u201clow adoption.\u201d The statistical bars each detector clears (z-scores, minimum samples) are deliberately <b>not</b> on this panel: they hold the false-positive rate down and are ours to defend, not yours to turn.';
+    tb.appendChild(tnote);
+    tp.appendChild(tb);
+    wrap.appendChild(tp);
 
     /* The four governance rules, stated as rules rather than marketing. */
     const gp = el('div', 'panel');
