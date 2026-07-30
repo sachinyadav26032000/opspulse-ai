@@ -453,3 +453,121 @@ footer { border-top: 1px solid var(--line); margin-top: 70px; padding: 40px 0 50
   70%  { box-shadow: 0 0 0 8px rgba(52,211,153,0); }
   100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); }
 }
+
+/* ---------- Founding team ----------
+   Restrained on purpose: one tight row, no photos, muted until hover. The
+   product is the hero; this is the credibility footnote underneath it. */
+.founders { padding-bottom: 20px; }
+.founders-head { margin-bottom: 20px; }
+.founders-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px; max-width: 760px;
+}
+.founder {
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 16px 18px; background: rgba(255, 255, 255, 0.014);
+  transition: border-color 0.16s, background 0.16s;
+}
+.founder:hover { border-color: var(--line-strong); background: rgba(255, 255, 255, 0.028); }
+.founder h4 {
+  font-size: 0.95rem; font-weight: 700; color: var(--text);
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
+}
+.founder .role {
+  font-size: 0.72rem; font-weight: 600; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+/* The brief carries the credibility, so it gets the readable size and the
+   softer colour. The profile link is a plain text link on purpose — a brand
+   glyph next to 0.78rem type reads far heavier than its 14px suggests, and
+   pulls the eye away from the words that actually do the work. */
+.founder p { margin: 8px 0 0; font-size: 0.87rem; line-height: 1.65; color: var(--text-soft); }
+.founder-link {
+  display: inline-block; margin-top: 13px;
+  font-size: 0.76rem; font-weight: 600; letter-spacing: 0.01em; color: var(--text-dim);
+  border-bottom: 1px solid var(--line-strong); padding-bottom: 1px;
+  transition: color 0.16s, border-color 0.16s;
+}
+.founder-link:hover { color: var(--emerald); border-bottom-color: rgba(52, 211, 153, 0.45); }
+.founder-link span { font-size: 0.9em; opacity: 0.7; }
+
+@media (max-width: 720px) {
+  .founders-grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- Product layers: expand-in-place ----------
+   The card treatment itself is untouched — these rules only reset the button
+   element back to how the original <div class="card"> rendered, add the
+   chevron affordance, and lay out the panel. */
+.layer-card {
+  font: inherit; color: inherit; text-align: left; width: 100%;
+  cursor: pointer; display: block; -webkit-appearance: none; appearance: none;
+  padding-bottom: 44px;              /* room for the chevron, so copy never collides */
+}
+.layer-card h3 { color: var(--text); }
+.layer-card:focus-visible {
+  outline: 2px solid var(--emerald);
+  outline-offset: 3px;
+}
+/* An open card keeps its lifted state so it stays visually tied to its panel. */
+.layer-card[aria-expanded="true"] {
+  border-color: rgba(52, 211, 153, 0.34);
+  box-shadow: var(--shadow);
+}
+
+.layer-chev {
+  position: absolute; right: 20px; bottom: 18px;
+  width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  transition: transform 0.2s var(--ease), color 0.2s, background 0.2s;
+}
+.layer-chev svg { width: 15px; height: 15px; }
+.layer-card:hover .layer-chev { color: var(--text-soft); background: rgba(255, 255, 255, 0.09); }
+.layer-card[aria-expanded="true"] .layer-chev {
+  transform: rotate(180deg);
+  color: var(--emerald);
+  background: rgba(52, 211, 153, 0.12);
+  border-color: rgba(52, 211, 153, 0.28);
+}
+
+/* Full width of the grid row, whatever the column count is at this breakpoint. */
+.layer-panel {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  height: 0;
+  opacity: 0;
+  transition: height 0.2s ease-out, opacity 0.2s ease-out;
+}
+.layer-panel[hidden] { display: none; }
+.layer-panel.open { opacity: 1; }
+
+.layer-panel dl {
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding: 20px 4px 4px;
+  display: grid; gap: 12px;
+}
+.layer-panel dl > div {
+  display: grid; grid-template-columns: 120px 1fr; gap: 18px; align-items: baseline;
+}
+.layer-panel dt {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.11em;
+  font-weight: 700; color: var(--text-dim);
+}
+.layer-panel dd {
+  margin: 0; font-size: 0.94rem; line-height: 1.6; color: var(--text-soft);
+}
+
+@media (max-width: 640px) {
+  .layer-panel dl > div { grid-template-columns: 1fr; gap: 3px; }
+}
+
+/* No height animation when the visitor has asked for less motion; the panel
+   still opens and closes, it just does it instantly. */
+@media (prefers-reduced-motion: reduce) {
+  .layer-panel { transition: none; }
+  .layer-chev { transition: none; }
+}

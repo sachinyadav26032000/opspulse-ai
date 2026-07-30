@@ -1,0 +1,213 @@
+/* ==========================================================================
+   OpsPulse — site additions
+   --------------------------------------------------------------------------
+   Components the shared design system does not have yet: the nav's Ops Floor
+   tab and the contact form. Kept out of styles.css so that file stays
+   byte-identical to the copy on the other branch and the two can still be
+   diffed cleanly.
+
+   Everything below is built from the tokens already declared in
+   styles.css :root. No new colours, radii or easings are introduced.
+   ========================================================================== */
+
+/* ---------- Nav: Ops Floor tab ----------
+   This lives in .nav-cta rather than .nav-links deliberately. .nav-links is
+   display:none below 860px, so a link placed there would vanish on exactly
+   the screens where hunting for the demo is most annoying. .nav-cta stays
+   visible at every width. */
+.nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: 100px;
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  background: rgba(52, 211, 153, 0.07);
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 0.2s, background 0.2s, border-color 0.2s, transform 0.18s var(--ease);
+}
+.nav-tab:hover {
+  color: var(--text);
+  background: rgba(52, 211, 153, 0.13);
+  border-color: rgba(52, 211, 153, 0.45);
+  transform: translateY(-1px);
+}
+.nav-tab .dot-live { width: 6px; height: 6px; }
+
+/* Below 860px the section links are already gone, so the corner carries the
+   whole nav. Drop "Log in" first — it is the least used of the three and the
+   footer still carries it — then tighten the remaining two. */
+@media (max-width: 720px) {
+  .nav-cta .nav-login { display: none; }
+}
+@media (max-width: 560px) {
+  .nav-cta { gap: 8px; }
+  .nav-tab { padding: 7px 10px; }
+  .nav-tab .nav-tab-label { display: none; }
+  .nav-cta .btn { padding: 9px 14px; font-size: 0.82rem; }
+}
+
+/* ---------- Founder titles ----------
+   The base rule renders the role at 0.72rem in --text-dim, which disappears
+   next to the name. Who holds which title is one of the first things a buyer
+   checks on a two-person company, so it gets brand colour, its own line and
+   enough weight to be read at a glance rather than hunted for. */
+.founder h4 {
+  display: block;
+  font-size: 1.12rem;
+}
+.founder h4 .role {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--emerald);
+  letter-spacing: 0.1em;
+}
+
+/* ---------- Contact form ---------- */
+.cform { margin-top: 26px; text-align: left; }
+
+.cform-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.cform-grid .cf-wide { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+  .cform-grid { grid-template-columns: 1fr; }
+}
+
+.cf-field { display: flex; flex-direction: column; gap: 6px; }
+
+.cf-field label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.cf-field label .req { color: var(--emerald); }
+
+.cf-field input,
+.cf-field select,
+.cf-field textarea {
+  width: 100%;
+  padding: 11px 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.cf-field textarea { resize: vertical; min-height: 96px; line-height: 1.6; }
+.cf-field input::placeholder,
+.cf-field textarea::placeholder { color: var(--text-dim); }
+
+.cf-field input:focus,
+.cf-field select:focus,
+.cf-field textarea:focus {
+  outline: none;
+  border-color: rgba(52, 211, 153, 0.55);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* The browser's own invalid styling fires before the field has ever been
+   touched, which flags a form the visitor has not started filling in. Scope it
+   to fields that actually have content instead. */
+.cf-field input:not(:placeholder-shown):invalid {
+  border-color: rgba(251, 113, 133, 0.55);
+}
+
+/* select needs its own arrow once appearance is stripped, or it renders as a
+   flat box with no affordance on Windows. */
+.cf-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='m6 9 6 6 6-6' stroke='%23737f9e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+.cf-field select option { background: var(--panel); color: var(--text); }
+
+.cf-check {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  line-height: 1.5;
+  cursor: pointer;
+}
+.cf-check input {
+  width: 17px; height: 17px;
+  margin-top: 2px;
+  flex: 0 0 auto;
+  accent-color: #34d399;
+  cursor: pointer;
+}
+
+.cform-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 20px;
+}
+.cform-actions .btn { cursor: pointer; border: 0; font-family: inherit; }
+
+.cf-note {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.55;
+  margin: 0;
+  max-width: 46ch;
+}
+
+/* ---------- Sent confirmation ----------
+   Shown after submit. The form composes a message and hands it to the
+   visitor's mail client; if no client is configured nothing appears to
+   happen, so the composed text is shown here with a copy button as the
+   fallback path rather than leaving them guessing. */
+.cf-sent {
+  margin-top: 22px;
+  padding: 20px 22px;
+  border: 1px solid rgba(52, 211, 153, 0.32);
+  border-radius: var(--radius);
+  background: rgba(52, 211, 153, 0.06);
+}
+.cf-sent[hidden] { display: none; }
+.cf-sent h4 {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 1rem; color: var(--text); margin: 0 0 8px;
+}
+.cf-sent h4 svg { width: 19px; height: 19px; flex: 0 0 auto; }
+.cf-sent p { font-size: 0.87rem; color: var(--text-soft); line-height: 1.65; margin: 0 0 12px; }
+
+.cf-sent pre {
+  max-height: 190px;
+  overflow: auto;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0 0 14px;
+}
+.cf-sent-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.cf-copied { font-size: 0.8rem; color: var(--emerald); font-weight: 600; }
+.cf-copied[hidden] { display: none; }

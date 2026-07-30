@@ -3,12 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>OpsPulse AI — The Intelligence Layer for Customer Operations</title>
-<meta name="description" content="OpsPulse AI is the AI Operations Copilot that unifies tickets, calls, QA & feedback into one decision feed — detecting risks before they escalate." />
+<title>OpsPulse AI — Renewal Intelligence for Mid-Market SaaS</title>
+<meta name="description" content="OpsPulse is renewal intelligence for mid-market SaaS. It spots at-risk renewals from the signals you already generate, shows why the account is at risk with the evidence attached, and suggests the next step — before the renewal date arrives." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/site.css" />
+<link rel="stylesheet" href="assets/chat.css" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2334d399'/><path d='M5 17h5l3-8 4 14 3-9 2 3h5' stroke='%23041' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
 </head>
 <body>
@@ -23,15 +25,21 @@
       OpsPulse<span style="opacity:.55;font-weight:600"> AI</span>
     </a>
     <div class="nav-links">
-      <a href="#problem">Problem</a>
-      <a href="#solution">Solution</a>
       <a href="#product">Product</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#roadmap">Roadmap</a>
+      <a href="#solutions">Solutions</a>
+      <a href="#partners">Design Partners</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
     </div>
+    <!--
+      The Ops Floor tab sits in .nav-cta, not .nav-links, because .nav-links is
+      display:none below 860px — a link to the live product should not be the
+      thing that disappears on a phone.
+    -->
     <div class="nav-cta">
-      <a class="btn btn-ghost" href="demo.html">Live Ops Floor</a>
-      <a class="btn btn-primary" href="demo.html">Launch the live demo →</a>
+      <a class="nav-tab" href="demo.html"><span class="dot-live"></span><span class="nav-tab-label">Ops Floor</span></a>
+      <a class="btn btn-ghost nav-login" href="app.html">Log in</a>
+      <a class="btn btn-primary" href="#contact">Schedule a demo →</a>
     </div>
   </div>
 </nav>
@@ -40,16 +48,16 @@
 <header class="hero">
   <div class="wrap hero-grid">
     <div>
-      <span class="eyebrow"><span class="dot-live"></span> AI Operations Copilot</span>
-      <h1>The <span class="grad-text">intelligence layer</span> for customer operations.</h1>
-      <p class="lead">OpsPulse AI unifies tickets, call transcripts, QA and feedback into a single decision feed — detecting churn risk, SLA breaches and coaching gaps <strong>before</strong> they escalate.</p>
+      <span class="eyebrow"><span class="dot-live"></span> Renewal intelligence for mid-market SaaS</span>
+      <h1>Save renewal revenue <span class="grad-text">before customers churn.</span></h1>
+      <p class="lead">AI that spots at-risk renewals, shows why, and suggests next steps. OpsPulse reads the signals your team already generates — tickets, calls, QA, usage, billing — and tells you which renewals are in trouble while there is still time to do something about it.</p>
       <div class="hero-cta">
-        <a class="btn btn-primary" href="demo.html">Explore the live dashboard →</a>
-        <a class="btn btn-ghost" href="#product">See how it works</a>
+        <a class="btn btn-primary" href="#partners">Become a design partner →</a>
+        <a class="btn btn-ghost" href="#contact">Schedule a demo</a>
       </div>
       <div class="hero-note">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        No rip-and-replace — integrates with the stack you already run.
+        Below 60% confidence, nothing is auto-actioned — it is held for a human.
       </div>
     </div>
 
@@ -60,17 +68,23 @@
           <span class="mock-dot" style="background:#fb7185"></span>
           <span class="mock-dot" style="background:#fbbf24"></span>
           <span class="mock-dot" style="background:#34d399"></span>
-          <span class="mock-title">Ops Copilot · Decision Feed</span>
+          <span class="mock-title">Renewals · next 90 days</span>
           <span style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:.72rem;color:#737f9e"><span class="dot-live"></span>Live</span>
         </div>
         <div class="mock-body">
+          <!--
+            The ids below are historical — landing.js jitters them so the mock
+            feels live. The upper figure is a 0-100 score and the lower a
+            percentage decline, which is why "Renewal Health" and "Usage · 30d"
+            fit them without touching the script.
+          -->
           <div class="mock-row">
             <div class="mini-card">
-              <div class="k">Org Health</div>
+              <div class="k">Renewal Health</div>
               <div class="v up" id="hHealth">82</div>
             </div>
             <div class="mini-card">
-              <div class="k">CSAT · 24h</div>
+              <div class="k">Usage · 30d</div>
               <div class="v down" id="hCsat">−4.2%</div>
             </div>
           </div>
@@ -83,15 +97,22 @@
             <polyline id="pulseLine" fill="none" stroke="url(#pg)" stroke-width="2.2"
               points="0,30 26,30 40,10 54,42 70,22 92,30 130,30 146,6 160,40 176,24 210,30 250,30 264,14 278,38 296,26 320,30" />
           </svg>
+          <!--
+            A named account, not a category — the whole pitch is that the product
+            hands you an account and a date, not a trend. The exposure is a range
+            because a single-point ARR figure is the one number a CFO will not
+            accept without the arithmetic, which is the same rule the engine
+            enforces on itself internally.
+          -->
           <div class="alert-row">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="#fb7185" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="#fb7185" stroke-width="2" stroke-linecap="round"/></svg>
-            <div class="txt">Churn risk spike — Enterprise tier<small>Root cause: onboarding SLA missed 3× this week</small></div>
-            <span class="pill high">High</span>
+            <div class="txt">Northwind Logistics · renews in 43 days<small>$180k–$240k ARR · active seats down 34% since March, 2 escalations open</small></div>
+            <span class="pill high">At risk</span>
           </div>
           <div class="alert-row warn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#fbbf24" stroke-width="2"/><path d="M12 8v4M12 16h.01" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/></svg>
-            <div class="txt">Agent coaching gap — Team B<small>QA scores down 11% on refund handling</small></div>
-            <span class="pill med">Medium</span>
+            <div class="txt">Meridian Health · renews in 71 days<small>Champion left in June — no executive contact logged since</small></div>
+            <span class="pill med">Watch</span>
           </div>
         </div>
       </div>
@@ -100,22 +121,27 @@
 
   <!-- Trust bar -->
   <div class="wrap trust reveal">
-    <p>Purpose-built for the teams behind every great customer experience</p>
+    <p>Built for the people who own the renewal number</p>
     <div class="trust-row">
-      <span>◆ SaaS Support</span>
       <span>◆ Customer Success</span>
-      <span>◆ BPO Operations</span>
-      <span>◆ Quality Assurance</span>
-      <span>◆ Ops Excellence</span>
+      <span>◆ Revenue Operations</span>
+      <span>◆ Support &amp; Service</span>
+      <span>◆ Account Management</span>
+      <span>◆ Founders &amp; CROs</span>
     </div>
   </div>
 
-  <!-- Stats -->
+  <!--
+    These four numbers are properties of the engine, not claimed outcomes. A
+    product whose whole argument is "we do not fabricate figures" cannot open
+    with figures it cannot show you the source of — every one below is
+    verifiable in the running product on the Assurance screen.
+  -->
   <div class="wrap stats">
-    <div class="stat reveal"><div class="n grad-text">6+</div><div class="l">Signal sources unified into one feed</div></div>
-    <div class="stat reveal"><div class="n grad-text">−73%</div><div class="l">Time managers spend hunting data</div></div>
-    <div class="stat reveal"><div class="n grad-text">4×</div><div class="l">Faster root-cause to resolution</div></div>
-    <div class="stat reveal"><div class="n grad-text">24/7</div><div class="l">Real-time organizational health</div></div>
+    <div class="stat reveal"><div class="n grad-text">9</div><div class="l">Statistical detectors, each with a published threshold you can argue with</div></div>
+    <div class="stat reveal"><div class="n grad-text">60%</div><div class="l">Confidence floor — below it a renewal risk is held, never auto-actioned</div></div>
+    <div class="stat reveal"><div class="n grad-text">100%</div><div class="l">Of published fields traced back to a source column</div></div>
+    <div class="stat reveal"><div class="n grad-text">1</div><div class="l">Contract every insight is validated against before it reaches a screen</div></div>
   </div>
 </header>
 
@@ -124,81 +150,91 @@
   <div class="wrap">
     <div class="section-head reveal">
       <span class="eyebrow" style="color:var(--rose);border-color:rgba(251,113,133,.25);background:rgba(251,113,133,.06)">The Problem</span>
-      <h2>Customer operations run blind — reacting to problems they should have prevented.</h2>
-      <p class="lead">Critical signals are scattered across half a dozen tools. By the time a manager connects the dots, the customer is already gone.</p>
+      <h2>Mid-market SaaS finds out an account is leaving <span class="grad-text">on the renewal call.</span></h2>
+      <p class="lead">The warning signs sat in your systems for months — usage sliding, tickets escalating, the champion gone quiet. They were just in six different tools, and nobody was paid to join them up. By the time the renewal reaches someone's calendar, the decision has already been made on the customer's side.</p>
     </div>
     <div class="grid g4">
       <div class="card problem reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v4H4zM14 13h6v6h-6z" stroke="currentColor" stroke-width="1.8"/></svg></div>
         <h3>Fragmented data</h3>
-        <p>Customer signals are scattered across ticketing, telephony, QA and survey tools — nobody sees the full picture.</p>
+        <p>Renewal signals sit in ticketing, telephony, QA, product usage and billing. Each system sees a fragment; none of them sees an account.</p>
       </div>
       <div class="card problem reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/></svg></div>
-        <h3>Reactive decisions</h3>
-        <p>Managers respond to fires late because today's systems surface problems only after they've blown up.</p>
+        <h3>Health scores nobody trusts</h3>
+        <p>A red-amber-green dot with no arithmetic behind it cannot be argued with, so it gets ignored — and then it turns out to have been right.</p>
       </div>
       <div class="card problem reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 15l3-4 3 3 4-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <h3>Manual analysis</h3>
-        <p>Hours in spreadsheets produce error-prone, inconsistent answers that are stale the moment they're finished.</p>
+        <h3>CSMs stretched too thin</h3>
+        <p>One CSM covering sixty accounts cannot read every ticket. Attention goes to whoever shouted last, not to the renewal with the most revenue on it.</p>
       </div>
       <div class="card problem reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" stroke="currentColor" stroke-width="1.8"/><path d="m4 4 16 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
-        <h3>No real-time view</h3>
-        <p>Without live visibility into root causes, the same problems recur unresolved — quietly driving churn.</p>
+        <h3>No record of the save</h3>
+        <p>Nothing captures what was decided about an at-risk account, on what evidence, or whether the intervention actually moved the renewal.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ SOLUTION ============ -->
-<section class="block" id="solution" style="background:linear-gradient(180deg,transparent,rgba(52,211,153,.03),transparent)">
+<!-- ============ HOW IT WORKS ============ -->
+<section class="block" id="platform" style="background:linear-gradient(180deg,transparent,rgba(52,211,153,.03),transparent)">
   <div class="wrap split">
     <div class="reveal">
-      <span class="eyebrow">The Solution</span>
-      <h2 style="margin:14px 0 16px">An AI copilot that turns noise into <span class="grad-text">the next right action.</span></h2>
-      <p class="lead">OpsPulse ingests every operational signal, learns what "normal" looks like, and hands managers a ranked feed of what needs attention — with the reason and the fix attached.</p>
+      <span class="eyebrow">How it works</span>
+      <h2 style="margin:14px 0 16px">From fragmented data to <span class="grad-text">revenue impact.</span></h2>
+      <p class="lead">Five stages, each constrained by the one before it. Detection is arithmetic; the language layer only describes what the arithmetic found. Nothing in the chain is a number a model invented.</p>
       <div class="feature-list">
         <div class="fitem">
           <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <div><h4>Unified data integration</h4><p>Tickets, call transcripts, QA assessments and feedback flow into one intelligent platform.</p></div>
+          <div><h4>Detection is arithmetic</h4><p>Nine detectors compare a recent window against that account's own baseline. Nothing is raised until it clears a declared threshold, so a healthy quarter produces an empty feed instead of invented risk.</p></div>
         </div>
         <div class="fitem">
           <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <div><h4>Proactive insights & alerts</h4><p>Prioritized alerts and recommendations cut manager cognitive load to what matters now.</p></div>
+          <div><h4>The reason is labelled a hypothesis</h4><p>Attribution is by decomposition — contributions are shares of a measured decline and sum to 100%. The system never claims confirmed cause; the CSM who knows the account closes that gap.</p></div>
         </div>
         <div class="fitem">
           <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <div><h4>Advanced pattern detection</h4><p>ML models surface hidden anomalies and patterns beyond what manual analysis can reach.</p></div>
+          <div><h4>Revenue at risk is a range, with its arithmetic shown</h4><p>Exposure is published as a range you can re-multiply from the printed inputs. Some exposures — compliance among them — return no dollar figure at all, because a fabricated one would be the least defensible number in the product.</p></div>
         </div>
         <div class="fitem">
           <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <div><h4>Seamless integration</h4><p>Plugs into your existing tools — smarter decisions without changing how your team works.</p></div>
+          <div><h4>Saves are recorded, not just recommended</h4><p>Committing to a play snapshots the evidence as it stood. The loop closes when the same signals are re-read at renewal and the outcome is reported — including when the account left anyway.</p></div>
         </div>
       </div>
     </div>
 
-    <!-- Flow diagram -->
+    <!--
+      The five-stage workflow. This is the picture the whole pitch hangs on, so
+      it is the same .flow component the platform section has always used — the
+      stages are relabelled, nothing about the visual is new.
+    -->
     <div class="flow reveal">
       <div class="flow-stage">
         <span class="bub"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Z" stroke="currentColor" stroke-width="1.8"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7" stroke="currentColor" stroke-width="1.8"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" stroke="currentColor" stroke-width="1.8"/></svg></span>
-        <div><h4>Signal Aggregator</h4><p>Tickets · Calls · QA · Feedback</p></div>
+        <div><h4>Fragmented data</h4><p>Tickets · Calls · QA · Usage · Billing</p></div>
       </div>
       <div class="flow-conn"><span class="line"></span></div>
       <div class="flow-stage">
         <span class="bub"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.8"/></svg></span>
-        <div><h4>Intelligence Engine</h4><p>Patterns · Anomalies · Root cause</p></div>
+        <div><h4>AI analysis</h4><p>Baselines · Anomalies · Renewal risk</p></div>
       </div>
       <div class="flow-conn"><span class="line"></span></div>
       <div class="flow-stage">
-        <span class="bub"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M7 20h10M12 18v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-        <div><h4>Ops Copilot Dashboard</h4><p>Ranked decision feed</p></div>
+        <span class="bub"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M9.3 9.5a2.8 2.8 0 1 1 3.4 3.3v1.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12.7 17.1h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span>
+        <div><h4>Reason</h4><p>Why this account, with the evidence</p></div>
       </div>
       <div class="flow-conn"><span class="line"></span></div>
       <div class="flow-stage">
         <span class="bub" style="color:var(--emerald)"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
-        <div><h4>Recommendation Engine</h4><p>Coach · Fix workflow · Escalate</p></div>
+        <div><h4>Action</h4><p>A named play, a named owner</p></div>
+      </div>
+      <div class="flow-conn"><span class="line"></span></div>
+      <!-- The stage that closes the loop: without it the product recommends and forgets. -->
+      <div class="flow-stage">
+        <span class="bub" style="color:var(--cyan)"><svg viewBox="0 0 24 24" fill="none"><path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div><h4>Revenue impact</h4><p>ARR retained · measured at renewal</p></div>
       </div>
     </div>
   </div>
@@ -209,69 +245,221 @@
   <div class="wrap">
     <div class="section-head center reveal">
       <span class="eyebrow">Product Overview</span>
-      <h2>Four modules. One closed loop from <span class="grad-text">signal to action.</span></h2>
-      <p class="lead">Every part of OpsPulse is built to move a manager from "something's wrong" to "here's the fix" in seconds.</p>
+      <h2>Four layers that produce the decision — and <span class="grad-text">one that records it.</span></h2>
+      <p class="lead">Each layer constrains the next. Aggregation decides what is knowable, detection decides what is real, prioritization decides which renewal is worth today's hour — and every recommended play is bound to a named owner, never free text.</p>
     </div>
-    <div class="grid g4">
-      <div class="card c reveal"><span class="num">01</span>
+    <!--
+      Customer-facing verbs, not internal module names. The engineering
+      vocabulary (Signal Aggregator, Intelligence Engine, Ops Copilot Dashboard,
+      Recommendation Engine) stays exactly as it is in the codebase — services,
+      files and routes are unchanged. Only what a visitor reads moved.
+
+      Each card is a real <button> so it is focusable and Enter/Space work for
+      free; its panel is a sibling in the same grid, promoted to full width and
+      repositioned by JS to sit after the last card in the clicked card's row.
+      That is why the panel markup lives next to the cards rather than nested
+      inside them — a nested panel could only ever be one column wide.
+    -->
+    <div class="grid g4 layer-grid" id="layerGrid">
+      <button type="button" class="card c reveal layer-card" id="layer-c1" aria-expanded="false" aria-controls="layer-p1"><span class="num">01</span>
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Z" stroke="currentColor" stroke-width="1.8"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7" stroke="currentColor" stroke-width="1.8"/></svg></div>
-        <h3>Signal Aggregator</h3>
-        <p>Collects data from ticketing, call transcripts, QA and feedback platforms to unify operational data in one place.</p>
+        <h3>Detect</h3>
+        <p>Every ticket, call, QA review, usage event and invoice lands on one account timeline. When an account moves outside its own normal range it surfaces on its own — nobody has to go looking for it.</p>
+        <span class="layer-chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </button>
+      <div class="layer-panel" id="layer-p1" role="region" aria-labelledby="layer-c1" hidden>
+        <dl>
+          <div><dt>Sources</dt><dd>Zendesk · Aircall · Klaus QA · NPS · product usage · billing</dd></div>
+          <div><dt>Example</dt><dd>Northwind's weekly active seats fell from 240 to 158 over five weeks — 3.4σ outside its own twelve-month baseline.</dd></div>
+        </dl>
       </div>
-      <div class="card reveal"><span class="num">02</span>
+
+      <button type="button" class="card reveal layer-card" id="layer-c2" aria-expanded="false" aria-controls="layer-p2"><span class="num">02</span>
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
-        <h3>Intelligence Engine</h3>
-        <p>Processes data with advanced algorithms to identify patterns, anomalies and perform automated root-cause analysis.</p>
+        <h3>Understand</h3>
+        <p>Correlates the change across systems to name a reason, not a symptom. Every explanation carries the records behind it and a confidence score you can push back on.</p>
+        <span class="layer-chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </button>
+      <div class="layer-panel" id="layer-p2" role="region" aria-labelledby="layer-c2" hidden>
+        <dl>
+          <div><dt>Method</dt><dd>Decomposition across signals, then a reasoning pass over the retrieved records</dd></div>
+          <div><dt>Example</dt><dd>Hypothesis: the March SSO migration broke two integrations Northwind's ops team ran daily — 62% of the seat decline sits in exactly those two teams. Confidence 71%.</dd></div>
+        </dl>
       </div>
-      <div class="card c reveal"><span class="num">03</span>
+
+      <button type="button" class="card c reveal layer-card" id="layer-c3" aria-expanded="false" aria-controls="layer-p3"><span class="num">03</span>
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M7 9h4M7 13h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
-        <h3>Ops Copilot Dashboard</h3>
-        <p>Delivers insights through a decision feed that highlights critical issues and the recommended action for each.</p>
+        <h3>Prioritize</h3>
+        <p>Ranks open risks by ARR exposure and days to renewal, so the account at the top is the one that costs the most to ignore this week. Three decisions, not thirty charts.</p>
+        <span class="layer-chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </button>
+      <div class="layer-panel" id="layer-p3" role="region" aria-labelledby="layer-c3" hidden>
+        <dl>
+          <div><dt>Ranked by</dt><dd>ARR exposure and days to renewal — not severity, not recency</dd></div>
+          <div><dt>Example</dt><dd>Six accounts renewing inside 60 days, $310k–$390k ARR exposed — ranked above four louder issues on accounts that do not renew until March.</dd></div>
+        </dl>
       </div>
-      <div class="card v reveal"><span class="num">04</span>
+
+      <button type="button" class="card v reveal layer-card" id="layer-c4" aria-expanded="false" aria-controls="layer-p4"><span class="num">04</span>
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
-        <h3>Recommendation Engine</h3>
-        <p>Suggests interventions — workflow changes, agent coaching and product improvements — to optimize operations.</p>
+        <h3>Act</h3>
+        <p>Each renewal risk arrives with a named play and a named owner. Once the action is taken, the same signals confirm whether it moved the account back.</p>
+        <span class="layer-chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </button>
+      <div class="layer-panel" id="layer-p4" role="region" aria-labelledby="layer-c4" hidden>
+        <dl>
+          <div><dt>Bound to</dt><dd>A named play and a named owner</dd></div>
+          <div><dt>Example</dt><dd>Play: Integration Recovery → engineering ticket for the two broken connectors, exec check-in booked inside 30 days. Owner: Account CSM.</dd></div>
+        </dl>
       </div>
     </div>
+    <!-- The fifth layer gets its own band rather than a fifth card: it is the
+         one that turns a recommendation engine into a decision system. -->
+    <div class="cta-band reveal" style="margin-top:26px;text-align:left">
+      <span class="eyebrow" style="margin-bottom:16px">05 · The layer that closes the loop</span>
+      <h2 style="font-size:clamp(1.5rem,3vw,2.1rem)">Renewal Decision Ledger</h2>
+      <p style="margin-top:12px">A recommendation is not a decision. A decision is a human committing to a play on an account, on stated evidence, at a stated confidence. The ledger records that commitment — the risk, the confidence and the account's metrics <em style="font-style:normal;color:var(--text)">as they stood at that moment</em> — then re-reads the same signals on every pass and reports what happened by the renewal date.</p>
+      <p style="margin-top:10px">Because the evidence is snapshotted and never back-dated, the platform can be shown to have been wrong. That is what turns "our health score said red" into a renewal forecast a board will accept.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="demo.html">Commit a decision in the live product →</a>
+        <a class="btn btn-ghost" href="trust.html">See the governance rules</a>
+      </div>
+    </div>
+
     <div class="center" style="margin-top:40px">
-      <a class="btn btn-primary reveal" href="demo.html">Try the interactive dashboard →</a>
+      <a class="btn btn-primary reveal" href="#demo">Watch it work →</a>
     </div>
   </div>
 </section>
 
-<!-- ============ USE CASE ============ -->
-<section class="block" id="usecase" style="background:linear-gradient(180deg,transparent,rgba(34,211,238,.03),transparent)">
-  <div class="wrap split">
-    <div class="reveal">
-      <span class="eyebrow">A Day in the Life</span>
-      <h2 style="margin:14px 0 16px">The daily manager workflow, <span class="grad-text">reimagined.</span></h2>
-      <p class="lead">OpsPulse collapses hours of scattered analysis into a focused, prioritized morning routine — so managers lead instead of dig.</p>
-      <div class="hero-cta" style="margin-top:26px">
-        <a class="btn btn-ghost" href="demo.html">Walk through it live →</a>
-      </div>
-    </div>
-    <div class="steps reveal">
-      <div class="step"><span class="idx"></span><div><h4>Prioritized risk identification</h4><p>Open to a dashboard ranking today's risks — CSAT drops, agent performance, SLA exposure — worst first.</p></div></div>
-      <div class="step"><span class="idx"></span><div><h4>Detailed insight exploration</h4><p>Click any alert to reveal root-cause analysis and the recommended actions for a swift resolution.</p></div></div>
-      <div class="step"><span class="idx"></span><div><h4>Action & progress tracking</h4><p>Assign tasks, initiate coaching, escalate issues, and track intervention outcomes in one place.</p></div></div>
-      <div class="step"><span class="idx"></span><div><h4>Empowered strategic focus</h4><p>With the busywork gone, managers spend their attention on strategy and better team outcomes.</p></div></div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ VALUE PROP ============ -->
-<section class="block">
+<!-- ============ SOLUTIONS ============ -->
+<section class="block" id="solutions">
   <div class="wrap">
     <div class="section-head center reveal">
-      <span class="eyebrow">Value Proposition</span>
-      <h2>From raw data to <span class="grad-text">business decisions.</span></h2>
+      <span class="eyebrow">Solutions</span>
+      <h2>One renewal picture, <span class="grad-text">four jobs it does.</span></h2>
+      <p class="lead">Everyone below is looking at the same accounts and the same arithmetic. What changes is the question they arrive with.</p>
     </div>
     <div class="grid g4">
-      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><h3>Data → decisions</h3><p>Convert raw operational data into clear, actionable decisions that drive business outcomes.</p></div>
-      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3a9 9 0 1 0 9 9h-9V3Z" stroke="currentColor" stroke-width="1.8"/></svg></div><h3>Decision engine</h3><p>Identifies critical issues and provides the recommendations to resolve them efficiently.</p></div>
-      <div class="card v reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Predictive risk</h3><p>Anticipate churn and SLA breaches early, enabling preventive action before impact.</p></div>
-      <div class="card c reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-4.5-7-10a7 7 0 0 1 14 0c0 5.5-7 10-7 10Z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="11" r="2.5" stroke="currentColor" stroke-width="1.8"/></svg></div><h3>Business value</h3><p>Higher satisfaction, lower costs and greater productivity — insight aligned to action.</p></div>
+      <div class="card c reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.6A3.4 3.4 0 0 0 12.6 15H7.4A3.4 3.4 0 0 0 4 18.4V20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="10" cy="8" r="3.4" stroke="currentColor" stroke-width="1.8"/><path d="M17 11h4M19 9v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>Customer Success</h3>
+        <p>"Which of my sixty accounts needs me this week?" A ranked list with the reason attached, so the hour goes to the renewal that is actually moving — not the customer who emailed most recently.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>Revenue Operations</h3>
+        <p>"Is the renewal forecast real?" Exposure ranges you can re-multiply from the printed inputs, and a ledger showing which risks were caught, which were acted on, and which churned anyway.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+        <h3>Support &amp; Service</h3>
+        <p>"Which escalation is a renewal problem?" Ticket volume alone cannot tell you. Tying queues to contract value shows which backlog is quietly costing ARR and which is merely noisy.</p>
+      </div>
+      <div class="card v reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h3>Founders &amp; CROs</h3>
+        <p>"What is net revenue retention going to be, and why?" One brief, generated from the same objects the CSM sees, so the board number and the account list cannot disagree.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LIVE DEMO + EXPLAINER ============ -->
+<section class="block" id="demo" style="background:linear-gradient(180deg,transparent,rgba(34,211,238,.03),transparent)">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">See it</span>
+      <h2>Watch the story, then <span class="grad-text">drive it yourself.</span></h2>
+      <p class="lead">Ninety seconds for why it matters, and a live product running on a simulated operation for what it actually does.</p>
+    </div>
+    <div class="split" style="align-items:start">
+      <!--
+        Explainer video slot. There is no film yet, so this frame carries the
+        script rather than pretending to be a player — a dead play button on a
+        live domain is worse than an honest placeholder. When the file exists,
+        replace the contents of .mock-body with:
+
+            <video controls poster="assets/explainer-poster.jpg" style="width:100%;display:block">
+              <source src="assets/explainer.mp4" type="video/mp4" />
+            </video>
+
+        and delete the story list. The frame itself is the existing .mock
+        component, so nothing about the styling has to change either way.
+      -->
+      <div class="mock reveal">
+        <div class="mock-bar">
+          <span class="mock-dot" style="background:#fb7185"></span>
+          <span class="mock-dot" style="background:#fbbf24"></span>
+          <span class="mock-dot" style="background:#34d399"></span>
+          <span class="mock-title">OpsPulse in 90 seconds</span>
+          <span style="margin-left:auto;font-size:.72rem;color:#737f9e">Film in production</span>
+        </div>
+        <div class="mock-body">
+          <p class="dim" style="font-size:.78rem;margin:0 0 14px">The story the film tells, in the order it tells it.</p>
+          <div class="steps">
+            <div class="step"><span class="idx"></span><div><h4>A renewal you thought was safe</h4><p>Northwind renews in six weeks. The health score is green. The CSM has spoken to them twice this quarter and both calls went fine.</p></div></div>
+            <div class="step"><span class="idx"></span><div><h4>The signals were never in one place</h4><p>Seat usage fell 34% in product analytics. Two integration tickets aged out in support. The champion's last login was in May. Three systems, three fragments, no account.</p></div></div>
+            <div class="step"><span class="idx"></span><div><h4>The arithmetic finds it</h4><p>Against Northwind's own baseline the decline is 3.4σ. It clears the threshold, so it surfaces — with $180k–$240k of ARR attached and 43 days on the clock.</p></div></div>
+            <div class="step"><span class="idx"></span><div><h4>And it says why, as a hypothesis</h4><p>62% of the seat loss sits in the two teams whose connectors broke in the March SSO migration. Confidence 71%. Labelled a hypothesis, because the CSM knows things the data does not.</p></div></div>
+            <div class="step"><span class="idx"></span><div><h4>Then it remembers what you did</h4><p>The play is committed to the ledger with the evidence frozen at that moment. At renewal the same signals are re-read and the outcome is reported — saved, or lost anyway.</p></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal">
+        <span class="eyebrow">Live demo</span>
+        <h2 style="margin:14px 0 16px">A working product, <span class="grad-text">not a slideshow.</span></h2>
+        <p class="lead">The demo runs a real detection engine over a simulated operation — a source system on the left, the decision engine on the right, both reading one store so the two panes cannot disagree. Nothing on screen is a screenshot.</p>
+        <div class="feature-list" style="margin-top:8px">
+          <div class="fitem">
+            <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div><h4>Upload your own export</h4><p>Drop a CSV in and watch the same detectors run against your data instead of ours.</p></div>
+          </div>
+          <div class="fitem">
+            <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div><h4>Open every number</h4><p>Each figure drills back to the records that produced it, and every retrieved quote carries its record id.</p></div>
+          </div>
+          <div class="fitem">
+            <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div><h4>All data is simulated</h4><p>No customer data, no signup, nothing to install. Open it and it is already running.</p></div>
+          </div>
+        </div>
+        <div class="hero-cta" style="margin-top:26px">
+          <a class="btn btn-primary" href="demo.html">Launch the live demo →</a>
+          <a class="btn btn-ghost" href="app.html">Open the copilot</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DESIGN PARTNERS ============ -->
+<section class="block" id="partners">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Design Partners</span>
+      <h2>We are building this with <span class="grad-text">ten mid-market SaaS teams.</span></h2>
+      <p class="lead">Not a waitlist and not a discount scheme. A design partner shapes what the product detects and how it explains itself, in exchange for putting a real renewal book in front of it early.</p>
+    </div>
+    <div class="split" style="align-items:start">
+      <div class="steps reveal">
+        <div class="step"><span class="idx"></span><div><h4>What you get</h4><p>The product free through the partnership, the detectors tuned to your renewal motion, and direct access to the two people who build it.</p></div></div>
+        <div class="step"><span class="idx"></span><div><h4>What we ask</h4><p>An export or a read-only connection, an hour a fortnight, and honest reactions — especially when a finding is wrong. A detector nobody argues with is a detector nobody uses.</p></div></div>
+        <div class="step"><span class="idx"></span><div><h4>Who it fits</h4><p>$3M–$30M ARR, a renewal book someone owns by name, and enough history in your tools for a baseline to mean something — roughly twelve months.</p></div></div>
+        <div class="step"><span class="idx"></span><div><h4>What happens first</h4><p>A thirty-minute call and a look at the live product. If the fit is not obvious to both sides in that half hour, we will say so.</p></div></div>
+      </div>
+      <div class="cta-band reveal" style="text-align:left">
+        <span class="eyebrow" style="margin-bottom:16px">Open now</span>
+        <h2 style="font-size:clamp(1.5rem,3vw,2.1rem)">Become a design partner</h2>
+        <p style="margin-top:12px">Ten places, taken one at a time so each one actually gets attention. Tell us what your renewal book looks like and where you currently find out too late.</p>
+        <div class="hero-cta">
+          <!-- data-partner ticks the design-partner box on the contact form, so
+               the visitor lands on a form that already reflects why they clicked. -->
+          <a class="btn btn-primary" href="#contact" data-partner="1">Apply as a design partner →</a>
+          <a class="btn btn-ghost" href="#contact">Schedule a demo</a>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -281,47 +469,50 @@
   <div class="wrap">
     <div class="section-head center reveal">
       <span class="eyebrow">Business Model</span>
-      <h2>Scalable SaaS pricing that <span class="grad-text">grows with your team.</span></h2>
-      <p class="lead">Predictable per-seat subscriptions, with premium analytics and bespoke enterprise options.</p>
+      <h2>Priced on the renewal book, <span class="grad-text">never on the seats.</span></h2>
+      <p class="lead">Every plan includes unlimited read-only access. A renewal risk only gets acted on if the people who need to see it — the CSM, the RevOps lead, the CRO — can open it without someone buying them a licence first.</p>
     </div>
     <div class="price-grid">
       <div class="price reveal">
-        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Team</span></div>
-        <div class="amt">$29<small> / seat / mo</small></div>
-        <p class="desc">For growing support & success teams getting started with unified insights.</p>
+        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Retain</span></div>
+        <div class="amt">$1,800<small> / month</small></div>
+        <p class="desc">For one renewal book, getting its risks on the record for the first time.</p>
         <ul>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Signal Aggregator (core sources)</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Ops Copilot decision feed</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Root-cause analysis</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Email support</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>3 signal sources · unlimited viewers</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>All 9 detectors · full renewal risk feed</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Decision ledger · 12-month retention</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Provenance &amp; contract validation</li>
         </ul>
-        <a class="btn btn-ghost" href="demo.html">Start free trial</a>
+        <a class="btn btn-ghost" href="#contact">Start a pilot</a>
       </div>
       <div class="price featured reveal">
-        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Growth</span><span class="badge">Most popular</span></div>
-        <div class="amt">$59<small> / seat / mo</small></div>
-        <p class="desc">Predictive analytics and automation for scaling operations.</p>
+        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Forecast</span><span class="badge">Most popular</span></div>
+        <div class="amt">$4,500<small> / month</small></div>
+        <p class="desc">For teams whose renewal forecast gets challenged by someone outside CS.</p>
         <ul>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Team</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Predictive risk & churn scoring</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Recommendation Engine + automations</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Custom integrations · priority support</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Retain</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Unlimited sources · predictive renewal scoring</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>3-year ledger retention · board-ready export</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>SSO · RBAC · configurable confidence floor</li>
         </ul>
         <a class="btn btn-primary" href="demo.html">Launch the live demo →</a>
       </div>
       <div class="price reveal">
         <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Enterprise</span></div>
         <div class="amt">Custom</div>
-        <p class="desc">Bespoke solutions with dedicated support and enhanced security.</p>
+        <p class="desc">For regulated operations with their own residency, model-review and retention rules.</p>
         <ul>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Growth</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>SSO, SOC 2 & advanced security</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Dedicated success manager</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Custom models & SLAs</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Forecast</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Data residency · private deployment</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Custom detectors &amp; thresholds under review</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Indefinite ledger retention · legal hold</li>
         </ul>
-        <a class="btn btn-ghost" href="demo.html">Talk to sales</a>
+        <a class="btn btn-ghost" href="#contact">Talk to us</a>
       </div>
     </div>
+    <p class="dim center" style="margin-top:22px;font-size:.82rem;max-width:76ch;margin-left:auto;margin-right:auto">
+      A signal source is one connected system — a ticketing platform, a telephony feed, a QA tool, a product-analytics stream, a billing system. Pricing scales with what the engine has to reason over and how long the decision record must survive, because those are the two things that actually cost money to run. <a href="#partners" style="color:var(--emerald)">Design partners pay none of it</a> for the duration of the partnership.
+    </p>
   </div>
 </section>
 
@@ -330,25 +521,28 @@
   <div class="wrap">
     <div class="section-head reveal">
       <span class="eyebrow">Roadmap</span>
-      <h2>From validation to a global <span class="grad-text">intelligence layer.</span></h2>
+      <h2>From validation to the renewal <span class="grad-text">system of record.</span></h2>
     </div>
     <div class="timeline">
       <div class="tl-item reveal">
         <div class="tl-phase"><span class="tag">Phase 1</span><span class="when">Now</span></div>
-        <div class="tl-body"><h4>Problem validation</h4><p>Engage target users to identify pain points and validate the key use cases that guide development.</p></div>
+        <div class="tl-body"><h4>Problem validation</h4><p>Engage renewal owners at mid-market SaaS companies to sharpen which signals actually predict a non-renewal, and which are noise.</p></div>
       </div>
       <div class="tl-item reveal">
         <div class="tl-phase"><span class="tag">Phase 2</span><span class="when">In progress</span></div>
-        <div class="tl-body"><h4>Prototype development</h4><p>Build a working prototype demonstrating core features — data aggregation and insight generation. <em style="color:var(--cyan);font-style:normal">← you're looking at it.</em></p></div>
+        <div class="tl-body"><h4>Prototype development</h4><p>A working engine that detects statistically, explains by decomposition and prices exposure as a range. <em style="color:var(--cyan);font-style:normal">← you're looking at it.</em></p></div>
       </div>
       <div class="tl-item reveal">
         <div class="tl-phase"><span class="tag">Phase 3</span><span class="when">Next</span></div>
-        <div class="tl-body"><h4>Pilot testing</h4><p>Deploy the prototype in controlled environments to gather feedback and refine the product.</p></div>
+        <div class="tl-body"><h4>Design partner pilots</h4><p>Ten mid-market teams run it against their real renewal book, and the detectors get tuned to what each motion actually looks like.</p></div>
       </div>
       <div class="tl-item reveal">
         <div class="tl-phase"><span class="tag">Phase 4</span><span class="when">Launch</span></div>
-        <div class="tl-body"><h4>Productization & launch</h4><p>Scalable architecture, polished UI and a go-to-market motion for customer acquisition.</p></div>
+        <div class="tl-body"><h4>Productization &amp; launch</h4><p>Native connectors, scalable architecture and a go-to-market motion aimed squarely at the renewal number.</p></div>
       </div>
+    </div>
+    <div class="center" style="margin-top:36px">
+      <a class="btn btn-ghost reveal" href="roadmap.html">See the full technical roadmap →</a>
     </div>
   </div>
 </section>
@@ -358,11 +552,110 @@
   <div class="wrap">
     <div class="cta-band reveal">
       <span class="eyebrow" style="margin-bottom:18px">Our Vision</span>
-      <h2>Become the core intelligence layer for<br/><span class="grad-text">customer operations, everywhere.</span></h2>
-      <p>Predictive and prescriptive analytics, an expanding integration ecosystem, and ever-sharper AI insight — so every operations team makes the right call, in real time.</p>
+      <h2>Become the system of record for<br/><span class="grad-text">why customers stay.</span></h2>
+      <p>Every SaaS company has a system of record for what it sold and what broke. None of them has one for why an account renewed — what was noticed, what was decided about it, and whether that decision worked. That is the category, and renewals are the door into it.</p>
       <div class="hero-cta">
-        <a class="btn btn-primary" href="demo.html">Launch the live Copilot →</a>
-        <a class="btn btn-ghost" href="#product">Review the product</a>
+        <a class="btn btn-primary" href="#partners">Become a design partner →</a>
+        <a class="btn btn-ghost" href="demo.html">Launch the live demo</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--
+  Founding team. Deliberately small, deliberately no photos. It exists to answer
+  "who is behind this?" for someone already convinced by the product — not to
+  compete with it.
+-->
+<section class="block founders" id="about" style="padding-top:0">
+  <div class="wrap">
+    <div class="founders-head reveal">
+      <span class="eyebrow">About · the founding team</span>
+    </div>
+    <div class="founders-grid">
+      <div class="founder reveal">
+        <h4>Sudharshan <span class="role">Founder &amp; CEO</span></h4>
+        <p>Fifteen years across customer operations, customer experience and enterprise SaaS, and more recently executive search. The through-line: the people who own renewals are almost never short of dashboards, and almost always short of a defensible reason for the call they just made. OpsPulse exists to close that gap.</p>
+      </div>
+      <div class="founder reveal">
+        <h4>Sachin <span class="role">Co-founder &amp; CTO</span></h4>
+        <p>Enterprise AI, architecture and engineering. Owns the decision engine — the statistical detectors, the confidence floor, and the insight contract that stops anything reaching a screen before it can be traced back to a record.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CONTACT ============ -->
+<section class="block" id="contact" style="padding-top:0">
+  <div class="wrap">
+    <div class="cta-band reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Contact</span>
+      <h2>Schedule a demo.</h2>
+      <p>Thirty minutes, screen shared, your questions rather than our script. Tell us the size of your renewal book and where you currently find out too late — we will show you what the engine does with signals like yours.</p>
+      <!-- Naming who replies, with titles, at the point someone decides to get
+           in touch — on a two-person company that is the reassurance that
+           matters more than any claim above it. -->
+      <p style="margin-top:10px">You will be talking to <strong style="color:var(--text)">Sudharshan</strong>, Founder &amp; CEO, and <strong style="color:var(--text)">Sachin</strong>, Co-founder &amp; CTO. No account managers, no SDR round-trip — they answer everything themselves.</p>
+
+      <!--
+        No backend on a static site, so submit composes the message and hands
+        it to the visitor's mail client (assets/contact.js). The composed text
+        is also shown with a copy button, because a browser with no mail client
+        configured does nothing at all and gives no feedback.
+      -->
+      <form class="cform" id="contactForm" novalidate>
+        <div class="cform-grid">
+          <div class="cf-field">
+            <label for="cfName">Name <span class="req" aria-hidden="true">*</span></label>
+            <input id="cfName" name="name" type="text" required autocomplete="name" placeholder="Jane Okafor" />
+          </div>
+          <div class="cf-field">
+            <label for="cfEmail">Work email <span class="req" aria-hidden="true">*</span></label>
+            <input id="cfEmail" name="email" type="email" required autocomplete="email" placeholder="jane@company.com" />
+          </div>
+          <div class="cf-field">
+            <label for="cfCompany">Company</label>
+            <input id="cfCompany" name="company" type="text" autocomplete="organization" placeholder="Company name" />
+          </div>
+          <div class="cf-field">
+            <label for="cfBook">Renewal book</label>
+            <select id="cfBook" name="book">
+              <option value="">Select a range…</option>
+              <option>Under $3M ARR</option>
+              <option>$3M – $10M ARR</option>
+              <option>$10M – $30M ARR</option>
+              <option>Over $30M ARR</option>
+              <option>Not sure yet</option>
+            </select>
+          </div>
+          <div class="cf-field cf-wide">
+            <label for="cfMessage">Where do you currently find out too late?</label>
+            <textarea id="cfMessage" name="message" rows="4" placeholder="e.g. we usually discover an account is leaving on the renewal call — usage data sits in one tool and support history in another, and nobody joins them up."></textarea>
+          </div>
+          <label class="cf-check" for="cfPartner">
+            <input id="cfPartner" name="partner" type="checkbox" />
+            <span>I am interested in the <strong style="color:var(--text)">design partner programme</strong> — free through the partnership, ten places.</span>
+          </label>
+        </div>
+
+        <div class="cform-actions">
+          <button type="submit" class="btn btn-primary">Send it →</button>
+          <p class="cf-note">Opens in your mail client so you can see exactly what is sent. Nothing is stored on this site.</p>
+        </div>
+      </form>
+
+      <div class="cf-sent" id="cfSent" hidden>
+        <h4>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Your mail client should be opening
+        </h4>
+        <p>If nothing happened, no mail client is configured on this machine — copy the message below and send it to <strong style="color:var(--text)">infohireloop@gmail.com</strong>, or use the direct link.</p>
+        <pre id="cfSentBody"></pre>
+        <div class="cf-sent-actions">
+          <button type="button" class="btn btn-ghost" id="cfCopy">Copy the message</button>
+          <a class="btn btn-ghost" id="cfMailAgain" href="mailto:infohireloop@gmail.com">Open mail client again</a>
+          <span class="cf-copied" id="cfCopied" hidden>Copied ✓</span>
+        </div>
       </div>
     </div>
   </div>
@@ -376,18 +669,26 @@
         <span class="logo"><svg viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2.2-6 3.4 12 2.6-8 1.6 4H22" stroke="#04120c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         OpsPulse AI
       </a>
-      <p style="margin-top:10px">The intelligence layer for customer operations.</p>
+      <p style="margin-top:10px">Renewal intelligence for mid-market SaaS.</p>
     </div>
     <div class="foot-links">
-      <a href="#problem">Problem</a>
-      <a href="#solution">Solution</a>
+      <a href="#product">Product</a>
+      <a href="#solutions">Solutions</a>
+      <a href="#partners">Design Partners</a>
       <a href="#pricing">Pricing</a>
-      <a href="demo.html">Live Ops Floor</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+      <a href="trust.html">Trust</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="demo.html">Live demo</a>
     </div>
   </div>
   <div class="wrap"><p class="dim" style="margin-top:24px;font-size:.8rem">© 2026 OpsPulse AI · Prototype demo. All data shown is simulated.</p></div>
 </footer>
 
 <script src="assets/landing.js"></script>
+<!-- chat.js first: it publishes the contact address that contact.js reads. -->
+<script src="assets/chat.js"></script>
+<script src="assets/contact.js"></script>
 </body>
 </html>

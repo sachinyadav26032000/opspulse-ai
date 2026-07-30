@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trust &amp; Governance — OpsPulse AI</title>
+<meta name="description" content="How OpsPulse constrains itself: a declared confidence floor, cause labelled as hypothesis, exposures it refuses to price, and every published field traced to a source column." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/site.css" />
+<link rel="stylesheet" href="assets/chat.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2334d399'/><path d='M5 17h5l3-8 4 14 3-9 2 3h5' stroke='%23041' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+<style>
+  /* Page-local only. Everything else comes from the shared design system. */
+  .rule-table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: .88rem; }
+  .rule-table th {
+    text-align: left; font-size: .68rem; text-transform: uppercase; letter-spacing: .11em;
+    color: var(--text-dim); font-weight: 700; padding: 0 14px 9px; border-bottom: 1px solid var(--line-strong);
+  }
+  .rule-table td { padding: 13px 14px; border-bottom: 1px solid var(--line); color: var(--text-soft); line-height: 1.55; vertical-align: top; }
+  .rule-table td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
+  .rule-table td code, .card code, .cta-band code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .84em; color: var(--cyan);
+  }
+  .rule-table .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .table-scroll { overflow-x: auto; }
+
+  .status-chip {
+    display: inline-flex; align-items: center; gap: 6px; font-size: .68rem; font-weight: 700;
+    padding: 3px 9px; border-radius: 20px; white-space: nowrap; letter-spacing: .01em;
+  }
+  .status-chip.live { background: rgba(52,211,153,.13); color: #6ee7b7; border: 1px solid rgba(52,211,153,.28); }
+  .status-chip.planned { background: rgba(255,255,255,.05); color: var(--text-dim); border: 1px solid var(--line-strong); }
+
+  .honest {
+    border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: 22px 24px;
+    background: rgba(251,191,36,.04); margin-top: 30px;
+  }
+  .honest h3 { font-size: 1.05rem; margin-bottom: 10px; color: var(--amber); }
+  .honest p { color: var(--text-soft); font-size: .92rem; line-height: 1.7; margin: 0 0 10px; }
+  .honest p:last-child { margin-bottom: 0; }
+
+  .refuse { display: grid; gap: 12px; margin-top: 22px; }
+  .refuse-item {
+    display: grid; grid-template-columns: 26px 1fr; gap: 14px; align-items: start;
+    border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 15px 17px; background: rgba(255,255,255,.015);
+  }
+  .refuse-item .x {
+    width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; flex: none;
+    background: rgba(251,113,133,.14); color: var(--rose); font-weight: 800; font-size: .95rem;
+  }
+  .refuse-item h4 { font-size: .95rem; margin-bottom: 5px; }
+  .refuse-item p { margin: 0; font-size: .87rem; color: var(--text-soft); line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="index.html">
+      <span class="logo">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2.2-6 3.4 12 2.6-8 1.6 4H22" stroke="#04120c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      OpsPulse<span style="opacity:.55;font-weight:600"> AI</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html#product">Product</a>
+      <a href="index.html#solutions">Solutions</a>
+      <a href="index.html#partners">Design Partners</a>
+      <a href="index.html#about">About</a>
+      <a href="index.html#contact">Contact</a>
+    </div>
+    <div class="nav-cta">
+      <a class="nav-tab" href="demo.html"><span class="dot-live"></span><span class="nav-tab-label">Ops Floor</span></a>
+      <a class="btn btn-ghost nav-login" href="app.html">Log in</a>
+      <a class="btn btn-primary" href="index.html#contact">Schedule a demo →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="block" style="padding-top:120px">
+  <div class="wrap">
+    <div class="section-head reveal" style="max-width:900px">
+      <span class="eyebrow">Trust &amp; Governance</span>
+      <h1 style="margin:16px 0 18px;font-size:clamp(2rem,4.2vw,3.1rem)">The constraints are the <span class="grad-text">product.</span></h1>
+      <p class="lead">Anyone can build a system that always has an answer. The engineering here went into making one that knows when it does not — and says so on the screen instead of generating something plausible.</p>
+      <p class="lead" style="margin-top:14px">Every rule below is enforced in code, not in policy, and every number is verifiable in the running product on the <strong style="color:var(--text)">Assurance</strong> screen.</p>
+    </div>
+
+    <div class="stats" style="margin-top:44px">
+      <div class="stat reveal"><div class="n grad-text">60%</div><div class="l">Confidence floor. Below it an insight is marked <code>held_for_review</code> and never auto-actioned.</div></div>
+      <div class="stat reveal"><div class="n grad-text">9</div><div class="l">Detectors, each with a threshold published in the product and arguable by a reviewer.</div></div>
+      <div class="stat reveal"><div class="n grad-text">40</div><div class="l">Minimum recent records before any anomaly is raised at all.</div></div>
+      <div class="stat reveal"><div class="n grad-text">100%</div><div class="l">Of published fields carry provenance back to the source column they came from.</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ THE FOUR RULES ============ -->
+<section class="block" id="rules" style="background:linear-gradient(180deg,transparent,rgba(52,211,153,.03),transparent)">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Enforced in code</span>
+      <h2>Four rules the system cannot talk its way out of.</h2>
+      <p class="lead">These are not guidelines the model is asked to follow. They are structural properties of the contract every insight must validate against before it is allowed to reach a screen.</p>
+    </div>
+
+    <div class="grid g2">
+      <div class="card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 18h16M7 18V9M12 18V5M17 18v-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>01 · There is a confidence floor</h3>
+        <p>Every insight carries a computed confidence — 45% statistical strength, 30% share of the change explained, 25% corroborating signals. Below <code>CONFIDENCE_CUTOFF = 0.6</code> the insight is marked <code>held_for_review</code> and is never auto-actioned.</p>
+        <p style="margin-top:10px">You may still commit a held insight. Doing so is permitted, logged, and shown permanently in the Decision Ledger as an override — because a control that can be bypassed silently is not a control.</p>
+      </div>
+
+      <div class="card v reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 16h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></div>
+        <h3>02 · Cause is always a hypothesis</h3>
+        <p>The <code>why</code> block on every insight carries <code>hypothesis: true</code> as a structural field, not a disclaimer in the copy. It cannot be set to anything else.</p>
+        <p style="margin-top:10px">Attribution is done by decomposition: contributions are measured shares of an observed delta and sum to 100%. That is arithmetic about <em style="font-style:normal;color:var(--text)">what changed</em>, not a claim about <em style="font-style:normal;color:var(--text)">what caused it</em>. Closing that gap is a human's job, and the interface says so.</p>
+      </div>
+
+      <div class="card c reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M8 7h6.5a2.5 2.5 0 0 1 0 5h-5a2.5 2.5 0 0 0 0 5H16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h3>03 · Some exposures are not priced</h3>
+        <p>Compliance risk returns <code>null</code> for value at risk. <code>null</code> is an explicitly legal, validated value in the contract — the schema comment reads <em style="font-style:normal">"some exposures must not be given a price."</em></p>
+        <p style="margin-top:10px">A statutory deadline is a legal question. A fabricated fine probability would be the least defensible number in the product, so it declines to produce one and shows the open request count and the days remaining instead.</p>
+      </div>
+
+      <div class="card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="18" cy="18" r="3" stroke="currentColor" stroke-width="1.8"/></svg></div>
+        <h3>04 · Nothing reaches the UI as free text</h3>
+        <p>Every card on every screen is a rendering of a validated insight object. Detection is arithmetic; the language layer only describes what detection already found, and cannot introduce a claim the data does not support.</p>
+        <p style="margin-top:10px">The raw object is openable from any insight via <strong style="color:var(--text)">View insight JSON</strong>. If the contract fails validation, the product says <code>contract_valid: false</code> on the Assurance screen and lists the violations rather than hiding them.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ THRESHOLDS ============ -->
+<section class="block" id="thresholds">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Declared thresholds</span>
+      <h2>Nine detectors, and the bar each one has to clear.</h2>
+      <p class="lead">No detector knows anything about how the data was produced. Each compares a recent window against your own operation's baseline and raises a card only when the difference clears a stated threshold — which is why a quiet week produces an empty feed rather than invented findings.</p>
+    </div>
+
+    <div class="table-scroll reveal">
+      <table class="rule-table">
+        <thead>
+          <tr><th>Detector</th><th>Must clear</th><th class="num">Threshold</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Escalation spike</td><td>Two-proportion z-test on escalation rate, per category</td><td class="num">z ≥ 2.5</td></tr>
+          <tr><td>Emerging topic</td><td>Volume lift against its own baseline <em>and</em> a share-of-mix z-test</td><td class="num">≥ 1.35× and z ≥ 2.5</td></tr>
+          <tr><td>SLA risk</td><td>Two-proportion z-test on first-response breach rate</td><td class="num">z ≥ 2.5</td></tr>
+          <tr><td>Backlog risk</td><td>Sustained queue growth measured as slope over the window</td><td class="num">≥ 3 tickets/day</td></tr>
+          <tr><td>Coaching gap</td><td>QA point gap between cohorts <em>and</em> a Welch t-test</td><td class="num">≥ 8 pts and t ≥ 2.5</td></tr>
+          <tr><td>NPS drop</td><td>Fall in Net Promoter Score against baseline</td><td class="num">≥ 8 points</td></tr>
+          <tr><td>CSAT drop</td><td>Fall in mean star rating <em>and</em> a Welch t-test</td><td class="num">≥ 0.25 stars and t ≥ 2</td></tr>
+          <tr><td>Churn risk</td><td>Repeat escalations plus detractor NPS or low CSAT, above an ARR floor</td><td class="num">≥ $60k ARR, ≥ 5 accounts</td></tr>
+          <tr><td>Compliance risk</td><td>Open statutory data requests against their legal deadline</td><td class="num">deadline-driven</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="dim" style="margin-top:18px;font-size:.86rem;max-width:80ch">
+      A global minimum sample of <strong style="color:var(--text-soft)">40 recent records</strong> applies before any anomaly is raised, regardless of how extreme the signal looks. Thresholds are declared in one file — <code style="color:var(--cyan)">config/thresholds.js</code> — rather than buried at their call sites, specifically so a reviewer can disagree with them in one place. That file separates the four <strong style="color:var(--text-soft)">business dials</strong> a customer owns (what counts as low adoption, how far ahead a renewal matters, what size of usage fall is a decline, how long silence lasts before it means something) from the <strong style="color:var(--text-soft)">statistical bars</strong> above, which exist to hold the false-positive rate down and are ours to defend rather than yours to turn. Two customers do not share a definition of "low adoption"; they do share a definition of significance.
+    </p>
+  </div>
+</section>
+
+<!-- ============ WHAT WE REFUSE ============ -->
+<section class="block" id="refusals" style="background:linear-gradient(180deg,transparent,rgba(251,113,133,.035),transparent)">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="eyebrow" style="color:var(--rose);border-color:rgba(251,113,133,.25);background:rgba(251,113,133,.06)">Refusals</span>
+      <h2 style="margin:14px 0 16px">What this platform <span class="grad-text">will not do.</span></h2>
+      <p class="lead">A capability list tells you what a vendor wants to be judged on. This is the other list — and for a system that produces decisions, it is the more informative one.</p>
+      <div class="hero-cta" style="margin-top:26px">
+        <a class="btn btn-ghost" href="demo.html">See a refusal in the live product →</a>
+      </div>
+    </div>
+
+    <div class="refuse reveal">
+      <div class="refuse-item">
+        <span class="x">✕</span>
+        <div>
+          <h4>It will not price a legal exposure</h4>
+          <p>Compliance risk is reported as open requests and days to statutory deadline. It is never converted into a dollar figure, and it is deliberately excluded from the total revenue-at-risk rollup.</p>
+        </div>
+      </div>
+      <div class="refuse-item">
+        <span class="x">✕</span>
+        <div>
+          <h4>It will not answer beyond its data</h4>
+          <p>Ask the Executive Copilot something the engine has not computed and it says so, then lists what it can answer. It does not generate a plausible response to fill the silence.</p>
+        </div>
+      </div>
+      <div class="refuse-item">
+        <span class="x">✕</span>
+        <div>
+          <h4>It will not report a point estimate as certainty</h4>
+          <p>Value at stake is always a range, and the widest source of uncertainty is named explicitly — the conversion band is a stated assumption, not a measurement, and the product says which is which.</p>
+        </div>
+      </div>
+      <div class="refuse-item">
+        <span class="x">✕</span>
+        <div>
+          <h4>It will not quietly rewrite its own history</h4>
+          <p>The Decision Ledger snapshots severity, confidence and the metric at the moment of commitment. Later engine passes cannot back-date them, so a decision that turned out badly stays visibly bad.</p>
+        </div>
+      </div>
+      <div class="refuse-item">
+        <span class="x">✕</span>
+        <div>
+          <h4>It will not hide a failed self-check</h4>
+          <p>If insight validation fails, Assurance reports <code>contract_valid: FAIL</code> and prints every violation. The failure is surfaced rather than swallowed.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECURITY POSTURE ============ -->
+<section class="block" id="security">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Security &amp; data handling</span>
+      <h2>Where this actually stands today.</h2>
+      <p class="lead">Marked honestly, because a trust page that overstates its own controls defeats its purpose. <span class="status-chip live">Live</span> means it works in the product you can open right now. <span class="status-chip planned">Planned</span> means it is designed and scheduled, and nothing more than that.</p>
+    </div>
+
+    <div class="table-scroll reveal">
+      <table class="rule-table">
+        <thead>
+          <tr><th>Control</th><th>Status</th><th>Detail</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Client-side processing</td><td><span class="status-chip live">Live</span></td>
+            <td>The prototype runs entirely in your browser. No operational data is transmitted to a server, and an uploaded CSV never leaves the tab.</td>
+          </tr>
+          <tr>
+            <td>Insight contract validation</td><td><span class="status-chip live">Live</span></td>
+            <td>Every insight is validated on every engine pass; the pass/fail result and any violations are shown on the Assurance screen.</td>
+          </tr>
+          <tr>
+            <td>Decision audit trail</td><td><span class="status-chip live">Live</span></td>
+            <td>Commitments are recorded with the evidence snapshot, the owner role, the playbook id, and every lifecycle transition with its timestamp.</td>
+          </tr>
+          <tr>
+            <td>Provenance tracing</td><td><span class="status-chip live">Live</span></td>
+            <td>Each published field records the source column or derivation it came from; the full trace is listed on Assurance.</td>
+          </tr>
+          <tr>
+            <td>SSO — OIDC / SAML</td><td><span class="status-chip planned">Planned</span></td>
+            <td>Phase 4. Required for the Govern tier at general availability.</td>
+          </tr>
+          <tr>
+            <td>Role-based access control</td><td><span class="status-chip planned">Planned</span></td>
+            <td>Phase 4. Read-only viewer, decision-maker and auditor roles, with viewers unlimited on every plan.</td>
+          </tr>
+          <tr>
+            <td>SOC 2 Type II</td><td><span class="status-chip planned">Planned</span></td>
+            <td>Not certified. Audit is scheduled to begin after the production pilot — we will not imply otherwise on a trust page.</td>
+          </tr>
+          <tr>
+            <td>Data residency &amp; private deployment</td><td><span class="status-chip planned">Planned</span></td>
+            <td>Enterprise tier. Regional pinning and single-tenant deployment.</td>
+          </tr>
+          <tr>
+            <td>Encryption at rest and in transit</td><td><span class="status-chip planned">Planned</span></td>
+            <td>Applies from the first server-side deployment; the current build has no server-side store to encrypt.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="honest reveal">
+      <h3>What you are looking at</h3>
+      <p>OpsPulse is a working prototype, not a generally available product. The engine, the detectors, the thresholds, the contract validation, the provenance tracing and the decision ledger are all real and running in your browser — you can open the JSON behind any card and check the arithmetic.</p>
+      <p>The dataset is simulated. The enterprise controls marked <em style="font-style:normal;color:var(--text)">Planned</em> above are designed and scheduled but not built. We are stating that plainly here for the same reason the engine refuses to price a compliance exposure: the moment a trust page starts rounding up, it stops being useful to the person reading it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="block" id="verify">
+  <div class="wrap">
+    <div class="cta-band reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Verify it yourself</span>
+      <h2>Do not take the governance claims<br/><span class="grad-text">on this page's word.</span></h2>
+      <p>Open the live platform, go to the Assurance screen, and check the detector thresholds, the held-for-review count, the provenance trace and the contract validation result against everything stated here. Then commit a decision and watch the ledger tell you what happened to it.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="demo.html">Open the live platform →</a>
+        <a class="btn btn-ghost" href="index.html#product">Review the product</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap foot">
+    <div>
+      <a class="brand" href="index.html">
+        <span class="logo"><svg viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2.2-6 3.4 12 2.6-8 1.6 4H22" stroke="#04120c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        OpsPulse AI
+      </a>
+      <p style="margin-top:10px">Renewal intelligence for mid-market SaaS.</p>
+    </div>
+    <div class="foot-links">
+      <a href="index.html#product">Product</a>
+      <a href="index.html#solutions">Solutions</a>
+      <a href="index.html#partners">Design Partners</a>
+      <a href="index.html#pricing">Pricing</a>
+      <a href="index.html#about">About</a>
+      <a href="index.html#contact">Contact</a>
+      <a href="trust.html">Trust</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="demo.html">Live demo</a>
+    </div>
+  </div>
+  <div class="wrap"><p class="dim" style="margin-top:24px;font-size:.8rem">© 2026 OpsPulse AI · Prototype demo. All data shown is simulated.</p></div>
+</footer>
+
+<script src="assets/landing.js"></script>
+<script src="assets/chat.js"></script>
+</body>
+</html>

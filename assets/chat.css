@@ -1,0 +1,271 @@
+/* ==========================================================================
+   OpsPulse — site assistant widget
+   --------------------------------------------------------------------------
+   Kept in its own file rather than appended to styles.css on purpose:
+   styles.css is the shared design system and is currently byte-identical to
+   the copy on the other branch. Keeping the widget separate means the two
+   can still be diffed cleanly.
+
+   Every colour, radius, shadow and easing below comes from the tokens already
+   declared in styles.css :root — the widget is a new component, not a new
+   visual language.
+   ========================================================================== */
+
+.cw {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  font-family: inherit;
+}
+
+.cw-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ---------- Launcher ---------- */
+.cw-launch {
+  order: 2;                       /* stays below the panel however the DOM sits */
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 18px 12px 14px;
+  border: 0;
+  border-radius: 100px;
+  background: var(--grad);
+  color: #04120c;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 16px 40px -12px rgba(52, 211, 153, 0.6);
+  transition: transform 0.2s var(--ease), box-shadow 0.25s var(--ease);
+}
+.cw-launch:hover { transform: translateY(-2px); box-shadow: 0 20px 48px -12px rgba(52, 211, 153, 0.75); }
+.cw-launch:active { transform: translateY(0) scale(0.99); }
+.cw-launch:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+
+.cw-launch-ico svg,
+.cw-launch-x svg { width: 19px; height: 19px; display: block; }
+.cw-launch-ico, .cw-launch-x { display: flex; }
+.cw-launch-x { display: none; }
+
+/* Open state: the launcher collapses to a round close button, so the panel
+   is never fighting a wide pill for space on a narrow screen. */
+.cw-open .cw-launch { padding: 13px; }
+.cw-open .cw-launch-ico,
+.cw-open .cw-launch-label { display: none; }
+.cw-open .cw-launch-x { display: flex; }
+
+/* ---------- Panel ---------- */
+.cw-panel {
+  order: 1;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  height: 540px;
+  max-height: calc(100vh - 130px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), var(--shadow-glow);
+  animation: cw-in 0.22s var(--ease) both;
+}
+.cw-panel[hidden] { display: none; }
+
+@keyframes cw-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- Head ---------- */
+.cw-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 14px 13px 16px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.07), transparent);
+  flex: 0 0 auto;
+}
+.cw-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px; height: 34px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: var(--grad);
+  color: #04120c;
+}
+.cw-avatar svg { width: 19px; height: 19px; }
+
+.cw-head-txt { min-width: 0; flex: 1; }
+.cw-head-txt strong { display: block; font-size: 0.92rem; color: var(--text); font-weight: 700; }
+.cw-head-txt small {
+  display: block; margin-top: 2px;
+  font-size: 0.7rem; line-height: 1.35; color: var(--text-dim);
+}
+
+.cw-close {
+  flex: 0 0 auto;
+  display: grid; place-items: center;
+  width: 30px; height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+.cw-close svg { width: 15px; height: 15px; }
+.cw-close:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); border-color: var(--line-strong); }
+.cw-close:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* ---------- Log ---------- */
+.cw-log {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 16px 14px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.cw-log::-webkit-scrollbar { width: 8px; }
+.cw-log::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 100px; }
+
+.cw-msg { display: flex; }
+.cw-msg.cw-me { justify-content: flex-end; }
+
+.cw-bubble {
+  max-width: 86%;
+  padding: 10px 13px;
+  border-radius: 14px;
+  font-size: 0.855rem;
+  line-height: 1.6;
+  color: var(--text-soft);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+.cw-bubble p { margin: 0 0 8px; }
+.cw-bubble p:last-child { margin-bottom: 0; }
+.cw-bubble strong { color: var(--text); font-weight: 650; }
+.cw-bubble em { color: var(--text); font-style: italic; }
+
+.cw-bot .cw-bubble { border-bottom-left-radius: 5px; }
+.cw-me .cw-bubble {
+  border-bottom-right-radius: 5px;
+  background: rgba(52, 211, 153, 0.13);
+  border-color: rgba(52, 211, 153, 0.28);
+  color: var(--text);
+}
+
+/* ---------- Typing indicator ---------- */
+.cw-typing { display: inline-flex; gap: 4px; padding: 3px 0; }
+.cw-typing i {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text-dim);
+  animation: cw-blink 1.1s infinite both;
+}
+.cw-typing i:nth-child(2) { animation-delay: 0.16s; }
+.cw-typing i:nth-child(3) { animation-delay: 0.32s; }
+@keyframes cw-blink {
+  0%, 70%, 100% { opacity: 0.25; transform: translateY(0); }
+  35%           { opacity: 1;    transform: translateY(-3px); }
+}
+
+/* ---------- Suggested questions ---------- */
+.cw-chips {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 10px 14px 12px;
+}
+.cw-chip {
+  padding: 7px 12px;
+  border-radius: 100px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 0.765rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s, border-color 0.18s, transform 0.18s var(--ease);
+}
+.cw-chip:hover {
+  color: var(--text);
+  background: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.35);
+  transform: translateY(-1px);
+}
+.cw-chip:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* ---------- Composer ---------- */
+.cw-input {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-top: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.2);
+}
+.cw-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 13px;
+  border-radius: 100px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+.cw-input input::placeholder { color: var(--text-dim); }
+.cw-input input:focus {
+  outline: none;
+  border-color: rgba(52, 211, 153, 0.5);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.12);
+}
+
+.cw-send {
+  flex: 0 0 auto;
+  display: grid; place-items: center;
+  width: 38px; height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--grad);
+  color: #04120c;
+  cursor: pointer;
+  transition: transform 0.18s var(--ease), box-shadow 0.2s;
+}
+.cw-send svg { width: 18px; height: 18px; }
+.cw-send:hover { transform: scale(1.06); box-shadow: 0 10px 24px -8px rgba(52, 211, 153, 0.7); }
+.cw-send:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* ---------- Small screens ---------- */
+@media (max-width: 520px) {
+  .cw { right: 14px; bottom: 14px; left: 14px; align-items: stretch; }
+  .cw-launch { align-self: flex-end; }
+  .cw-panel { width: auto; height: min(560px, calc(100vh - 110px)); }
+  .cw-launch-label { display: none; }
+  .cw-launch { padding: 13px; border-radius: 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cw-panel { animation: none; }
+  .cw-launch, .cw-chip, .cw-send { transition: none; }
+  .cw-typing i { animation: none; opacity: 0.5; }
+}
