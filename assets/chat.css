@@ -108,10 +108,36 @@
 .cw-avatar svg { width: 19px; height: 19px; }
 
 .cw-head-txt { min-width: 0; flex: 1; }
-.cw-head-txt strong { display: block; font-size: 0.92rem; color: var(--text); font-weight: 700; }
+.cw-head-txt strong {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 0.95rem; color: var(--text); font-weight: 700; letter-spacing: 0.01em;
+}
 .cw-head-txt small {
-  display: block; margin-top: 2px;
+  display: flex; align-items: center; gap: 6px; margin-top: 3px;
   font-size: 0.7rem; line-height: 1.35; color: var(--text-dim);
+}
+
+/* Tiny "AI" chip beside the name — signals a capable assistant without
+   overclaiming, in the product's own gradient. */
+.cw-badge {
+  font-size: 0.58rem; font-weight: 800; letter-spacing: 0.06em;
+  padding: 2px 6px; border-radius: 100px;
+  background: var(--grad); color: #04120c;
+  line-height: 1;
+}
+
+/* Live status dot with a soft pulse, so the header reads as "here and
+   listening". Falls still under reduced-motion. */
+.cw-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto;
+  background: #34d399;
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+  animation: cw-pulse 2.4s var(--ease) infinite;
+}
+@keyframes cw-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55); }
+  70%  { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
 }
 
 .cw-close {
@@ -143,12 +169,25 @@
 .cw-log::-webkit-scrollbar { width: 8px; }
 .cw-log::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 100px; }
 
-.cw-msg { display: flex; }
+.cw-msg { display: flex; align-items: flex-end; gap: 8px; }
 .cw-msg.cw-me { justify-content: flex-end; }
 
+/* The little shield next to each RioAI turn. Sits at the bottom of the
+   bubble so a tall multi-paragraph answer still anchors it at the corner. */
+.cw-msg-ava {
+  flex: 0 0 auto;
+  display: grid; place-items: center;
+  width: 26px; height: 26px;
+  margin-bottom: 1px;
+  border-radius: 8px;
+  background: var(--grad);
+  color: #04120c;
+}
+.cw-msg-ava svg { width: 15px; height: 15px; }
+
 .cw-bubble {
-  max-width: 86%;
-  padding: 10px 13px;
+  max-width: 84%;
+  padding: 11px 14px;
   border-radius: 14px;
   font-size: 0.855rem;
   line-height: 1.6;
@@ -160,6 +199,17 @@
 .cw-bubble p:last-child { margin-bottom: 0; }
 .cw-bubble strong { color: var(--text); font-weight: 650; }
 .cw-bubble em { color: var(--text); font-style: italic; }
+
+/* Bulleted answers — a real list with a gradient tick marker, so the signal
+   sources and plan tiers read cleanly instead of as run-on paragraphs. */
+.cw-list { margin: 2px 0 8px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.cw-list:last-child { margin-bottom: 0; }
+.cw-list li { position: relative; padding-left: 16px; }
+.cw-list li::before {
+  content: ""; position: absolute; left: 2px; top: 0.62em;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--cyan, #34d399);
+}
 
 .cw-bot .cw-bubble { border-bottom-left-radius: 5px; }
 .cw-me .cw-bubble {
@@ -268,4 +318,5 @@
   .cw-panel { animation: none; }
   .cw-launch, .cw-chip, .cw-send { transition: none; }
   .cw-typing i { animation: none; opacity: 0.5; }
+  .cw-dot { animation: none; }
 }
