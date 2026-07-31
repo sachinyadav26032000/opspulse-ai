@@ -1,8 +1,10 @@
 /* ==========================================================================
-   OpsPulse — site assistant
+   RioAI — the OpsPulse product assistant
    --------------------------------------------------------------------------
-   A scripted assistant that answers what a prospective customer actually asks
-   before booking a call. It is deliberately NOT an LLM:
+   RioAI is the product's own expert in a chat window: ask it anything about
+   OpsPulse and it answers with the same rigour the product applies to a
+   renewal. It is a knowledgeable assistant, but it is deliberately NOT a
+   cloud LLM, and that is a feature, not a limitation:
 
      - there is no backend and no API key on a static site, so a model call
        would have to ship a credential to the browser;
@@ -11,16 +13,25 @@
        improvises pricing or invents an integration is the same failure mode
        wearing a friendlier hat.
 
-   So: intent matching over a fixed answer set, and an honest "I don't know
-   that one" that hands off to a human. That refusal is the most on-brand
-   behaviour in the widget — it is the product's own confidence floor, applied
-   to its own marketing.
+   So RioAI runs a small, on-device natural-language layer instead: it
+   normalises and tokenises the question, strips filler words, tolerates
+   typos, and scores it against a curated knowledge base — phrase intent
+   first, then weighted keyword overlap, then a fuzzy fallback for near
+   misses. Everything it says is authored and verifiable; nothing is
+   generated. When a question falls outside what it genuinely knows it says
+   so and hands off to a human — that refusal is the most on-brand behaviour
+   in the widget, the product's own confidence floor applied to its own
+   marketing.
 
    Injected entirely from JS so every page gets the widget with one <script>
    tag and no duplicated markup.
    ========================================================================== */
 (function () {
   "use strict";
+
+  /* The assistant's name, written down once so the header, launcher, opening
+     line and the public API alias all stay in step. */
+  var BOT_NAME = "RioAI";
 
   /* ------------------------------------------------------------------
      The one place the contact address is written down. The form in
@@ -42,7 +53,7 @@
   var INTENTS = [
     {
       id: "what",
-      keys: ["what is opspulse", "what do you do", "what is this", "what does it do", "tell me about", "what are you", "explain", "overview"],
+      keys: ["what is opspulse", "what do you do", "what is this", "what does it do", "tell me about", "what does opspulse", "explain", "overview"],
       answer:
         "OpsPulse is <strong>renewal intelligence for mid-market SaaS</strong>.\n\n" +
         "It reads the signals your team already generates — support tickets, calls, QA reviews, product usage, billing — and tells you which renewals are in trouble while there is still time to act.\n\n" +
@@ -144,7 +155,7 @@
         "Deliberately narrow, and this is the core design decision of the product.\n\n" +
         "<strong>Detection, ranking and costing are arithmetic.</strong> No model is involved. A pattern is found because a recent window sits far enough outside a declared baseline, not because something predicted it.\n\n" +
         "<strong>Language only explains.</strong> The narrative layer describes findings that already exist as structured objects. It cannot introduce a number that is not already in the data.\n\n" +
-        "That split is enforced in code, not policy. A generated number is a fabricated number — including in this chat window, which is why I am scripted rather than a model.",
+        "That split is enforced in code, not policy. A generated number is a fabricated number — including in this chat window, which is why I, RioAI, match your question against authored answers rather than improvising with a model.",
       chips: ["How accurate is it?", "What if it is wrong?", "How does it work?"]
     },
     {
@@ -185,7 +196,7 @@
     },
     {
       id: "team",
-      keys: ["who are you", "who built", "team", "founders", "behind this", "company", "about you", "sachin", "sudharshan", "funding", "investors", "how many people"],
+      keys: ["who built", "who made", "who is behind", "team", "founders", "behind this", "the company", "about you", "sachin", "sudharshan", "funding", "investors", "how many people"],
       answer:
         "Two founders.\n\n" +
         "<strong>Sudharshan — Founder &amp; CEO.</strong> Fifteen years across customer operations, customer experience and enterprise SaaS, more recently executive search.\n\n" +
@@ -222,65 +233,178 @@
       chips: ["Schedule a demo", "What is the design partner programme?"]
     },
     {
-      id: "greeting",
-      keys: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening", "yo", "howdy", "greetings"],
+      id: "identity",
+      keys: ["who are you", "what are you", "your name", "what is your name", "are you a bot", "are you human", "are you real", "are you a robot", "rioai", "rio ai", "what can you do", "how do you work", "are you an ai", "are you chatgpt", "what model are you"],
       answer:
-        "Hello — ask me anything about OpsPulse.\n\nI am a scripted assistant, so I know the product well and nothing else. If I do not have an answer I will say so rather than improvise one.",
-      chips: ["What is OpsPulse?", "What does it cost?", "Can I see a demo?"]
+        "I am <strong>RioAI</strong> — the OpsPulse product assistant. Think of me as the product's own expert on call.\n\n" +
+        "Under the hood I run a small natural-language layer right here in your browser: I normalise your question, strip the filler words, forgive a typo or two, and match what you actually mean against a curated knowledge base of everything OpsPulse — then I answer from authored, verifiable copy.\n\n" +
+        "I am not a cloud LLM, and that is deliberate: OpsPulse refuses to generate numbers it cannot trace, so its assistant refuses to generate answers it cannot stand behind. Ask me anything about the product.",
+      chips: ["What is OpsPulse?", "How does it work?", "Does it use AI to make up numbers?"]
+    },
+    {
+      id: "greeting",
+      keys: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening", "yo", "howdy", "greetings", "hiya", "sup"],
+      answer:
+        "Hi, I am <strong>RioAI</strong> — the OpsPulse product expert. Ask me anything: what it does, how the engine reaches a verdict, pricing, integrations, security, or the design partner programme.\n\n" +
+        "I read your question with a small on-device language model rather than a cloud LLM, so every answer is authored and verifiable — and if I genuinely do not know something, I will say so and point you at a human instead of guessing.",
+      chips: ["What is OpsPulse?", "How does it work?", "What does it cost?"]
     },
     {
       id: "thanks",
-      keys: ["thanks", "thank you", "cheers", "appreciate", "helpful", "great", "perfect", "bye", "goodbye", "later"],
-      answer: "Any time. If you want to go further, the fastest next step is thirty minutes with one of the founders.",
+      keys: ["thanks", "thank you", "cheers", "appreciate", "helpful", "great", "perfect", "awesome", "nice", "cool", "bye", "goodbye", "later"],
+      answer: "Any time — that is what I am here for. If you want to go further, the fastest next step is thirty minutes with one of the founders.",
       chips: ["Schedule a demo", "What is the design partner programme?"]
     }
   ];
 
   var OPENING = {
     answer:
-      "Hello — I can answer questions about OpsPulse: what it does, how it works, pricing, the design partner programme, and what happens to your data.\n\n" +
-      "I am scripted rather than an AI model, so if I do not know something I will say so and point you at a human.",
+      "Hi, I am <strong>RioAI</strong> 👋 — the product expert for OpsPulse. I can walk you through what it does, how the decision engine reaches a verdict, pricing, integrations, security, and the design partner programme.\n\n" +
+      "Ask in your own words — I understand full questions, not just keywords. And because I run on the product's own honesty rule, I never invent an answer: if I do not know, I will say so and hand you to a human.",
     chips: ["What is OpsPulse?", "How is this different from a health score?", "What does it cost?", "What is the design partner programme?"]
   };
 
   var FALLBACK_CHIPS = ["What is OpsPulse?", "How does it work?", "What does it cost?", "Talk to a human"];
 
-  /* ------------------------------------------------------------------
-     Matching
-     ------------------------------------------------------------------ */
+  /* ==================================================================
+     The natural-language layer
+     ------------------------------------------------------------------
+     This is what lets RioAI read a real question rather than demand an
+     exact keyword. It is intentionally small and explainable — no model,
+     no network — but it does the things an NLP front end does: it lowers
+     and strips punctuation, drops filler words that carry no intent,
+     forgives a typo, and scores meaning three ways:
+
+       1 · phrase intent   — a multi-word key found verbatim is the
+                             strongest signal ("how much" ≫ a stray "how").
+       2 · keyword overlap  — distinctive words shared with an intent, each
+                             weighted so a rare, diagnostic term ("soc 2")
+                             counts for more than a common one.
+       3 · fuzzy fallback   — a near-miss token ("pricin", "intergrate") is
+                             still counted, at a discount, so a slip of the
+                             finger does not drop the visitor to a dead end.
+
+     The acceptance bar stays deliberately high: below it RioAI says it
+     does not know rather than answer the wrong question confidently. That
+     is the product's confidence floor, applied to its own chat window.
+     ================================================================== */
+
+  /* Words that appear in almost every question and so carry no intent. Kept
+     out of the keyword vocabulary on both sides — the visitor's tokens and
+     the intent's — so matching turns on the words that actually distinguish
+     one topic from another. */
+  var STOPWORDS = {
+    the:1, a:1, an:1, and:1, or:1, of:1, to:1, in:1, on:1, at:1, for:1, with:1,
+    is:1, are:1, was:1, be:1, been:1, do:1, does:1, did:1, can:1, could:1,
+    would:1, should:1, will:1, i:1, you:1, we:1, they:1, it:1, this:1,
+    that:1, my:1, your:1, our:1, me:1, us:1, as:1, if:1, so:1, but:1, from:1,
+    about:1, into:1, up:1, out:1, please:1, just:1, tell:1, give:1, some:1,
+    any:1, there:1, here:1, use:1, using:1, get:1, got:1, make:1, made:1,
+    need:1, want:1, know:1, see:1, thing:1, things:1, really:1, actually:1
+  };
+
+  function tokenise(s) {
+    var raw = String(s).toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/);
+    var out = [];
+    for (var i = 0; i < raw.length; i++) {
+      var t = raw[i];
+      if (t && t.length > 1 && !STOPWORDS[t]) out.push(t);
+    }
+    return out;
+  }
+
+  /* Padded, single-spaced form so a multi-word phrase can be found on word
+     boundaries with a plain indexOf. */
   function normalise(s) {
     return " " + String(s).toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim() + " ";
   }
 
-  /* A phrase key scores by its word count, so "how much" (2) beats a stray
-     "how" (1). Without that weighting almost every question would match
-     whichever intent happened to list the most common English words. */
-  function score(q, intent) {
-    var total = 0;
-    for (var i = 0; i < intent.keys.length; i++) {
-      var k = normalise(intent.keys[i]).trim();
-      if (!k) continue;
-      if (q.indexOf(" " + k + " ") !== -1 || q.indexOf(" " + k) !== -1) {
-        var words = k.split(" ").length;
-        total += words * words;
+  /* Are two tokens within one edit (insert / delete / substitute)? A cheap
+     bounded check — enough to catch a single fat-fingered character without
+     matching genuinely different words. Only run on longer tokens, where an
+     accidental slip is far more likely than a real different short word. */
+  function near(a, b) {
+    if (a === b) return true;
+    var la = a.length, lb = b.length;
+    if (Math.abs(la - lb) > 1) return false;
+    var i = 0, j = 0, edits = 0;
+    while (i < la && j < lb) {
+      if (a[i] === b[j]) { i++; j++; continue; }
+      if (++edits > 1) return false;
+      if (la > lb) i++;             /* deletion from a */
+      else if (lb > la) j++;        /* insertion into a */
+      else { i++; j++; }            /* substitution */
+    }
+    if (i < la || j < lb) edits++;  /* trailing extra character */
+    return edits <= 1;
+  }
+
+  /* Precompute, once, each intent's phrase list and its distinctive keyword
+     vocabulary. Deriving the vocabulary from the same keys the phrases come
+     from means there is still one place to edit an intent's triggers. */
+  INTENTS.forEach(function (intent) {
+    var phrases = [];
+    var terms = {};
+    intent.keys.forEach(function (key) {
+      var words = normalise(key).trim().split(" ");
+      if (words.length > 1) phrases.push(" " + words.join(" ") + " ");
+      tokenise(key).forEach(function (t) { terms[t] = 1; });
+    });
+    intent._phrases = phrases;
+    intent._terms = Object.keys(terms);
+  });
+
+  function scoreIntent(qNorm, qTokens, intent) {
+    var total = 0, tokenScore = 0, phraseHit = false;
+
+    /* 1 · phrase intent — dominant, because a whole phrase found verbatim is
+       far more diagnostic than the words that make it up appearing loose. */
+    for (var p = 0; p < intent._phrases.length; p++) {
+      if (qNorm.indexOf(intent._phrases[p]) !== -1) {
+        var w = intent._phrases[p].trim().split(" ").length;
+        total += w * w * 3;
+        phraseHit = true;
       }
     }
-    return total;
+
+    /* 2 & 3 · keyword overlap, exact then fuzzy. Each visitor token scores at
+       most once, against its best match, so a repeated word cannot stack. */
+    for (var i = 0; i < qTokens.length; i++) {
+      var qt = qTokens[i], best = 0;
+      for (var j = 0; j < intent._terms.length; j++) {
+        var term = intent._terms[j];
+        if (qt === term) { best = 2; break; }
+        /* A near-miss on a long, distinctive word ("pricin", "securty") is
+           almost certainly a typo, so it counts full; a near-miss on a short
+           word could easily be a genuinely different word, so it counts half. */
+        if (best < 2 && qt.length >= 5 && term.length >= 5 && near(qt, term)) {
+          best = Math.min(qt.length, term.length) >= 6 ? 2 : 1;
+        }
+      }
+      tokenScore += best;
+    }
+    total += tokenScore;
+
+    return { total: total, tokenScore: tokenScore, phraseHit: phraseHit };
   }
 
   function findAnswer(text) {
-    var q = normalise(text);
-    if (q.trim().length < 2) return null;
+    var qNorm = normalise(text);
+    if (qNorm.trim().length < 2) return null;
+    var qTokens = tokenise(text);
 
-    var best = null, bestScore = 0;
+    var best = null, bestScore = 0, bestS = null;
     for (var i = 0; i < INTENTS.length; i++) {
-      var s = score(q, INTENTS[i]);
-      if (s > bestScore) { bestScore = s; best = INTENTS[i]; }
+      var s = scoreIntent(qNorm, qTokens, INTENTS[i]);
+      if (s.total > bestScore) { bestScore = s.total; best = INTENTS[i]; bestS = s; }
     }
-    /* A single one-word hit is usually coincidence — "data" appears in half
-       the answer set. Require either a multi-word phrase or two separate
-       single-word hits before claiming to understand the question. */
-    return bestScore >= 2 ? best : null;
+
+    /* Confidence floor: answer only on a real phrase hit or on enough keyword
+       weight (one distinctive exact word, or two softer signals). A lone
+       fuzzy guess is not enough — below the bar RioAI says it does not know
+       rather than answer the wrong question. */
+    if (bestS && (bestS.phraseHit || bestS.tokenScore >= 2)) return best;
+    return null;
   }
 
   /* ------------------------------------------------------------------
@@ -288,34 +412,39 @@
      ------------------------------------------------------------------ */
   var root = document.createElement("div");
   root.className = "cw";
+  /* A shield with an inner spark — a small "product superhero" mark that
+     still reads as a single glyph at 20px. Reused in the launcher and the
+     panel header so the two are visibly the same character. */
+  var RIO_MARK =
+    '<svg viewBox="0 0 24 24" fill="none">' +
+      '<path d="M12 2.5 20 5.2v6.1c0 4.6-3.2 8-8 10.2-4.8-2.2-8-5.6-8-10.2V5.2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>' +
+      '<path d="M12.8 7.3 9 12.7h2.7l-.6 4 3.9-5.5h-2.7Z" fill="currentColor"/>' +
+    '</svg>';
+
   root.innerHTML =
     '<button type="button" class="cw-launch" id="cwLaunch" aria-expanded="false" aria-controls="cwPanel">' +
-      '<span class="cw-launch-ico" aria-hidden="true">' +
-        '<svg viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>' +
-      '</span>' +
+      '<span class="cw-launch-ico" aria-hidden="true">' + RIO_MARK + '</span>' +
       '<span class="cw-launch-x" aria-hidden="true">' +
         '<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>' +
       '</span>' +
-      '<span class="cw-launch-label">Ask about OpsPulse</span>' +
+      '<span class="cw-launch-label">Ask ' + BOT_NAME + '</span>' +
     '</button>' +
-    '<div class="cw-panel" id="cwPanel" role="dialog" aria-label="Ask about OpsPulse" hidden>' +
+    '<div class="cw-panel" id="cwPanel" role="dialog" aria-label="' + BOT_NAME + ', the OpsPulse product assistant" hidden>' +
       '<div class="cw-head">' +
-        '<span class="cw-avatar" aria-hidden="true">' +
-          '<svg viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2.2-6 3.4 12 2.6-8 1.6 4H22" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
-        '</span>' +
+        '<span class="cw-avatar" aria-hidden="true">' + RIO_MARK + '</span>' +
         '<div class="cw-head-txt">' +
-          '<strong>OpsPulse assistant</strong>' +
-          '<small>Scripted, not an AI model — it says when it does not know</small>' +
+          '<strong>' + BOT_NAME + '<span class="cw-badge">AI</span></strong>' +
+          '<small><span class="cw-dot" aria-hidden="true"></span>OpsPulse product expert · always honest</small>' +
         '</div>' +
-        '<button type="button" class="cw-close" id="cwClose" aria-label="Close the assistant">' +
+        '<button type="button" class="cw-close" id="cwClose" aria-label="Close ' + BOT_NAME + '">' +
           '<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
         '</button>' +
       '</div>' +
       '<div class="cw-log" id="cwLog" role="log" aria-live="polite" aria-relevant="additions"></div>' +
       '<div class="cw-chips" id="cwChips"></div>' +
       '<form class="cw-input" id="cwForm">' +
-        '<label class="cw-sr" for="cwText">Ask a question about OpsPulse</label>' +
-        '<input id="cwText" type="text" autocomplete="off" placeholder="Ask a question…" />' +
+        '<label class="cw-sr" for="cwText">Ask ' + BOT_NAME + ' a question about OpsPulse</label>' +
+        '<input id="cwText" type="text" autocomplete="off" placeholder="Ask ' + BOT_NAME + ' anything…" />' +
         '<button type="submit" class="cw-send" aria-label="Send">' +
           '<svg viewBox="0 0 24 24" fill="none"><path d="M4 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
         '</button>' +
@@ -341,6 +470,16 @@
   function bubble(who, html) {
     var row = document.createElement("div");
     row.className = "cw-msg cw-" + who;
+    /* RioAI's own turns carry the little shield mark, so a long thread still
+       reads at a glance as a conversation with a named assistant rather than
+       an anonymous stack of grey boxes. The visitor's turns do not. */
+    if (who === "bot") {
+      var ava = document.createElement("span");
+      ava.className = "cw-msg-ava";
+      ava.setAttribute("aria-hidden", "true");
+      ava.innerHTML = RIO_MARK;
+      row.appendChild(ava);
+    }
     var b = document.createElement("div");
     b.className = "cw-bubble";
     b.innerHTML = html;
@@ -362,9 +501,25 @@
     esc = esc
       .replace(/&lt;strong&gt;/g, "<strong>").replace(/&lt;\/strong&gt;/g, "</strong>")
       .replace(/&lt;em&gt;/g, "<em>").replace(/&lt;\/em&gt;/g, "</em>");
-    return esc.split("\n").map(function (line) {
-      return line.trim() ? "<p>" + line + "</p>" : "";
-    }).join("");
+
+    /* Consecutive "• " lines become a real bullet list, so an answer that
+       enumerates signal sources or plans reads as a list rather than a stack
+       of loose paragraphs. Everything else stays a paragraph. */
+    var out = [], list = null;
+    esc.split("\n").forEach(function (line) {
+      var t = line.trim();
+      if (!t) return;
+      var bullet = t.indexOf("•") === 0;
+      if (bullet) {
+        if (!list) list = [];
+        list.push("<li>" + t.replace(/^•\s*/, "") + "</li>");
+      } else {
+        if (list) { out.push('<ul class="cw-list">' + list.join("") + "</ul>"); list = null; }
+        out.push("<p>" + t + "</p>");
+      }
+    });
+    if (list) out.push('<ul class="cw-list">' + list.join("") + "</ul>");
+    return out.join("");
   }
 
   function setChips(list) {
@@ -392,8 +547,8 @@
         setChips(intent.chips);
       } else {
         bubble("bot", render(
-          "I do not have a scripted answer for that one, and I would rather say so than improvise — the product refuses to invent numbers, so its chatbot should not invent answers.\n\n" +
-          "Both founders reply personally. Use the <strong>Schedule a demo</strong> form on this page and it reaches them directly."
+          "That one is outside what I can answer with confidence, and I would rather tell you than guess — OpsPulse refuses to invent numbers, so RioAI refuses to invent answers.\n\n" +
+          "Both founders reply personally, though. Use the <strong>Schedule a demo</strong> form on this page and your question reaches them directly."
         ));
         setChips(FALLBACK_CHIPS);
       }
@@ -482,4 +637,7 @@
     close: close,
     ask: function (q) { if (panel.hidden) open(); submit(q); }
   };
+  /* RioAI is the assistant's public name, so the rest of the page can open it
+     or ask it a question under that name too. Same object, friendlier alias. */
+  window.RioAI = window.OpsPulseChat;
 })();
