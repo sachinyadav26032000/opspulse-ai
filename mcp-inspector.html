@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OpsPulse — MCP Inspector</title>
+<title>OpsPulse · MCP Inspector</title>
 <link rel="stylesheet" href="assets/styles.css">
 <style>
   /* The inspector is a protocol console, not a dashboard. It borrows the design
@@ -107,7 +107,7 @@
 
   <p class="note" id="intro" style="margin:-8px 0 18px">
     This page is a real MCP client. On load it sends <code>initialize</code> and
-    <code>tools/list</code> over JSON-RPC to <code>POST /mcp</code> — the same handler
+    <code>tools/list</code> over JSON-RPC to <code>POST /mcp</code>, the same handler
     <code>mcp/server.js</code> exposes over stdio to Claude Desktop. Every call below
     shows its raw wire messages, so what you see here is what a model sees.
   </p>
@@ -134,7 +134,7 @@
         <h2>Result</h2>
         <div class="body">
           <div class="meta" id="resultMeta"></div>
-          <pre id="result">Pick a tool and call it — or try one of the questions above.</pre>
+          <pre id="result">Pick a tool and call it, or try one of the questions above.</pre>
           <details class="wire">
             <summary>Raw JSON-RPC (request + response)</summary>
             <pre id="wire">—</pre>
@@ -385,7 +385,7 @@ $('run').addEventListener('click', () => callSelected());
     setStatus('err', 'connect failed');
     $('toolList').innerHTML =
       `<div class="body err">Could not reach <code>/mcp</code>: ${e.message}<br><br>` +
-      `<span class="note">This page needs the Node server — run <code>node mcp/http.js</code> ` +
+      `<span class="note">This page needs the Node server. Run <code>node mcp/http.js</code> ` +
       `and open it from that port. It will not work over <code>file://</code> or from ` +
       `<code>python -m http.server</code>, neither of which can answer JSON-RPC.</span></div>`;
   }

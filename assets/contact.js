@@ -45,7 +45,7 @@
     var partner = wantsPartner && wantsPartner.checked;
 
     var subject = (partner ? "Design partner" : "Demo request")
-      + " — " + (company || name || "OpsPulse enquiry");
+      + ": " + (company || name || "OpsPulse enquiry");
 
     var lines = [
       "Name:     " + (name || "—"),

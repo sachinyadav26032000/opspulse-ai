@@ -208,7 +208,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     const fmtFor = m.unit === 'rate' ? fmt.pct : m.unit === 'per_day' ? fmt.one : m.unit === 'stars' ? fmt.stars : m.unit === 'nps' ? fmt.nps : m.unit === 'score' ? fmt.one : fmt.int;
 
     blocks.push(lineChart({
-      title: `${m.metric_label ? m.entity.label + ' — ' : ''}${ins._meta.title}`,
+      title: `${m.metric_label ? m.entity.label + ' · ' : ''}${ins._meta.title}`,
       subtitle: 'last 45 days · shaded band is the analysis window',
       labels, series: [{ name: m.metric || 'value', values: vals }],
       format: fmtFor, area: true,
@@ -222,7 +222,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
         title: 'What explains the change',
         subtitle: `decomposed by ${m.decomposition_dimension}`,
         rows: m.decomposition.map((r) => ({ ...r, label: String(r.key).replace(/[-_]/g, ' ') })),
-        note: 'Contributions are shares of the measured delta and sum to 100% — this is attribution by decomposition, not a guess about cause.',
+        note: 'Contributions are shares of the measured delta and sum to 100%. This is attribution by decomposition, not a guess about cause.',
       }));
     }
 
@@ -264,7 +264,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
         format: fmt.one, color: STATUS.serious,
       }));
       grid.appendChild(barChart({
-        title: 'New-hire agents by QA score', subtitle: 'lowest first — this is the coaching list',
+        title: 'New-hire agents by QA score', subtitle: 'lowest first, this is the coaching list',
         rows: ev.per_agent.map((a) => ({ key: a.name, value: a.score, hint: 'QA' })),
         format: (v) => Math.round(v), color: SERIES[0], maxRows: 12,
       }));
@@ -285,7 +285,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
           { name: 'Tickets resolved', values: rolling(ev.throughput_series, 7).slice(d.meta.days - 45) },
         ],
         format: fmt.one, zeroBase: false,
-        note: '7-day rolling means. Capacity did not change; demand did — which is why the queue grows.',
+        note: '7-day rolling means. Capacity did not change; demand did, which is why the queue grows.',
       }));
       grid.appendChild(barChart({
         title: 'Open queue by category', rows: countBy(openTickets(d), (t) => t.category, 8),
@@ -338,7 +338,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       blocks.push(table(
         [{ label: 'Account', key: 'company' }, { label: 'Plan', key: 'plan' }, { label: 'ARR', key: 'arr', num: true }, { label: 'Escalations', key: 'escalations', num: true }, { label: 'Last NPS', key: 'npsv', num: true }, { label: 'Renews in', key: 'ren', num: true }],
         ev.top_accounts.map((a) => ({ ...a, arr: fmt.usd(a.arr_usd), npsv: a.nps ?? '—', ren: a.renewal_in_days + 'd' })),
-        { title: 'The save list', hint: 'sorted by ARR — work top-down' },
+        { title: 'The save list', hint: 'sorted by ARR, work top-down' },
       ));
     }
 
@@ -410,7 +410,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
             { name: 'Passives', color: SERIES[3], values: weekAgg(d, d.nps, (r) => r.score >= 7 && r.score <= 8) },
             { name: 'Detractors', color: STATUS.critical, values: weekAgg(d, d.nps, (r) => r.score <= 6) },
           ] }),
-          barChart({ title: 'Detractor drivers — current window', rows: countBy(rec.filter((r) => r.segment === 'detractor'), (r) => String(r.driver_tag).replace(/-/g, ' '), 6), color: STATUS.critical }),
+          barChart({ title: 'Detractor drivers · current window', rows: countBy(rec.filter((r) => r.segment === 'detractor'), (r) => String(r.driver_tag).replace(/-/g, ' '), 6), color: STATUS.critical }),
         ],
       };
     },
@@ -454,8 +454,8 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
           ], format: fmt.one, zeroBase: false }),
           barChart({ title: 'Scorecard dimensions', subtitle: 'tenured vs new hire',
             rows: dims.flatMap((k) => [
-              { key: `${k.replace(/_/g, ' ')} — tenured`, value: mean(tn.map((q) => q.dimensions[k])), color: SERIES[0] },
-              { key: `${k.replace(/_/g, ' ')} — new hire`, value: mean(nh.map((q) => q.dimensions[k])), color: STATUS.serious },
+              { key: `${k.replace(/_/g, ' ')} · tenured`, value: mean(tn.map((q) => q.dimensions[k])), color: SERIES[0] },
+              { key: `${k.replace(/_/g, ' ')} · new hire`, value: mean(nh.map((q) => q.dimensions[k])), color: STATUS.serious },
             ]), format: (v) => Math.round(v), maxRows: 12 }),
         ],
       };
@@ -465,7 +465,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       const open = d.escalations.filter((e) => e.status !== 'Closed');
       const rec = d.escalations.filter((e) => e.day_index >= d.meta.recent_from);
       return {
-        title: 'Escalations', subtitle: 'Where work is leaving the normal path — the earliest warning a desk gets.',
+        title: 'Escalations', subtitle: 'Where work is leaving the normal path. The earliest warning a desk gets.',
         kpis: [
           { k: 'Open', v: fmt.int(open.length), s: 'not yet closed' },
           { k: 'In window', v: fmt.int(rec.length), s: `${d.meta.days - d.meta.recent_from} days` },
@@ -475,7 +475,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
         blocks: [
           lineChart({ title: 'Escalations per day', labels: labelsFor(0, d.meta.days - 1), series: [{ name: 'Escalations', values: rolling(countByDay(d.escalations, d.meta.days), 7) }], format: fmt.one, area: true, markers: releaseMarkers(0) }),
           (() => { const g = el('div', 'grid2');
-            g.appendChild(barChart({ title: 'By category — current window', rows: countBy(rec, (e) => e.category, 8), color: STATUS.serious }));
+            g.appendChild(barChart({ title: 'By category · current window', rows: countBy(rec, (e) => e.category, 8), color: STATUS.serious }));
             g.appendChild(donut({ title: 'By severity', rows: countBy(open, (e) => e.severity), centreLabel: 'open' }));
             return g; })(),
           table([{ label: 'ID', key: 'escalation_id' }, { label: 'Account', key: 'company' }, { label: 'Severity', key: 'severity' }, { label: 'Reason', key: 'reason' }, { label: 'ARR', key: 'arr', num: true }],
@@ -626,9 +626,9 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       <div style="margin-top:10px" class="conf"><span class="bar" style="width:80px"><i style="width:${Math.round(ins.why.confidence * 100)}%"></i></span><b>${Math.round(ins.why.confidence * 100)}%</b> confidence</div>
       <p class="muted" style="margin-top:6px;font-size:.75rem">
         statistical ${fmt.pct0(cp.statistical)} · explained by top driver ${fmt.pct0(cp.explained)} · corroborated ${fmt.pct0(cp.corroborated)}.
-        Correlation, not confirmed cause — a human closes that gap.
+        Correlation, not confirmed cause. A human closes that gap.
       </p>
-      <ul class="evidence">${ins.why.contributing_signals.map((s) => `<li><span class="mark ${s.hit ? 'y' : 'n'}">${s.hit ? '✓' : '–'}</span><span>${esc(s.label)} <span class="det">— ${esc(s.detail)}</span></span></li>`).join('')}</ul>`;
+      <ul class="evidence">${ins.why.contributing_signals.map((s) => `<li><span class="mark ${s.hit ? 'y' : 'n'}">${s.hit ? '✓' : '–'}</span><span>${esc(s.label)} <span class="det">· ${esc(s.detail)}</span></span></li>`).join('')}</ul>`;
     grid.appendChild(q2);
 
     const im = m.impact;
@@ -682,7 +682,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     const panel = el('div', 'panel');
     panel.innerHTML = '<div class="panel-hd"><h3>Insight object (wire contract)</h3><span class="hint">_meta.series / affected_ids / evidence trimmed for readability</span></div>';
     const bd = el('div', 'panel-bd'); bd.appendChild(pre); panel.appendChild(bd);
-    openDrill({ title: 'Insight contract', subtitle: 'Every card on this screen is a rendering of this object — nothing reaches the UI as free text.', blocks: [panel] });
+    openDrill({ title: 'Insight contract', subtitle: 'Every card on this screen is a rendering of this object. Nothing reaches the UI as free text.', blocks: [panel] });
   }
 
   /* ══════════════════════════════════════════════════════════════════════
@@ -698,7 +698,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     hero.innerHTML = `
       <div>
         <div class="when">${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} · ${esc(b.period)}</div>
-        <h2>Here are your top ${b.top_3.length} operational risks — and what to do about them.</h2>
+        <h2>Here are your top ${b.top_3.length} operational risks, and what to do about them.</h2>
         <p class="lede">${esc(b.rollup.org_health_delta_explanation)}</p>
       </div>
       <div class="op-gauge">
@@ -735,8 +735,8 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     const brow = el('div', 'act-row');
     const copyBtn = el('button', 'lv-btn', 'Copy briefing');
     copyBtn.addEventListener('click', async () => {
-      const text = `OpsPulse — ${b.period}\nHealth ${h.score}/100 (${h.delta >= 0 ? '+' : ''}${h.delta})\n\n${b.narrative_lines.join('\n\n')}\n\nTOP ${b.top_3.length}:\n` +
-        b.top_3.map((i, n) => `${n + 1}. ${i._meta.title} — ${i._meta.metric_label}\n   Impact: ${i._meta.affected_accounts} customers · ${moneyRange(i)}\n   Cause (hypothesis, ${Math.round(i.why.confidence * 100)}%): ${firstSentence(i.why.root_cause)}\n   Action: ${i.recommended_action.action} → ${i.recommended_action.owner_role}`).join('\n\n');
+      const text = `OpsPulse · ${b.period}\nHealth ${h.score}/100 (${h.delta >= 0 ? '+' : ''}${h.delta})\n\n${b.narrative_lines.join('\n\n')}\n\nTOP ${b.top_3.length}:\n` +
+        b.top_3.map((i, n) => `${n + 1}. ${i._meta.title} · ${i._meta.metric_label}\n   Impact: ${i._meta.affected_accounts} customers · ${moneyRange(i)}\n   Cause (hypothesis, ${Math.round(i.why.confidence * 100)}%): ${firstSentence(i.why.root_cause)}\n   Action: ${i.recommended_action.action} → ${i.recommended_action.owner_role}`).join('\n\n');
       try { await navigator.clipboard.writeText(text); toast('Briefing copied', 'Paste it straight into email or Slack'); }
       catch { toast('Copy blocked', 'Clipboard needs a user gesture on this browser'); }
     });
@@ -842,7 +842,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
           ${[['Records analysed', fmt.int(r.stats.records_in)], ['Anomalies flagged', r.stats.anomalies_flagged], ['Insights built', r.stats.insights_built], ['Held below confidence cutoff', r.stats.held_for_review], ['Contract valid', r.contract_valid ? 'yes' : 'NO']]
             .map(([k, v]) => `<div class="drv-row" style="grid-template-columns:1fr auto"><span class="n">${esc(k)}</span><span class="v">${esc(String(v))}</span></div>`).join('')}
         </div>
-        <p class="muted" style="font-size:.74rem;margin:12px 0 0;line-height:1.55">Nine statistical detectors run over the live dataset; anything clearing its threshold is root-caused by decomposition and matched to a playbook. Detection is arithmetic — the language layer only explains what it found.</p>
+        <p class="muted" style="font-size:.74rem;margin:12px 0 0;line-height:1.55">Nine statistical detectors run over the live dataset; anything clearing its threshold is root-caused by decomposition and matched to a playbook. Detection is arithmetic. The language layer only explains what it found.</p>
         <div class="drv" style="margin-top:10px">${r.detectors_run.map((x) => `<div class="drv-row" style="grid-template-columns:1fr auto"><span class="n">${esc(x.detector.replace(/_/g, ' '))}</span><span class="v" style="color:${x.found ? STATUS.warning : 'var(--text-dim)'}">${x.found}</span></div>`).join('')}</div>
       </div>`;
     right.appendChild(stats);
@@ -927,7 +927,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     const has = (...ws) => ws.some((w) => q.includes(w));
     const chip = (label, fn) => ({ label, fn });
 
-    const insLine = (i) => `<li><strong>${esc(i._meta.title)}</strong> — ${esc(i._meta.metric_label)}. ${esc(firstSentence(i.why.root_cause))} <em>Do:</em> ${esc(i.recommended_action.action)} (${esc(i.recommended_action.owner_role)}, ${Math.round(i.why.confidence * 100)}% confidence).</li>`;
+    const insLine = (i) => `<li><strong>${esc(i._meta.title)}</strong>: ${esc(i._meta.metric_label)}. ${esc(firstSentence(i.why.root_cause))} <em>Do:</em> ${esc(i.recommended_action.action)} (${esc(i.recommended_action.owner_role)}, ${Math.round(i.why.confidence * 100)}% confidence).</li>`;
 
     if (has('focus', 'today', 'priorit', 'first', 'start with', 'morning')) {
       return {
@@ -941,12 +941,12 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       const i = find('nps_drop');
       const rec = d.nps.filter((r) => r.day_index >= d.meta.recent_from);
       const a = npsOf(rec), base = npsOf(d.nps.filter((r) => r.day_index < d.meta.recent_from));
-      if (!i) return { html: `NPS is <strong>${fmt.nps(a.nps)}</strong> across ${a.n} responses, against a baseline of ${fmt.nps(base.nps)} — no drop large enough to raise a card.<div class="src">${a.n} responses in the current window.</div>`, chips: [chip('Open NPS analysis', () => openDrill(KPI_DRILLS.nps()))] };
+      if (!i) return { html: `NPS is <strong>${fmt.nps(a.nps)}</strong> across ${a.n} responses, against a baseline of ${fmt.nps(base.nps)}, no drop large enough to raise a card.<div class="src">${a.n} responses in the current window.</div>`, chips: [chip('Open NPS analysis', () => openDrill(KPI_DRILLS.nps()))] };
       const dd = i._meta.decomposition.slice(0, 3);
       return {
-        html: `NPS fell from <strong>${fmt.nps(i._meta.baseline)}</strong> to <strong>${fmt.nps(i._meta.observed)}</strong> — ${i._meta.evidence.drop_pts} points across ${i._meta.n_recent} responses.
+        html: `NPS fell from <strong>${fmt.nps(i._meta.baseline)}</strong> to <strong>${fmt.nps(i._meta.observed)}</strong>, ${i._meta.evidence.drop_pts} points across ${i._meta.n_recent} responses.
           <p style="margin:9px 0 0">Detractors went from ${fmt.pct0(i._meta.evidence.detractors_base)} to ${fmt.pct0(i._meta.evidence.detractors_recent)} of responses. What changed in <em>what they complain about</em>:</p>
-          <ul>${dd.map((x) => `<li><strong>${esc(String(x.key).replace(/-/g, ' '))}</strong> — ${fmt.pct0(x.share_recent ?? x.recent_rate)} of detractors now vs ${fmt.pct0(x.base_rate ?? 0)} before; explains ${fmt.pct0(x.contribution)} of the shift.</li>`).join('')}</ul>
+          <ul>${dd.map((x) => `<li><strong>${esc(String(x.key).replace(/-/g, ' '))}</strong>: ${fmt.pct0(x.share_recent ?? x.recent_rate)} of detractors now vs ${fmt.pct0(x.base_rate ?? 0)} before; explains ${fmt.pct0(x.contribution)} of the shift.</li>`).join('')}</ul>
           <p style="margin:9px 0 0">That first driver is the same refund-policy change behind your top-ranked risk, so fixing one moves both.</p>
           <div class="src">Drivers are decomposed from detractor verbatim tags; contributions sum to 100%. ${fmt.usdK(i._meta.evidence.detractor_arr)} of ARR sits behind these responses.</div>`,
         chips: [chip('Open NPS BI', () => openDrill(KPI_DRILLS.nps())), chip('Open the insight', () => drillInsight(i))],
@@ -957,7 +957,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       const worst = h.dimensions.slice().sort((x, y) => x.score - y.score)[0];
       return {
         html: `<strong>${em.length} emerging signal${em.length === 1 ? '' : 's'}</strong>, all in the current window:<ul>${em.map(insLine).join('')}</ul>
-          <p style="margin:10px 0 0">On the radar, <strong>${esc(worst.label)}</strong> is weakest at ${worst.score}/100 — driven by ${esc(worst.drivers.slice().sort((a2, b2) => a2.score - b2.score)[0].label.toLowerCase())} (${esc(worst.drivers.slice().sort((a2, b2) => a2.score - b2.score)[0].display)}).</p>
+          <p style="margin:10px 0 0">On the radar, <strong>${esc(worst.label)}</strong> is weakest at ${worst.score}/100, driven by ${esc(worst.drivers.slice().sort((a2, b2) => a2.score - b2.score)[0].label.toLowerCase())} (${esc(worst.drivers.slice().sort((a2, b2) => a2.score - b2.score)[0].display)}).</p>
           <div class="src">An emerging topic must be ≥1.35× its own baseline AND clear a share-of-mix z-test of 2.5, so ordinary weekly noise does not qualify.</div>`,
         chips: [chip('Open Risk Radar', () => { state.view = 'radar'; render(); }), ...em.slice(0, 2).map((i) => chip(i._meta.title, () => drillInsight(i)))],
       };
@@ -967,9 +967,9 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       return {
         html: `<strong>${esc(i._meta.title)}.</strong> ${esc(i.what_happened)}
           <p style="margin:9px 0 0"><strong>Why (hypothesis, ${Math.round(i.why.confidence * 100)}% confidence):</strong> ${esc(i.why.root_cause)}</p>
-          <p style="margin:9px 0 0"><strong>Worth:</strong> ${esc(moneyRange(i))} over ${i.expected_impact.time_horizon_days} days — ${esc(i._meta.impact.formula)}.</p>
-          <p style="margin:9px 0 0"><strong>Do:</strong> ${esc(i.recommended_action.action)} — owner ${esc(i.recommended_action.owner_role)}, playbook ${esc(i.recommended_action.playbook_id)}.</p>
-          <div class="src">Largest single exposure in the feed is actually ${esc(largestExposure(e)._meta.title)} at ${esc(moneyRange(largestExposure(e)))} — it ranks lower here because its horizon is ${largestExposure(e).expected_impact.time_horizon_days} days, not because it is smaller.</div>`,
+          <p style="margin:9px 0 0"><strong>Worth:</strong> ${esc(moneyRange(i))} over ${i.expected_impact.time_horizon_days} days: ${esc(i._meta.impact.formula)}.</p>
+          <p style="margin:9px 0 0"><strong>Do:</strong> ${esc(i.recommended_action.action)}, owner ${esc(i.recommended_action.owner_role)}, playbook ${esc(i.recommended_action.playbook_id)}.</p>
+          <div class="src">Largest single exposure in the feed is actually ${esc(largestExposure(e)._meta.title)} at ${esc(moneyRange(largestExposure(e)))}, but it ranks lower here because its horizon is ${largestExposure(e).expected_impact.time_horizon_days} days, not because it is smaller.</div>`,
         chips: [chip('Open drill-down', () => drillInsight(i)), chip(largestExposure(e)._meta.title, () => drillInsight(largestExposure(e)))],
       };
     }
@@ -978,9 +978,9 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       if (!i) return { html: 'No coaching gap is currently clearing the detection threshold.', chips: [chip('Open QA analysis', () => openDrill(KPI_DRILLS.qa()))] };
       const ev = i._meta.evidence;
       return {
-        html: `The new-hire cohort is scoring <strong>${i._meta.observed.toFixed(1)}</strong> on QA against <strong>${i._meta.baseline.toFixed(1)}</strong> for tenured agents — a ${ev.gap_pts.toFixed(1)} point gap across ${i._meta.n_recent} reviews of ${ev.agents_in_cohort} agents.
-          <ul>${ev.dimension_gaps.slice(0, 3).map((g) => `<li><strong>${esc(g.key.replace(/_/g, ' '))}</strong> — ${g.new_hire.toFixed(0)} vs ${g.tenured.toFixed(0)} (gap ${g.gap.toFixed(1)})</li>`).join('')}</ul>
-          <p style="margin:9px 0 0">It costs real money through rework: reopen rate ${fmt.pct(ev.reopen_rate_new_hire)} vs ${fmt.pct(ev.reopen_rate_tenured)}, on ${fmt.int(ev.tickets_handled_recent)} tickets in the window. The bigger cost is indirect — the same policy-adherence weakness shows up in your refund escalations.</p>
+        html: `The new-hire cohort is scoring <strong>${i._meta.observed.toFixed(1)}</strong> on QA against <strong>${i._meta.baseline.toFixed(1)}</strong> for tenured agents, a ${ev.gap_pts.toFixed(1)} point gap across ${i._meta.n_recent} reviews of ${ev.agents_in_cohort} agents.
+          <ul>${ev.dimension_gaps.slice(0, 3).map((g) => `<li><strong>${esc(g.key.replace(/_/g, ' '))}</strong>: ${g.new_hire.toFixed(0)} vs ${g.tenured.toFixed(0)} (gap ${g.gap.toFixed(1)})</li>`).join('')}</ul>
+          <p style="margin:9px 0 0">It costs real money through rework: reopen rate ${fmt.pct(ev.reopen_rate_new_hire)} vs ${fmt.pct(ev.reopen_rate_tenured)}, on ${fmt.int(ev.tickets_handled_recent)} tickets in the window. The bigger cost is indirect: the same policy-adherence weakness shows up in your refund escalations.</p>
           <p style="margin:9px 0 0"><strong>Do:</strong> ${esc(i.recommended_action.action)}</p>
           <div class="src">Welch t-test between cohorts, t = ${i._meta.z.toFixed(1)}. Worst-scoring agents are listed in the drill-down as the coaching list.</div>`,
         chips: [chip('Open coaching list', () => drillInsight(i)), chip('QA BI', () => openDrill(KPI_DRILLS.qa()))],
@@ -990,19 +990,19 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       const costed = e.insights.filter((i) => i.expected_impact.range_low_usd != null).sort((a2, b2) => b2.expected_impact.range_high_usd - a2.expected_impact.range_high_usd);
       return {
         html: `<strong>${fmt.usdK(b.rollup.total_revenue_at_risk)}</strong> in total, taking the midpoint of every costed estimate. Broken down:
-          <ul>${costed.map((i) => `<li><strong>${esc(i._meta.title)}</strong> — ${esc(moneyRange(i))} over ${i.expected_impact.time_horizon_days}d. ${esc(i._meta.impact.formula)}</li>`).join('')}</ul>
-          <p style="margin:10px 0 0">Compliance exposure is deliberately <strong>not costed</strong> — a statutory deadline is a legal question, and a fabricated fine probability would be the least defensible number on the page.</p>
+          <ul>${costed.map((i) => `<li><strong>${esc(i._meta.title)}</strong>: ${esc(moneyRange(i))} over ${i.expected_impact.time_horizon_days}d. ${esc(i._meta.impact.formula)}</li>`).join('')}</ul>
+          <p style="margin:10px 0 0">Compliance exposure is deliberately <strong>not costed</strong>: a statutory deadline is a legal question, and a fabricated fine probability would be the least defensible number on the page.</p>
           <div class="src">Every range is a range on purpose. Cancellation-intent lift is measured on this dataset (${fmt.pct(e.churn_model.lift_pts)} across ${fmt.int(e.churn_model.n_escalated + e.churn_model.n_not_escalated)} accounts); the conversion band is a stated assumption, and it is the widest source of uncertainty.</div>`,
         chips: costed.slice(0, 3).map((i) => chip(i._meta.title, () => drillInsight(i))),
       };
     }
     if (has('backlog', 'queue', 'wait', 'sla', 'capacity', 'slow', 'response time')) {
       const i = find('backlog_risk');
-      if (!i) return { html: 'The queue is stable — no backlog anomaly is clearing the threshold.', chips: [chip('Open backlog BI', () => openDrill(KPI_DRILLS.backlog()))] };
+      if (!i) return { html: 'The queue is stable. No backlog anomaly is clearing the threshold.', chips: [chip('Open backlog BI', () => openDrill(KPI_DRILLS.backlog()))] };
       const ev = i._meta.evidence;
       return {
         html: `Open backlog has gone from <strong>${Math.round(i._meta.baseline)}</strong> to <strong>${Math.round(i._meta.observed)}</strong> tickets, growing ${ev.slope_per_day.toFixed(1)}/day.
-          <p style="margin:9px 0 0">Inflow is ${ev.inflow_per_day.toFixed(0)}/day against ${ev.throughput_per_day.toFixed(0)}/day of throughput — a ${ev.capacity_gap_per_day.toFixed(0)} ticket/day gap. Capacity did not fall; demand rose, and ${i._meta.decomposition.slice(0, 2).map((x) => x.key).join(' and ')} account for ${fmt.pct0(i._meta.decomposition.slice(0, 2).reduce((s, x) => s + x.contribution, 0))} of the extra.</p>
+          <p style="margin:9px 0 0">Inflow is ${ev.inflow_per_day.toFixed(0)}/day against ${ev.throughput_per_day.toFixed(0)}/day of throughput, a ${ev.capacity_gap_per_day.toFixed(0)} ticket/day gap. Capacity did not fall; demand rose, and ${i._meta.decomposition.slice(0, 2).map((x) => x.key).join(' and ')} account for ${fmt.pct0(i._meta.decomposition.slice(0, 2).reduce((s, x) => s + x.contribution, 0))} of the extra.</p>
           <p style="margin:9px 0 0">Customers are feeling it: median first response ${ev.frt_median_base.toFixed(0)}m → ${ev.frt_median_recent.toFixed(0)}m, and ${fmt.int(ev.aged_over_72h)} tickets are now older than 72 hours.</p>
           <p style="margin:9px 0 0"><strong>Do:</strong> ${esc(i.recommended_action.action)}</p>
           <div class="src">Fixing the two demand drivers is the durable move; surge staffing only buys time.</div>`,
@@ -1015,10 +1015,10 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       if (!i) return { html: `Compliance risk scores ${dim.score}/100 with nothing above the alert threshold.`, chips: [chip('Open compliance dimension', () => drillDimension('compliance'))] };
       const ev = i._meta.evidence;
       return {
-        html: `Yes — and it is the one item I have <strong>not</strong> put a dollar figure on.
+        html: `Yes, and it is the one item I have <strong>not</strong> put a dollar figure on.
           <p style="margin:9px 0 0">${ev.dsar_open} statutory data requests are open, <strong>${ev.dsar_due_within_10d} within 10 days</strong> of their legal deadline${ev.dsar_past_due ? `, and ${ev.dsar_past_due} already past due` : ''}. QA compliance scoring has moved ${ev.qa_compliance_base.toFixed(0)} → ${ev.qa_compliance_recent.toFixed(0)}, which is the mechanism by which policy errors reach customers.</p>
-          <p style="margin:9px 0 0"><strong>Do:</strong> ${esc(i.recommended_action.action)} — owner ${esc(i.recommended_action.owner_role)}.</p>
-          <div class="src">This insight sits at ${Math.round(i.why.confidence * 100)}% confidence${i.status === 'held_for_review' ? ' and is HELD below the 60% cutoff — a human confirms before it is actioned' : ''}.</div>`,
+          <p style="margin:9px 0 0"><strong>Do:</strong> ${esc(i.recommended_action.action)}, owner ${esc(i.recommended_action.owner_role)}.</p>
+          <div class="src">This insight sits at ${Math.round(i.why.confidence * 100)}% confidence${i.status === 'held_for_review' ? ' and is HELD below the 60% cutoff, so a human confirms before it is actioned' : ''}.</div>`,
         chips: [chip('Open compliance drill-down', () => drillInsight(i)), chip('Compliance dimension', () => drillDimension('compliance'))],
       };
     }
@@ -1027,7 +1027,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       if (!i) return { html: 'No account cluster is currently meeting the churn-risk rule.', chips: [] };
       const ev = i._meta.evidence;
       return {
-        html: `<strong>${i._meta.affected_accounts} accounts</strong> holding ${fmt.usdK(ev.arr_at_risk)} of ARR meet the at-risk rule — repeat escalations plus a detractor NPS or low CSAT.
+        html: `<strong>${i._meta.affected_accounts} accounts</strong> holding ${fmt.usdK(ev.arr_at_risk)} of ARR meet the at-risk rule: repeat escalations plus a detractor NPS or low CSAT.
           <p style="margin:9px 0 0">${ev.enterprise_count} are Enterprise (${fmt.usdK(ev.enterprise_arr)}), ${ev.renewal_within_90d} renew within 90 days, and ${ev.with_cancellation_intent} have already raised a cancellation ticket.</p>
           <p style="margin:9px 0 0"><strong>Do:</strong> ${esc(i.recommended_action.action)}</p>
           <div class="src">The drill-down gives you the save list sorted by ARR.</div>`,
@@ -1037,7 +1037,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     if (has('health', 'score', 'how are we', 'overall')) {
       return {
         html: `Operations health is <strong>${h.score}/100</strong>, ${h.delta >= 0 ? 'up' : 'down'} ${Math.abs(h.delta)} on the prior period.
-          <ul>${h.dimensions.map((dd) => `<li><strong>${esc(dd.label)}</strong> ${dd.score}/100 (${dd.delta > 0 ? '+' : ''}${dd.delta}) — weakest driver: ${esc(dd.drivers.slice().sort((a2, b2) => a2.score - b2.score)[0].label.toLowerCase())} at ${esc(dd.drivers.slice().sort((a2, b2) => a2.score - b2.score)[0].display)}</li>`).join('')}</ul>
+          <ul>${h.dimensions.map((dd) => `<li><strong>${esc(dd.label)}</strong> ${dd.score}/100 (${dd.delta > 0 ? '+' : ''}${dd.delta}), weakest driver: ${esc(dd.drivers.slice().sort((a2, b2) => a2.score - b2.score)[0].label.toLowerCase())} at ${esc(dd.drivers.slice().sort((a2, b2) => a2.score - b2.score)[0].display)}</li>`).join('')}</ul>
           <div class="src">Composite is the weighted mean of the four dimensions; each dimension is the weighted mean of its named drivers. Nothing in the score is unopenable.</div>`,
         chips: h.dimensions.map((dd) => chip(dd.label, () => drillDimension(dd.key))),
       };
@@ -1054,7 +1054,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     /* Fallback: search the insight set rather than inventing an answer. */
     const hits = e.insights.filter((i) => (i._meta.title + ' ' + i.what_happened + ' ' + i.why.root_cause).toLowerCase().split(/\W+/).some((w) => w.length > 3 && q.includes(w)));
     if (hits.length) {
-      return { html: `Closest matches in the current feed:<ul>${hits.slice(0, 3).map(insLine).join('')}</ul><div class="src">I answer from the ${e.insights.length} insights the engine has computed — I will not answer beyond the data.</div>`, chips: hits.slice(0, 3).map((i) => chip(i._meta.title, () => drillInsight(i))) };
+      return { html: `Closest matches in the current feed:<ul>${hits.slice(0, 3).map(insLine).join('')}</ul><div class="src">I answer from the ${e.insights.length} insights the engine has computed. I will not answer beyond the data.</div>`, chips: hits.slice(0, 3).map((i) => chip(i._meta.title, () => drillInsight(i))) };
     }
     return {
       html: `I do not have an answer grounded in the current data for that, and I would rather say so than guess.
@@ -1072,7 +1072,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     const log = el('div', 'chat-log');
 
     if (!state.chat.length) {
-      state.chat.push({ who: 'OpsPulse', html: `Good ${hourGreeting()}. I have analysed <strong>${fmt.int(eng().run.stats.records_in)}</strong> records across tickets, escalations, QA and NPS. Ask me anything about the operation — or start with the question most people open with.`, chips: [] });
+      state.chat.push({ who: 'OpsPulse', html: `Good ${hourGreeting()}. I have analysed <strong>${fmt.int(eng().run.stats.records_in)}</strong> records across tickets, escalations, QA and NPS. Ask me anything about the operation, or start with the question most people open with.`, chips: [] });
     }
     for (const m of state.chat) {
       const box = el('div', 'msg' + (m.who === 'You' ? ' me' : ''));
@@ -1120,7 +1120,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
 
     const drop = el('div', 'drop');
     drop.innerHTML = `${IC.up}<h4>Drop a CSV here, or click to choose a file</h4>
-      <p>Support tickets · QA reviews · NPS responses. Columns are matched automatically — the Kaggle
+      <p>Support tickets · QA reviews · NPS responses. Columns are matched automatically. The Kaggle
       <code style="color:var(--cyan)">customer_support_tickets.csv</code> header works as-is, and so do most Zendesk / Freshdesk exports.</p>`;
     const input = el('input');
     input.type = 'file'; input.accept = '.csv,text/csv'; input.hidden = true;
@@ -1134,7 +1134,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
 
     const note = el('p', 'muted');
     note.style.cssText = 'font-size:.78rem;margin:12px 0 0;line-height:1.55';
-    note.innerHTML = `<b>Excel (.xlsx) is not supported in this offline build</b> — a real xlsx file is a zipped XML package and parsing it needs a library this dependency-free prototype does not ship. Export the sheet as CSV and it will ingest fully. This upload is not a progress bar: rows are parsed, mapped, appended to the live dataset and the nine detectors re-run, so the Decision Feed changes because of your file.`;
+    note.innerHTML = `<b>Excel (.xlsx) is not supported in this offline build</b>. A real xlsx file is a zipped XML package and parsing it needs a library this dependency-free prototype does not ship. Export the sheet as CSV and it will ingest fully. This upload is not a progress bar: rows are parsed, mapped, appended to the live dataset and the nine detectors re-run, so the Decision Feed changes because of your file.`;
     bd.appendChild(note);
 
     const sample = el('div', 'act-row');
@@ -1174,7 +1174,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     if (state.lastUpload) {
       const r = state.lastUpload;
       const rp = el('div', 'panel');
-      rp.innerHTML = `<div class="panel-hd"><h3>Last ingest — ${esc(r.file)}</h3><span class="hint">${r.ok ? `detected as ${esc(r.kind)} data` : 'rejected'}</span></div>`;
+      rp.innerHTML = `<div class="panel-hd"><h3>Last ingest · ${esc(r.file)}</h3><span class="hint">${r.ok ? `detected as ${esc(r.kind)} data` : 'rejected'}</span></div>`;
       const rbd = el('div', 'panel-bd');
       if (!r.ok) {
         rbd.innerHTML = `<p style="color:var(--danger);font-size:.86rem;margin:0">${esc(r.error)}</p>
@@ -1192,7 +1192,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
           </tbody></table>
           ${r.unmatched_fields.length ? `<p class="muted" style="font-size:.76rem;margin-top:10px">Not found in your file (defaults used): ${r.unmatched_fields.map((f) => `<code>${esc(f)}</code>`).join(', ')}</p>` : ''}
           ${r.errors.length ? `<p style="font-size:.76rem;margin-top:10px;color:var(--warn)">${r.errors.map(esc).join('<br>')}</p>` : ''}
-          <p class="muted" style="font-size:.78rem;margin-top:10px">The engine re-ran over the combined dataset — check the Decision Feed for what changed.</p>`;
+          <p class="muted" style="font-size:.78rem;margin-top:10px">The engine re-ran over the combined dataset. Check the Decision Feed for what changed.</p>`;
       }
       rp.appendChild(rbd);
       wrap.appendChild(rp);

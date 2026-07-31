@@ -322,7 +322,7 @@ export function mountServiceDesk(container, store, { compact = false } = {}) {
           ${r.reopened ? '<span class="chip md">reopened</span>' : ''}
         </div>
         <div class="desc">${esc(r.ticket_description)}</div>
-        ${esc_ ? `<div class="desc" style="margin-top:8px;border-left-color:var(--danger)"><b>Escalation ${esc(esc_.escalation_id)} (${esc_.severity})</b> — ${esc(esc_.reason)}<br><span class="muted">Owner: ${esc(esc_.owner)} · ${esc(esc_.status)}</span></div>` : ''}
+        ${esc_ ? `<div class="desc" style="margin-top:8px;border-left-color:var(--danger)"><b>Escalation ${esc(esc_.escalation_id)} (${esc_.severity})</b>: ${esc(esc_.reason)}<br><span class="muted">Owner: ${esc(esc_.owner)} · ${esc(esc_.status)}</span></div>` : ''}
         <div class="kv">
           <div><dt>Assigned agent</dt><dd>${esc(agent ? agent.name : r.agent_id)}${agent?.cohort === 'new_hire' ? ' <span class="pill Medium">new hire</span>' : ''}</dd></div>
           <div><dt>First response</dt><dd>${fmt.min(r.first_response_time_min)} ${r.frt_sla_breached ? '<span class="warnflag">·  missed</span>' : ''}</dd></div>
@@ -337,13 +337,13 @@ export function mountServiceDesk(container, store, { compact = false } = {}) {
         ${r.regulatory_due_at ? `<p style="font-size:.8rem;margin:8px 0 0;color:var(--warn)"><b>Statutory deadline:</b> ${new Date(r.regulatory_due_at).toLocaleDateString()} (${r.regulatory_days_left} days left)</p>` : ''}`;
     } else if (r.qa_id) {
       detail.innerHTML = `
-        <h4>QA review ${esc(r.qa_id)} — ${esc(r.agent_name)}</h4>
+        <h4>QA review ${esc(r.qa_id)} · ${esc(r.agent_name)}</h4>
         <div class="meta"><span class="chip">${esc(r.team)}</span><span class="pill ${r.cohort === 'new_hire' ? 'Medium' : 'Low'}">${r.cohort === 'new_hire' ? 'New hire' : 'Tenured'}</span><span class="chip">Reviewer: ${esc(r.reviewer)}</span>${r.flags.map((f) => `<span class="chip hi">${esc(f)}</span>`).join('')}</div>
         <div class="kv">${Object.entries(r.dimensions).map(([k, v]) => `<div><dt>${esc(k.replace(/_/g, ' '))}</dt><dd class="${v < 70 ? 'warnflag' : ''}">${v}</dd></div>`).join('')}</div>
         <div class="desc" style="margin-top:10px">${esc(r.note)}</div>`;
     } else if (r.response_id) {
       detail.innerHTML = `
-        <h4>NPS ${r.score} — ${esc(r.company)}</h4>
+        <h4>NPS ${r.score} · ${esc(r.company)}</h4>
         <div class="meta"><span class="pill ${r.segment === 'detractor' ? 'Critical' : r.segment === 'passive' ? 'Medium' : 'Resolved'}">${esc(r.segment)}</span><span class="chip">${esc(r.plan)}</span><span class="chip">${fmt.usd(r.arr_usd)} ARR</span>${r.driver_tag ? `<span class="chip md">${esc(r.driver_tag)}</span>` : ''}</div>
         <div class="desc">“${esc(r.verbatim)}”</div>
         <div class="kv"><div><dt>Contact</dt><dd>${esc(r.contact_name)}</dd></div><div><dt>Region</dt><dd>${esc(r.region)}</dd></div><div><dt>Received</dt><dd>${new Date(r.submitted_at).toLocaleString()}</dd></div></div>`;

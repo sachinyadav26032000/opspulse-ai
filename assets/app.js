@@ -258,7 +258,7 @@ import { buildModel, buildAnalytics, analyticsBounds, tickRows } from './app-dat
           '<div class="worth-top"><span class="worth-val">' + r.impact.value + '</span>' +
             '<span class="worth-type">' + r.impact.type + ' · ' + r.impact.horizon + '</span></div>' +
           '<div class="worth-formula"><span class="wf-lbl">how</span>' + r.impact.formula + '</div>' +
-          '<div class="worth-note">Range, not a point estimate — the figure a CRO can defend, with its inputs shown.</div>' +
+          '<div class="worth-note">Range, not a point estimate: the figure a CRO can defend, with its inputs shown.</div>' +
         '</div>'
       : '<div class="q-worth uncosted">' + r.impact.note + '</div>';
 
@@ -456,8 +456,8 @@ import { buildModel, buildAnalytics, analyticsBounds, tickRows } from './app-dat
         state.sort = b.getAttribute("data-sort");
         var note = $("#rankNote");
         if (note) note.textContent = state.sort === "priority"
-          ? "impact × confidence × urgency — what to fix first, not just what's loudest"
-          : "raw severity score — how alarming, regardless of dollar impact or deadline";
+          ? "impact × confidence × urgency: what to fix first, not just what's loudest"
+          : "raw severity score: how alarming, regardless of dollar impact or deadline";
         renderFeed();
         if (state.selectedId) selectRisk(state.selectedId);
       });
