@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Trust &amp; Governance — OpsPulse AI</title>
+<title>Trust &amp; Governance · OpsPulse AI</title>
 <meta name="description" content="How OpsPulse constrains itself: a declared confidence floor, cause labelled as hypothesis, exposures it refuses to price, and every published field traced to a source column." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -87,7 +87,7 @@
     <div class="section-head reveal" style="max-width:900px">
       <span class="eyebrow">Trust &amp; Governance</span>
       <h1 style="margin:16px 0 18px;font-size:clamp(2rem,4.2vw,3.1rem)">The constraints are the <span class="grad-text">product.</span></h1>
-      <p class="lead">Anyone can build a system that always has an answer. The engineering here went into making one that knows when it does not — and says so on the screen instead of generating something plausible.</p>
+      <p class="lead">Anyone can build a system that always has an answer. The engineering here went into making one that knows when it does not, and says so on the screen instead of generating something plausible.</p>
       <p class="lead" style="margin-top:14px">Every rule below is enforced in code, not in policy, and every number is verifiable in the running product on the <strong style="color:var(--text)">Assurance</strong> screen.</p>
     </div>
 
@@ -113,8 +113,8 @@
       <div class="card reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 18h16M7 18V9M12 18V5M17 18v-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
         <h3>01 · There is a confidence floor</h3>
-        <p>Every insight carries a computed confidence — 45% statistical strength, 30% share of the change explained, 25% corroborating signals. Below <code>CONFIDENCE_CUTOFF = 0.6</code> the insight is marked <code>held_for_review</code> and is never auto-actioned.</p>
-        <p style="margin-top:10px">You may still commit a held insight. Doing so is permitted, logged, and shown permanently in the Decision Ledger as an override — because a control that can be bypassed silently is not a control.</p>
+        <p>Every insight carries a computed confidence: 45% statistical strength, 30% share of the change explained, 25% corroborating signals. Below <code>CONFIDENCE_CUTOFF = 0.6</code> the insight is marked <code>held_for_review</code> and is never auto-actioned.</p>
+        <p style="margin-top:10px">You may still commit a held insight. Doing so is permitted, logged, and shown permanently in the Decision Ledger as an override, because a control that can be bypassed silently is not a control.</p>
       </div>
 
       <div class="card v reveal">
@@ -127,7 +127,7 @@
       <div class="card c reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M8 7h6.5a2.5 2.5 0 0 1 0 5h-5a2.5 2.5 0 0 0 0 5H16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <h3>03 · Some exposures are not priced</h3>
-        <p>Compliance risk returns <code>null</code> for value at risk. <code>null</code> is an explicitly legal, validated value in the contract — the schema comment reads <em style="font-style:normal">"some exposures must not be given a price."</em></p>
+        <p>Compliance risk returns <code>null</code> for value at risk. <code>null</code> is an explicitly legal, validated value in the contract. The schema comment reads <em style="font-style:normal">"some exposures must not be given a price."</em></p>
         <p style="margin-top:10px">A statutory deadline is a legal question. A fabricated fine probability would be the least defensible number in the product, so it declines to produce one and shows the open request count and the days remaining instead.</p>
       </div>
 
@@ -147,7 +147,7 @@
     <div class="section-head reveal">
       <span class="eyebrow">Declared thresholds</span>
       <h2>Nine detectors, and the bar each one has to clear.</h2>
-      <p class="lead">No detector knows anything about how the data was produced. Each compares a recent window against your own operation's baseline and raises a card only when the difference clears a stated threshold — which is why a quiet week produces an empty feed rather than invented findings.</p>
+      <p class="lead">No detector knows anything about how the data was produced. Each compares a recent window against your own operation's baseline and raises a card only when the difference clears a stated threshold, which is why a quiet week produces an empty feed rather than invented findings.</p>
     </div>
 
     <div class="table-scroll reveal">
@@ -170,7 +170,7 @@
     </div>
 
     <p class="dim" style="margin-top:18px;font-size:.86rem;max-width:80ch">
-      A global minimum sample of <strong style="color:var(--text-soft)">40 recent records</strong> applies before any anomaly is raised, regardless of how extreme the signal looks. Thresholds are declared in one file — <code style="color:var(--cyan)">config/thresholds.js</code> — rather than buried at their call sites, specifically so a reviewer can disagree with them in one place. That file separates the four <strong style="color:var(--text-soft)">business dials</strong> a customer owns (what counts as low adoption, how far ahead a renewal matters, what size of usage fall is a decline, how long silence lasts before it means something) from the <strong style="color:var(--text-soft)">statistical bars</strong> above, which exist to hold the false-positive rate down and are ours to defend rather than yours to turn. Two customers do not share a definition of "low adoption"; they do share a definition of significance.
+      A global minimum sample of <strong style="color:var(--text-soft)">40 recent records</strong> applies before any anomaly is raised, regardless of how extreme the signal looks. Thresholds are declared in one file, <code style="color:var(--cyan)">config/thresholds.js</code>, rather than buried at their call sites, specifically so a reviewer can disagree with them in one place. That file separates the four <strong style="color:var(--text-soft)">business dials</strong> a customer owns (what counts as low adoption, how far ahead a renewal matters, what size of usage fall is a decline, how long silence lasts before it means something) from the <strong style="color:var(--text-soft)">statistical bars</strong> above, which exist to hold the false-positive rate down and are ours to defend rather than yours to turn. Two customers do not share a definition of "low adoption"; they do share a definition of significance.
     </p>
   </div>
 </section>
@@ -181,7 +181,7 @@
     <div class="reveal">
       <span class="eyebrow" style="color:var(--rose);border-color:rgba(251,113,133,.25);background:rgba(251,113,133,.06)">Refusals</span>
       <h2 style="margin:14px 0 16px">What this platform <span class="grad-text">will not do.</span></h2>
-      <p class="lead">A capability list tells you what a vendor wants to be judged on. This is the other list — and for a system that produces decisions, it is the more informative one.</p>
+      <p class="lead">A capability list tells you what a vendor wants to be judged on. This is the other list, and for a system that produces decisions, it is the more informative one.</p>
       <div class="hero-cta" style="margin-top:26px">
         <a class="btn btn-ghost" href="demo.html">See a refusal in the live product →</a>
       </div>
@@ -206,7 +206,7 @@
         <span class="x">✕</span>
         <div>
           <h4>It will not report a point estimate as certainty</h4>
-          <p>Value at stake is always a range, and the widest source of uncertainty is named explicitly — the conversion band is a stated assumption, not a measurement, and the product says which is which.</p>
+          <p>Value at stake is always a range, and the widest source of uncertainty is named explicitly: the conversion band is a stated assumption, not a measurement, and the product says which is which.</p>
         </div>
       </div>
       <div class="refuse-item">
@@ -259,7 +259,7 @@
             <td>Each published field records the source column or derivation it came from; the full trace is listed on Assurance.</td>
           </tr>
           <tr>
-            <td>SSO — OIDC / SAML</td><td><span class="status-chip planned">Planned</span></td>
+            <td>SSO via OIDC / SAML</td><td><span class="status-chip planned">Planned</span></td>
             <td>Phase 4. Required for the Govern tier at general availability.</td>
           </tr>
           <tr>
@@ -268,7 +268,7 @@
           </tr>
           <tr>
             <td>SOC 2 Type II</td><td><span class="status-chip planned">Planned</span></td>
-            <td>Not certified. Audit is scheduled to begin after the production pilot — we will not imply otherwise on a trust page.</td>
+            <td>Not certified. Audit is scheduled to begin after the production pilot. We will not imply otherwise on a trust page.</td>
           </tr>
           <tr>
             <td>Data residency &amp; private deployment</td><td><span class="status-chip planned">Planned</span></td>
@@ -284,7 +284,7 @@
 
     <div class="honest reveal">
       <h3>What you are looking at</h3>
-      <p>OpsPulse is a working prototype, not a generally available product. The engine, the detectors, the thresholds, the contract validation, the provenance tracing and the decision ledger are all real and running in your browser — you can open the JSON behind any card and check the arithmetic.</p>
+      <p>OpsPulse is a working prototype, not a generally available product. The engine, the detectors, the thresholds, the contract validation, the provenance tracing and the decision ledger are all real and running in your browser. You can open the JSON behind any card and check the arithmetic.</p>
       <p>The dataset is simulated. The enterprise controls marked <em style="font-style:normal;color:var(--text)">Planned</em> above are designed and scheduled but not built. We are stating that plainly here for the same reason the engine refuses to price a compliance exposure: the moment a trust page starts rounding up, it stops being useful to the person reading it.</p>
     </div>
   </div>

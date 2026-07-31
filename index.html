@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>OpsPulse AI — Renewal Intelligence for Mid-Market SaaS</title>
-<meta name="description" content="OpsPulse is renewal intelligence for mid-market SaaS. It spots at-risk renewals from the signals you already generate, shows why the account is at risk with the evidence attached, and suggests the next step — before the renewal date arrives." />
+<title>OpsPulse AI · Renewal Intelligence for Mid-Market SaaS</title>
+<meta name="description" content="Connect your customer data. OpsPulse identifies the renewals most likely to churn, explains the reasons with the evidence attached, and recommends the next best action, while there is still time to act." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -50,14 +50,20 @@
     <div>
       <span class="eyebrow"><span class="dot-live"></span> Renewal intelligence for mid-market SaaS</span>
       <h1>Save renewal revenue <span class="grad-text">before customers churn.</span></h1>
-      <p class="lead">AI that spots at-risk renewals, shows why, and suggests next steps. OpsPulse reads the signals your team already generates — tickets, calls, QA, usage, billing — and tells you which renewals are in trouble while there is still time to do something about it.</p>
+      <!--
+        Three concrete verbs in the order a director experiences them: connect,
+        identify, explain, recommend. The previous version led with "AI that
+        spots", which describes the technology rather than the outcome the
+        person reading it is accountable for.
+      -->
+      <p class="lead">Connect your customer data. OpsPulse identifies the renewals most likely to churn, explains the reasons, and recommends the next best action. It reads the signals your team already generates across tickets, calls, QA, usage and billing, then tells you which renewals are in trouble while there is still time to act.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="#partners">Become a design partner →</a>
         <a class="btn btn-ghost" href="#contact">Schedule a demo</a>
       </div>
       <div class="hero-note">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Below 60% confidence, nothing is auto-actioned — it is held for a human.
+        Below 60% confidence, nothing is auto-actioned. It is held for a human.
       </div>
     </div>
 
@@ -98,20 +104,36 @@
               points="0,30 26,30 40,10 54,42 70,22 92,30 130,30 146,6 160,40 176,24 210,30 250,30 264,14 278,38 296,26 320,30" />
           </svg>
           <!--
-            A named account, not a category — the whole pitch is that the product
-            hands you an account and a date, not a trend. The exposure is a range
-            because a single-point ARR figure is the one number a CFO will not
-            accept without the arithmetic, which is the same rule the engine
-            enforces on itself internally.
+            A named account, not a category. The whole pitch is that the product
+            hands you an account and a date, not a trend, so the top card is
+            built to be read the way a CS director actually reads one: who,
+            when, how much, what moved, and what to do about it.
+
+            The exposure stays a range because a single-point ARR figure is the
+            one number a CFO will not accept without the arithmetic, which is
+            the same rule the engine enforces on itself internally. The line
+            that earns the card its place is the last one: without a named next
+            action this is another dashboard telling you the news.
           -->
-          <div class="alert-row">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="#fb7185" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="#fb7185" stroke-width="2" stroke-linecap="round"/></svg>
-            <div class="txt">Northwind Logistics · renews in 43 days<small>$180k–$240k ARR · active seats down 34% since March, 2 escalations open</small></div>
-            <span class="pill high">At risk</span>
+          <div class="risk-card">
+            <div class="risk-top">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="#fb7185" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="#fb7185" stroke-width="2" stroke-linecap="round"/></svg>
+              <div class="risk-name">Northwind Logistics<small>Renews in 43 days</small></div>
+              <span class="pill high">At risk</span>
+            </div>
+            <div class="risk-exp"><b>$180k–$240k</b><span>ARR exposed</span></div>
+            <ul class="risk-signals">
+              <li><i class="dn">↓ 34%</i> adoption, active seats 240 to 158</li>
+              <li><i class="fl">Champion inactive</i> no exec contact since May</li>
+            </ul>
+            <div class="risk-act">
+              <span class="ra-k">Recommended action</span>
+              <strong>Executive Business Review</strong>
+            </div>
           </div>
           <div class="alert-row warn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#fbbf24" stroke-width="2"/><path d="M12 8v4M12 16h.01" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/></svg>
-            <div class="txt">Meridian Health · renews in 71 days<small>Champion left in June — no executive contact logged since</small></div>
+            <div class="txt">Meridian Health · renews in 71 days<small>Champion left in June, no executive contact logged since</small></div>
             <span class="pill med">Watch</span>
           </div>
         </div>
@@ -119,9 +141,17 @@
     </div>
   </div>
 
-  <!-- Trust bar -->
+  <!--
+    Trust bar. The proof line underneath is deliberately worded to what is
+    true today: the detectors were shaped by interviews with renewal owners,
+    and there are no design partner logos yet because no partner has finished
+    a programme and agreed to be named. Saying that plainly is worth more here
+    than a row of borrowed logos, on a site whose entire argument is that it
+    does not claim things before they are real. When a partner does agree,
+    their logo drops into .trust-logos and the caveat line comes out.
+  -->
   <div class="wrap trust reveal">
-    <p>Built for the people who own the renewal number</p>
+    <p>Designed with the people who own the renewal number</p>
     <div class="trust-row">
       <span>◆ Customer Success</span>
       <span>◆ Revenue Operations</span>
@@ -129,6 +159,11 @@
       <span>◆ Account Management</span>
       <span>◆ Founders &amp; CROs</span>
     </div>
+    <p class="trust-proof">
+      Built from working interviews with Customer Success, RevOps and Support leaders carrying real
+      mid-market renewal books. Every detector on this site exists because one of them said the signal
+      mattered. <span>Design partner names and results appear here as each programme finishes, and not a day before.</span>
+    </p>
   </div>
 
   <!--
@@ -139,7 +174,7 @@
   -->
   <div class="wrap stats">
     <div class="stat reveal"><div class="n grad-text">9</div><div class="l">Statistical detectors, each with a published threshold you can argue with</div></div>
-    <div class="stat reveal"><div class="n grad-text">60%</div><div class="l">Confidence floor — below it a renewal risk is held, never auto-actioned</div></div>
+    <div class="stat reveal"><div class="n grad-text">60%</div><div class="l">Confidence floor. Below it a renewal risk is held, never auto-actioned</div></div>
     <div class="stat reveal"><div class="n grad-text">100%</div><div class="l">Of published fields traced back to a source column</div></div>
     <div class="stat reveal"><div class="n grad-text">1</div><div class="l">Contract every insight is validated against before it reaches a screen</div></div>
   </div>
@@ -151,7 +186,7 @@
     <div class="section-head reveal">
       <span class="eyebrow" style="color:var(--rose);border-color:rgba(251,113,133,.25);background:rgba(251,113,133,.06)">The Problem</span>
       <h2>Mid-market SaaS finds out an account is leaving <span class="grad-text">on the renewal call.</span></h2>
-      <p class="lead">The warning signs sat in your systems for months — usage sliding, tickets escalating, the champion gone quiet. They were just in six different tools, and nobody was paid to join them up. By the time the renewal reaches someone's calendar, the decision has already been made on the customer's side.</p>
+      <p class="lead">The warning signs sat in your systems for months: usage sliding, tickets escalating, the champion gone quiet. They were just in six different tools, and nobody was paid to join them up. By the time the renewal reaches someone's calendar, the decision has already been made on the customer's side.</p>
     </div>
     <div class="grid g4">
       <div class="card problem reveal">
@@ -162,7 +197,7 @@
       <div class="card problem reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/></svg></div>
         <h3>Health scores nobody trusts</h3>
-        <p>A red-amber-green dot with no arithmetic behind it cannot be argued with, so it gets ignored — and then it turns out to have been right.</p>
+        <p>A red-amber-green dot with no arithmetic behind it cannot be argued with, so it gets ignored, and then it turns out to have been right.</p>
       </div>
       <div class="card problem reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 15l3-4 3 3 4-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -192,15 +227,15 @@
         </div>
         <div class="fitem">
           <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <div><h4>The reason is labelled a hypothesis</h4><p>Attribution is by decomposition — contributions are shares of a measured decline and sum to 100%. The system never claims confirmed cause; the CSM who knows the account closes that gap.</p></div>
+          <div><h4>The reason is labelled a hypothesis</h4><p>Attribution is by decomposition: contributions are shares of a measured decline and sum to 100%. The system never claims confirmed cause; the CSM who knows the account closes that gap.</p></div>
         </div>
         <div class="fitem">
           <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <div><h4>Revenue at risk is a range, with its arithmetic shown</h4><p>Exposure is published as a range you can re-multiply from the printed inputs. Some exposures — compliance among them — return no dollar figure at all, because a fabricated one would be the least defensible number in the product.</p></div>
+          <div><h4>Revenue at risk is a range, with its arithmetic shown</h4><p>Exposure is published as a range you can re-multiply from the printed inputs. Some exposures, compliance among them, return no dollar figure at all, because a fabricated one would be the least defensible number in the product.</p></div>
         </div>
         <div class="fitem">
           <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <div><h4>Saves are recorded, not just recommended</h4><p>Committing to a play snapshots the evidence as it stood. The loop closes when the same signals are re-read at renewal and the outcome is reported — including when the account left anyway.</p></div>
+          <div><h4>Saves are recorded, not just recommended</h4><p>Committing to a play snapshots the evidence as it stood. The loop closes when the same signals are re-read at renewal and the outcome is reported, including when the account left anyway.</p></div>
         </div>
       </div>
     </div>
@@ -245,8 +280,8 @@
   <div class="wrap">
     <div class="section-head center reveal">
       <span class="eyebrow">Product Overview</span>
-      <h2>Four layers that produce the decision — and <span class="grad-text">one that records it.</span></h2>
-      <p class="lead">Each layer constrains the next. Aggregation decides what is knowable, detection decides what is real, prioritization decides which renewal is worth today's hour — and every recommended play is bound to a named owner, never free text.</p>
+      <h2>Four layers that produce the decision, and <span class="grad-text">one that records it.</span></h2>
+      <p class="lead">Each layer constrains the next. Aggregation decides what is knowable, detection decides what is real, prioritization decides which renewal is worth today's hour, and every recommended play is bound to a named owner, never free text.</p>
     </div>
     <!--
       Customer-facing verbs, not internal module names. The engineering
@@ -264,13 +299,13 @@
       <button type="button" class="card c reveal layer-card" id="layer-c1" aria-expanded="false" aria-controls="layer-p1"><span class="num">01</span>
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Z" stroke="currentColor" stroke-width="1.8"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7" stroke="currentColor" stroke-width="1.8"/></svg></div>
         <h3>Detect</h3>
-        <p>Every ticket, call, QA review, usage event and invoice lands on one account timeline. When an account moves outside its own normal range it surfaces on its own — nobody has to go looking for it.</p>
+        <p>Every ticket, call, QA review, usage event and invoice lands on one account timeline. When an account moves outside its own normal range it surfaces on its own. Nobody has to go looking for it.</p>
         <span class="layer-chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </button>
       <div class="layer-panel" id="layer-p1" role="region" aria-labelledby="layer-c1" hidden>
         <dl>
           <div><dt>Sources</dt><dd>Zendesk · Aircall · Klaus QA · NPS · product usage · billing</dd></div>
-          <div><dt>Example</dt><dd>Northwind's weekly active seats fell from 240 to 158 over five weeks — 3.4σ outside its own twelve-month baseline.</dd></div>
+          <div><dt>Example</dt><dd>Northwind's weekly active seats fell from 240 to 158 over five weeks, 3.4σ outside its own twelve-month baseline.</dd></div>
         </dl>
       </div>
 
@@ -283,7 +318,7 @@
       <div class="layer-panel" id="layer-p2" role="region" aria-labelledby="layer-c2" hidden>
         <dl>
           <div><dt>Method</dt><dd>Decomposition across signals, then a reasoning pass over the retrieved records</dd></div>
-          <div><dt>Example</dt><dd>Hypothesis: the March SSO migration broke two integrations Northwind's ops team ran daily — 62% of the seat decline sits in exactly those two teams. Confidence 71%.</dd></div>
+          <div><dt>Example</dt><dd>Hypothesis: the March SSO migration broke two integrations Northwind's ops team ran daily. 62% of the seat decline sits in exactly those two teams. Confidence 71%.</dd></div>
         </dl>
       </div>
 
@@ -295,8 +330,8 @@
       </button>
       <div class="layer-panel" id="layer-p3" role="region" aria-labelledby="layer-c3" hidden>
         <dl>
-          <div><dt>Ranked by</dt><dd>ARR exposure and days to renewal — not severity, not recency</dd></div>
-          <div><dt>Example</dt><dd>Six accounts renewing inside 60 days, $310k–$390k ARR exposed — ranked above four louder issues on accounts that do not renew until March.</dd></div>
+          <div><dt>Ranked by</dt><dd>ARR exposure and days to renewal, not severity, not recency</dd></div>
+          <div><dt>Example</dt><dd>Six accounts renewing inside 60 days, $310k–$390k ARR exposed, ranked above four louder issues on accounts that do not renew until March.</dd></div>
         </dl>
       </div>
 
@@ -318,7 +353,7 @@
     <div class="cta-band reveal" style="margin-top:26px;text-align:left">
       <span class="eyebrow" style="margin-bottom:16px">05 · The layer that closes the loop</span>
       <h2 style="font-size:clamp(1.5rem,3vw,2.1rem)">Renewal Decision Ledger</h2>
-      <p style="margin-top:12px">A recommendation is not a decision. A decision is a human committing to a play on an account, on stated evidence, at a stated confidence. The ledger records that commitment — the risk, the confidence and the account's metrics <em style="font-style:normal;color:var(--text)">as they stood at that moment</em> — then re-reads the same signals on every pass and reports what happened by the renewal date.</p>
+      <p style="margin-top:12px">A recommendation is not a decision. A decision is a human committing to a play on an account, on stated evidence, at a stated confidence. The ledger records that commitment (the risk, the confidence and the account's metrics <em style="font-style:normal;color:var(--text)">as they stood at that moment</em>), then re-reads the same signals on every pass and reports what happened by the renewal date.</p>
       <p style="margin-top:10px">Because the evidence is snapshotted and never back-dated, the platform can be shown to have been wrong. That is what turns "our health score said red" into a renewal forecast a board will accept.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="demo.html">Commit a decision in the live product →</a>
@@ -327,7 +362,7 @@
     </div>
 
     <div class="center" style="margin-top:40px">
-      <a class="btn btn-primary reveal" href="#demo">Watch it work →</a>
+      <a class="btn btn-primary reveal" href="#demo">Run it on your own data →</a>
     </div>
   </div>
 </section>
@@ -344,7 +379,7 @@
       <div class="card c reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.6A3.4 3.4 0 0 0 12.6 15H7.4A3.4 3.4 0 0 0 4 18.4V20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="10" cy="8" r="3.4" stroke="currentColor" stroke-width="1.8"/><path d="M17 11h4M19 9v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
         <h3>Customer Success</h3>
-        <p>"Which of my sixty accounts needs me this week?" A ranked list with the reason attached, so the hour goes to the renewal that is actually moving — not the customer who emailed most recently.</p>
+        <p>"Which of my sixty accounts needs me this week?" A ranked list with the reason attached, so the hour goes to the renewal that is actually moving, not the customer who emailed most recently.</p>
       </div>
       <div class="card reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
@@ -368,10 +403,18 @@
 <!-- ============ LIVE DEMO + EXPLAINER ============ -->
 <section class="block" id="demo" style="background:linear-gradient(180deg,transparent,rgba(34,211,238,.03),transparent)">
   <div class="wrap">
+    <!--
+      This section used to open with "here is our product". It now opens with
+      an experiment the visitor can run in the next minute, because the upload
+      path is real: rows are parsed, mapped onto the account timeline and the
+      nine detectors genuinely re-run against them. Framing it as a test the
+      visitor performs on their own data is both more interesting than a tour
+      and the single strongest qualifying question we can ask them.
+    -->
     <div class="section-head center reveal">
-      <span class="eyebrow">See it</span>
-      <h2>Watch the story, then <span class="grad-text">drive it yourself.</span></h2>
-      <p class="lead">Ninety seconds for why it matters, and a live product running on a simulated operation for what it actually does.</p>
+      <span class="eyebrow"><span class="dot-live"></span> Run it on your own data</span>
+      <h2>Upload a support export. See what OpsPulse finds <span class="grad-text">in under 60 seconds.</span></h2>
+      <p class="lead">The fastest way to know whether this works on your renewals is to point it at your renewals. No signup, no integration work, no call first. Below on the left is the ninety-second story. On the right is the experiment.</p>
     </div>
     <div class="split" style="align-items:start">
       <!--
@@ -400,35 +443,51 @@
           <div class="steps">
             <div class="step"><span class="idx"></span><div><h4>A renewal you thought was safe</h4><p>Northwind renews in six weeks. The health score is green. The CSM has spoken to them twice this quarter and both calls went fine.</p></div></div>
             <div class="step"><span class="idx"></span><div><h4>The signals were never in one place</h4><p>Seat usage fell 34% in product analytics. Two integration tickets aged out in support. The champion's last login was in May. Three systems, three fragments, no account.</p></div></div>
-            <div class="step"><span class="idx"></span><div><h4>The arithmetic finds it</h4><p>Against Northwind's own baseline the decline is 3.4σ. It clears the threshold, so it surfaces — with $180k–$240k of ARR attached and 43 days on the clock.</p></div></div>
+            <div class="step"><span class="idx"></span><div><h4>The arithmetic finds it</h4><p>Against Northwind's own baseline the decline is 3.4σ. It clears the threshold, so it surfaces, with $180k–$240k of ARR attached and 43 days on the clock.</p></div></div>
             <div class="step"><span class="idx"></span><div><h4>And it says why, as a hypothesis</h4><p>62% of the seat loss sits in the two teams whose connectors broke in the March SSO migration. Confidence 71%. Labelled a hypothesis, because the CSM knows things the data does not.</p></div></div>
-            <div class="step"><span class="idx"></span><div><h4>Then it remembers what you did</h4><p>The play is committed to the ledger with the evidence frozen at that moment. At renewal the same signals are re-read and the outcome is reported — saved, or lost anyway.</p></div></div>
+            <div class="step"><span class="idx"></span><div><h4>Then it remembers what you did</h4><p>The play is committed to the ledger with the evidence frozen at that moment. At renewal the same signals are re-read and the outcome is reported: saved, or lost anyway.</p></div></div>
           </div>
         </div>
       </div>
 
+      <!--
+        The experiment column. The three steps are the actual mechanic in
+        assets/opspulse.js and data/csv.js: parse, column-map, append to the
+        live dataset, re-run the detectors. It is deliberately not a progress
+        bar over a canned result.
+
+        Note what the outcome block does NOT do: promise a number. How many
+        risks come back depends entirely on the uploaded file, and printing an
+        illustrative "14 renewals at risk" would be exactly the fabricated
+        figure the rest of the site spends its time refusing to print.
+      -->
       <div class="reveal">
-        <span class="eyebrow">Live demo</span>
-        <h2 style="margin:14px 0 16px">A working product, <span class="grad-text">not a slideshow.</span></h2>
-        <p class="lead">The demo runs a real detection engine over a simulated operation — a source system on the left, the decision engine on the right, both reading one store so the two panes cannot disagree. Nothing on screen is a screenshot.</p>
-        <div class="feature-list" style="margin-top:8px">
-          <div class="fitem">
-            <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <div><h4>Upload your own export</h4><p>Drop a CSV in and watch the same detectors run against your data instead of ours.</p></div>
-          </div>
-          <div class="fitem">
-            <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <div><h4>Open every number</h4><p>Each figure drills back to the records that produced it, and every retrieved quote carries its record id.</p></div>
-          </div>
-          <div class="fitem">
-            <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <div><h4>All data is simulated</h4><p>No customer data, no signup, nothing to install. Open it and it is already running.</p></div>
-          </div>
+        <span class="eyebrow">The 60-second experiment</span>
+        <h2 style="margin:14px 0 16px">Point it at <span class="grad-text">your own export.</span></h2>
+        <p class="lead">Export tickets, QA reviews or NPS responses from the tools you already run, then drop the CSV into the Ops Floor. Your rows are parsed, mapped onto the account timeline and the same nine detectors re-run against them. The feed then changes because of your data, not ours.</p>
+
+        <ol class="try-steps">
+          <li><b>Export a CSV</b> from your helpdesk, QA tool or survey platform. Twelve months of history makes the baselines meaningful.</li>
+          <li><b>Drop it in</b> on the Data Upload screen. Columns are matched automatically, and it tells you which ones it matched.</li>
+          <li><b>Read the decision feed</b> as it rebuilds. This is not a progress bar over a canned answer, the detectors genuinely re-run.</li>
+        </ol>
+
+        <div class="try-out">
+          <span class="try-out-k">What comes back</span>
+          <ul>
+            <li><b>Renewals at risk</b>, each one a named account with a renewal date rather than a category</li>
+            <li><b>ARR exposed</b>, published as a range you can re-multiply from the printed inputs</li>
+            <li><b>The reasons, ranked</b>: adoption decline, champion gone quiet, escalation load, payment risk</li>
+            <li><b>A named play and a named owner</b> for the risks that clear the confidence floor</li>
+          </ul>
+          <p class="try-out-note">How much comes back depends entirely on what is in your file. That is the point of running it rather than watching a demo, and it is why we will not print an example count here.</p>
         </div>
-        <div class="hero-cta" style="margin-top:26px">
-          <a class="btn btn-primary" href="demo.html">Launch the live demo →</a>
+
+        <div class="hero-cta" style="margin-top:24px">
+          <a class="btn btn-primary" href="demo.html">Upload an export →</a>
           <a class="btn btn-ghost" href="app.html">Open the copilot</a>
         </div>
+        <p class="dim" style="font-size:.78rem;margin-top:14px">Runs entirely in your browser. Nothing is uploaded to a server, nothing is stored, and the sample operation behind it is simulated.</p>
       </div>
     </div>
   </div>
@@ -445,8 +504,8 @@
     <div class="split" style="align-items:start">
       <div class="steps reveal">
         <div class="step"><span class="idx"></span><div><h4>What you get</h4><p>The product free through the partnership, the detectors tuned to your renewal motion, and direct access to the two people who build it.</p></div></div>
-        <div class="step"><span class="idx"></span><div><h4>What we ask</h4><p>An export or a read-only connection, an hour a fortnight, and honest reactions — especially when a finding is wrong. A detector nobody argues with is a detector nobody uses.</p></div></div>
-        <div class="step"><span class="idx"></span><div><h4>Who it fits</h4><p>$3M–$30M ARR, a renewal book someone owns by name, and enough history in your tools for a baseline to mean something — roughly twelve months.</p></div></div>
+        <div class="step"><span class="idx"></span><div><h4>What we ask</h4><p>An export or a read-only connection, an hour a fortnight, and honest reactions, especially when a finding is wrong. A detector nobody argues with is a detector nobody uses.</p></div></div>
+        <div class="step"><span class="idx"></span><div><h4>Who it fits</h4><p>$3M–$30M ARR, a renewal book someone owns by name, and enough history in your tools for a baseline to mean something, roughly twelve months.</p></div></div>
         <div class="step"><span class="idx"></span><div><h4>What happens first</h4><p>A thirty-minute call and a look at the live product. If the fit is not obvious to both sides in that half hour, we will say so.</p></div></div>
       </div>
       <div class="cta-band reveal" style="text-align:left">
@@ -470,7 +529,7 @@
     <div class="section-head center reveal">
       <span class="eyebrow">Business Model</span>
       <h2>Priced on the renewal book, <span class="grad-text">never on the seats.</span></h2>
-      <p class="lead">Every plan includes unlimited read-only access. A renewal risk only gets acted on if the people who need to see it — the CSM, the RevOps lead, the CRO — can open it without someone buying them a licence first.</p>
+      <p class="lead">Every plan includes unlimited read-only access. A renewal risk only gets acted on if the people who need to see it (the CSM, the RevOps lead, the CRO) can open it without someone buying them a licence first.</p>
     </div>
     <div class="price-grid">
       <div class="price reveal">
@@ -511,7 +570,7 @@
       </div>
     </div>
     <p class="dim center" style="margin-top:22px;font-size:.82rem;max-width:76ch;margin-left:auto;margin-right:auto">
-      A signal source is one connected system — a ticketing platform, a telephony feed, a QA tool, a product-analytics stream, a billing system. Pricing scales with what the engine has to reason over and how long the decision record must survive, because those are the two things that actually cost money to run. <a href="#partners" style="color:var(--emerald)">Design partners pay none of it</a> for the duration of the partnership.
+      A signal source is one connected system: a ticketing platform, a telephony feed, a QA tool, a product-analytics stream, a billing system. Pricing scales with what the engine has to reason over and how long the decision record must survive, because those are the two things that actually cost money to run. <a href="#partners" style="color:var(--emerald)">Design partners pay none of it</a> for the duration of the partnership.
     </p>
   </div>
 </section>
@@ -553,7 +612,7 @@
     <div class="cta-band reveal">
       <span class="eyebrow" style="margin-bottom:18px">Our Vision</span>
       <h2>Become the system of record for<br/><span class="grad-text">why customers stay.</span></h2>
-      <p>Every SaaS company has a system of record for what it sold and what broke. None of them has one for why an account renewed — what was noticed, what was decided about it, and whether that decision worked. That is the category, and renewals are the door into it.</p>
+      <p>Every SaaS company has a system of record for what it sold and what broke. None of them has one for why an account renewed: what was noticed, what was decided about it, and whether that decision worked. That is the category, and renewals are the door into it.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="#partners">Become a design partner →</a>
         <a class="btn btn-ghost" href="demo.html">Launch the live demo</a>
@@ -579,7 +638,7 @@
       </div>
       <div class="founder reveal">
         <h4>Sachin <span class="role">Co-founder &amp; CTO</span></h4>
-        <p>Enterprise AI, architecture and engineering. Owns the decision engine — the statistical detectors, the confidence floor, and the insight contract that stops anything reaching a screen before it can be traced back to a record.</p>
+        <p>Enterprise AI, architecture and engineering. Owns the decision engine: the statistical detectors, the confidence floor, and the insight contract that stops anything reaching a screen before it can be traced back to a record.</p>
       </div>
     </div>
   </div>
@@ -591,11 +650,11 @@
     <div class="cta-band reveal">
       <span class="eyebrow" style="margin-bottom:18px">Contact</span>
       <h2>Schedule a demo.</h2>
-      <p>Thirty minutes, screen shared, your questions rather than our script. Tell us the size of your renewal book and where you currently find out too late — we will show you what the engine does with signals like yours.</p>
+      <p>Thirty minutes, screen shared, your questions rather than our script. Tell us the size of your renewal book and where you currently find out too late. We will show you what the engine does with signals like yours.</p>
       <!-- Naming who replies, with titles, at the point someone decides to get
            in touch — on a two-person company that is the reassurance that
            matters more than any claim above it. -->
-      <p style="margin-top:10px">You will be talking to <strong style="color:var(--text)">Sudharshan</strong>, Founder &amp; CEO, and <strong style="color:var(--text)">Sachin</strong>, Co-founder &amp; CTO. No account managers, no SDR round-trip — they answer everything themselves.</p>
+      <p style="margin-top:10px">You will be talking to <strong style="color:var(--text)">Sudharshan</strong>, Founder &amp; CEO, and <strong style="color:var(--text)">Sachin</strong>, Co-founder &amp; CTO. No account managers, no SDR round-trip. They answer everything themselves.</p>
 
       <!--
         No backend on a static site, so submit composes the message and hands
@@ -630,11 +689,11 @@
           </div>
           <div class="cf-field cf-wide">
             <label for="cfMessage">Where do you currently find out too late?</label>
-            <textarea id="cfMessage" name="message" rows="4" placeholder="e.g. we usually discover an account is leaving on the renewal call — usage data sits in one tool and support history in another, and nobody joins them up."></textarea>
+            <textarea id="cfMessage" name="message" rows="4" placeholder="e.g. we usually discover an account is leaving on the renewal call. Usage data sits in one tool and support history in another, and nobody joins them up."></textarea>
           </div>
           <label class="cf-check" for="cfPartner">
             <input id="cfPartner" name="partner" type="checkbox" />
-            <span>I am interested in the <strong style="color:var(--text)">design partner programme</strong> — free through the partnership, ten places.</span>
+            <span>I am interested in the <strong style="color:var(--text)">design partner programme</strong>, free through the partnership, ten places.</span>
           </label>
         </div>
 
@@ -649,7 +708,7 @@
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Your mail client should be opening
         </h4>
-        <p>If nothing happened, no mail client is configured on this machine — copy the message below and send it to <strong style="color:var(--text)">infohireloop@gmail.com</strong>, or use the direct link.</p>
+        <p>If nothing happened, no mail client is configured on this machine. Copy the message below and send it to <strong style="color:var(--text)">infohireloop@gmail.com</strong>, or use the direct link.</p>
         <pre id="cfSentBody"></pre>
         <div class="cf-sent-actions">
           <button type="button" class="btn btn-ghost" id="cfCopy">Copy the message</button>

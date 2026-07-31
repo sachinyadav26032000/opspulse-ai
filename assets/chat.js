@@ -56,7 +56,7 @@
       keys: ["what is opspulse", "what do you do", "what is this", "what does it do", "tell me about", "what does opspulse", "explain", "overview"],
       answer:
         "OpsPulse is <strong>renewal intelligence for mid-market SaaS</strong>.\n\n" +
-        "It reads the signals your team already generates — support tickets, calls, QA reviews, product usage, billing — and tells you which renewals are in trouble while there is still time to act.\n\n" +
+        "It reads the signals your team already generates across support tickets, calls, QA reviews, product usage and billing, then tells you which renewals are in trouble while there is still time to act.\n\n" +
         "For each at-risk account you get three things: <em>which</em> account and when it renews, <em>why</em> it is at risk with the evidence attached, and <em>what to do next</em>.",
       chips: ["How does it work?", "How is this different from a health score?", "What data do you need?"]
     },
@@ -65,11 +65,11 @@
       keys: ["how does it work", "how it works", "how does this work", "under the hood", "technically", "what is the process", "workflow", "mechanism"],
       answer:
         "Five stages, each constrained by the one before it:\n\n" +
-        "<strong>1 · Fragmented data</strong> — tickets, calls, QA, usage and billing land on one account timeline.\n" +
-        "<strong>2 · AI analysis</strong> — nine statistical detectors compare a recent window against that account's own baseline.\n" +
-        "<strong>3 · Reason</strong> — the decline is decomposed into contributing factors that sum to 100%, labelled a hypothesis.\n" +
-        "<strong>4 · Action</strong> — a named play with a named owner.\n" +
-        "<strong>5 · Revenue impact</strong> — the same signals are re-read at renewal to report whether it worked.\n\n" +
+        "<strong>1 · Fragmented data</strong>: tickets, calls, QA, usage and billing land on one account timeline.\n" +
+        "<strong>2 · AI analysis</strong>: nine statistical detectors compare a recent window against that account's own baseline.\n" +
+        "<strong>3 · Reason</strong>: the decline is decomposed into contributing factors that sum to 100%, labelled a hypothesis.\n" +
+        "<strong>4 · Action</strong>: a named play with a named owner.\n" +
+        "<strong>5 · Revenue impact</strong>: the same signals are re-read at renewal to report whether it worked.\n\n" +
         "The important part: <strong>detection is arithmetic</strong>. The language layer only describes what the arithmetic already found.",
       chips: ["Does it use AI to make up numbers?", "How accurate is it?", "Can I see a demo?"]
     },
@@ -77,11 +77,11 @@
       id: "different",
       keys: ["different from", "how is this different", "versus", "vs ", "compare", "competitor", "gainsight", "vitally", "churnzero", "totango", "catalyst", "planhat", "health score", "why not just", "already have", "better than", "alternative"],
       answer:
-        "Most customer-success tools give you a <strong>health score</strong> — a red/amber/green dot with no arithmetic behind it. It cannot be argued with, so it gets ignored, and then it turns out to have been right.\n\n" +
+        "Most customer-success tools give you a <strong>health score</strong>: a red/amber/green dot with no arithmetic behind it. It cannot be argued with, so it gets ignored, and then it turns out to have been right.\n\n" +
         "Three differences:\n\n" +
         "<strong>Every number opens.</strong> Each figure drills back to the records that produced it. Every retrieved quote carries its record id.\n" +
-        "<strong>Cause is labelled a hypothesis, not a finding.</strong> Below 60% confidence nothing is auto-actioned — it is held for a human.\n" +
-        "<strong>It remembers what you decided.</strong> A ledger snapshots the evidence as it stood, then reports the outcome at renewal — including when the account left anyway.",
+        "<strong>Cause is labelled a hypothesis, not a finding.</strong> Below 60% confidence nothing is auto-actioned. It is held for a human.\n" +
+        "<strong>It remembers what you decided.</strong> A ledger snapshots the evidence as it stood, then reports the outcome at renewal, including when the account left anyway.",
       chips: ["What is the decision ledger?", "How accurate is it?", "What does it cost?"]
     },
     {
@@ -89,20 +89,20 @@
       keys: ["what data", "integrations", "integrate", "connect", "sources", "zendesk", "salesforce", "hubspot", "intercom", "freshdesk", "jira", "slack", "connectors", "api", "what do you need from", "plug in", "csv", "import"],
       answer:
         "A <strong>signal source</strong> is one connected system. Typically:\n\n" +
-        "• <strong>Ticketing</strong> — Zendesk, Freshdesk, Intercom\n" +
-        "• <strong>Telephony</strong> — call records and transcripts\n" +
-        "• <strong>QA</strong> — review scores and notes\n" +
-        "• <strong>Surveys</strong> — NPS and CSAT with verbatims\n" +
-        "• <strong>Product usage</strong> — seats, logins, feature events\n" +
-        "• <strong>Billing / CRM</strong> — contract dates and ARR\n\n" +
-        "You need roughly <strong>twelve months of history</strong> for a baseline to mean anything. To start, a CSV export is enough — you can drop one into the live demo right now and watch the same detectors run against your data.",
+        "• <strong>Ticketing</strong>: Zendesk, Freshdesk, Intercom\n" +
+        "• <strong>Telephony</strong>: call records and transcripts\n" +
+        "• <strong>QA</strong>: review scores and notes\n" +
+        "• <strong>Surveys</strong>: NPS and CSAT with verbatims\n" +
+        "• <strong>Product usage</strong>: seats, logins, feature events\n" +
+        "• <strong>Billing / CRM</strong>: contract dates and ARR\n\n" +
+        "You need roughly <strong>twelve months of history</strong> for a baseline to mean anything. To start, a CSV export is enough. You can drop one into the live demo right now and watch the same detectors run against your data.",
       chips: ["How long does setup take?", "Is my data safe?", "Can I see a demo?"]
     },
     {
       id: "setup",
       keys: ["how long", "setup", "set up", "onboarding", "implementation", "time to value", "get started", "deploy", "install", "how quickly", "ramp"],
       answer:
-        "Start with a <strong>CSV export</strong> — no integration work, and you see real findings on your own accounts the same day.\n\n" +
+        "Start with a <strong>CSV export</strong>: no integration work, and you see real findings on your own accounts the same day.\n\n" +
         "A read-only connection to your ticketing system is the next step. Native connectors are on the roadmap; during the design partner programme we build the one you need.\n\n" +
         "There is nothing to install. The product runs in the browser.",
       chips: ["What is the design partner programme?", "What data do you need?", "What does it cost?"]
@@ -111,10 +111,10 @@
       id: "pricing",
       keys: ["pricing", "price", "cost", "how much", "expensive", "budget", "per seat", "plans", "tiers", "afford", "quote", "fee", "subscription"],
       answer:
-        "Priced on the renewal book, <strong>never per seat</strong> — every plan includes unlimited read-only viewers, because a renewal risk only gets acted on if the CSM, the RevOps lead and the CRO can all open it.\n\n" +
-        "<strong>Retain — $1,800/mo</strong> · 3 signal sources, all 9 detectors, 12-month ledger retention\n" +
-        "<strong>Forecast — $4,500/mo</strong> · unlimited sources, predictive scoring, 3-year retention, SSO &amp; RBAC\n" +
-        "<strong>Enterprise — custom</strong> · residency, private deployment, custom detectors\n\n" +
+        "Priced on the renewal book, <strong>never per seat</strong>. Every plan includes unlimited read-only viewers, because a renewal risk only gets acted on if the CSM, the RevOps lead and the CRO can all open it.\n\n" +
+        "<strong>Retain · $1,800/mo</strong> · 3 signal sources, all 9 detectors, 12-month ledger retention\n" +
+        "<strong>Forecast · $4,500/mo</strong> · unlimited sources, predictive scoring, 3-year retention, SSO &amp; RBAC\n" +
+        "<strong>Enterprise · custom</strong> · residency, private deployment, custom detectors\n\n" +
         "<strong>Design partners pay nothing</strong> for the duration of the partnership.",
       chips: ["What is the design partner programme?", "Is there a contract?", "Schedule a demo"]
     },
@@ -123,29 +123,30 @@
       keys: ["design partner", "partner programme", "partner program", "pilot", "beta", "early access", "founding customer", "trial", "free"],
       answer:
         "We are building this with <strong>ten mid-market SaaS teams</strong>. Not a waitlist and not a discount scheme.\n\n" +
-        "<strong>You get</strong> — the product free through the partnership, detectors tuned to your renewal motion, and direct access to the two people who build it.\n" +
-        "<strong>We ask</strong> — an export or read-only connection, an hour a fortnight, and honest reactions. Especially when a finding is wrong: a detector nobody argues with is a detector nobody uses.\n" +
-        "<strong>Fit</strong> — $3M–$30M ARR, a renewal book someone owns by name, ~12 months of history in your tools.\n\n" +
+        "<strong>You get</strong>: the product free through the partnership, detectors tuned to your renewal motion, and direct access to the two people who build it.\n" +
+        "<strong>We ask</strong>: an export or read-only connection, an hour a fortnight, and honest reactions. Especially when a finding is wrong: a detector nobody argues with is a detector nobody uses.\n" +
+        "<strong>Fit</strong>: $3M–$30M ARR, a renewal book someone owns by name, ~12 months of history in your tools.\n\n" +
         "First step is a thirty-minute call. If the fit is not obvious to both sides in that half hour, we will say so.",
       chips: ["Schedule a demo", "Who is behind this?", "What data do you need?"]
     },
     {
       id: "demo",
-      keys: ["demo", "see it", "try it", "test", "play with", "show me", "walkthrough", "walk through", "live", "sandbox", "book a call", "schedule"],
+      keys: ["demo", "see it", "try it", "test", "play with", "show me", "walkthrough", "walk through", "live", "sandbox", "book a call", "schedule", "upload", "my own data", "try on my data"],
       answer:
-        "Two ways, both immediate:\n\n" +
-        "<strong>Drive it yourself</strong> — the live demo runs a real detection engine over a simulated operation. A source system on the left, the decision engine on the right, both reading one store so they cannot disagree. No signup, nothing to install, all data simulated.\n\n" +
-        "<strong>Talk to us</strong> — thirty minutes, screen shared, your questions rather than our script.",
-      chips: ["Schedule a demo", "What is the design partner programme?", "What does it cost?"]
+        "Three ways, and the first one takes about a minute:\n\n" +
+        "<strong>Run it on your own export</strong>: open the Ops Floor, go to Data Upload and drop in a CSV of tickets, QA reviews or NPS responses. Your rows are parsed, mapped onto the account timeline and the nine detectors re-run against them, so the decision feed changes because of your data. It all happens in your browser: nothing is uploaded to a server and nothing is stored.\n\n" +
+        "<strong>Drive the simulated operation</strong>: a source system on the left, the decision engine on the right, both reading one store so they cannot disagree. No signup, nothing to install.\n\n" +
+        "<strong>Talk to us</strong>: thirty minutes, screen shared, your questions rather than our script.",
+      chips: ["Schedule a demo", "What data do you need?", "Is my data safe?"]
     },
     {
       id: "security",
       keys: ["secure", "security", "safe", "privacy", "gdpr", "soc 2", "soc2", "compliance", "residency", "encryption", "pii", "confidential", "iso 27001", "data protection", "on premise", "on-prem", "self host"],
       answer:
         "Honest answer, because this is exactly the kind of question a vendor should not fudge:\n\n" +
-        "<strong>Today</strong> — this is a prototype. Everything you can see on this site runs on <strong>simulated data</strong>. There is no customer data in it.\n\n" +
-        "<strong>For design partners</strong> — read-only access, scoped to what the detectors need, and we will sign whatever your security team requires before any data moves.\n\n" +
-        "<strong>On the roadmap</strong> — SSO, RBAC and configurable retention are in the Forecast plan; data residency and private deployment are Enterprise. SOC 2 comes with productisation, and we will not claim it before it is real.",
+        "<strong>Today</strong>: this is a prototype. Everything you can see on this site runs on <strong>simulated data</strong>. There is no customer data in it.\n\n" +
+        "<strong>For design partners</strong>: read-only access, scoped to what the detectors need, and we will sign whatever your security team requires before any data moves.\n\n" +
+        "<strong>On the roadmap</strong>: SSO, RBAC and configurable retention are in the Forecast plan; data residency and private deployment are Enterprise. SOC 2 comes with productisation, and we will not claim it before it is real.",
       chips: ["What data do you need?", "Who is behind this?", "Talk to a human"]
     },
     {
@@ -155,7 +156,7 @@
         "Deliberately narrow, and this is the core design decision of the product.\n\n" +
         "<strong>Detection, ranking and costing are arithmetic.</strong> No model is involved. A pattern is found because a recent window sits far enough outside a declared baseline, not because something predicted it.\n\n" +
         "<strong>Language only explains.</strong> The narrative layer describes findings that already exist as structured objects. It cannot introduce a number that is not already in the data.\n\n" +
-        "That split is enforced in code, not policy. A generated number is a fabricated number — including in this chat window, which is why I, RioAI, match your question against authored answers rather than improvising with a model.",
+        "That split is enforced in code, not policy. A generated number is a fabricated number, including in this chat window, which is why I, RioAI, match your question against authored answers rather than improvising with a model.",
       chips: ["How accurate is it?", "What if it is wrong?", "How does it work?"]
     },
     {
@@ -163,7 +164,7 @@
       keys: ["accurate", "accuracy", "confidence", "how do i know", "reliable", "trust", "false positive", "precision", "proof", "evidence", "verify", "certain", "sure"],
       answer:
         "Confidence is <strong>published, not asserted</strong>: 45% statistical strength + 30% explained-by-top-driver + 25% corroboration across signals.\n\n" +
-        "Below <strong>60%</strong> an insight is marked held-for-review and never auto-actioned. Nothing is raised at all until it clears a declared threshold you can argue with, and a minimum of 40 recent records exist — so a quiet quarter produces an empty feed rather than invented risk.\n\n" +
+        "Below <strong>60%</strong> an insight is marked held-for-review and never auto-actioned. Nothing is raised at all until it clears a declared threshold you can argue with, and a minimum of 40 recent records exist, so a quiet quarter produces an empty feed rather than invented risk.\n\n" +
         "Root cause is always labelled a <strong>hypothesis</strong>. The system never claims confirmed cause; the CSM who knows the account closes that gap.",
       chips: ["What if it is wrong?", "What is the decision ledger?", "Does it use AI to make up numbers?"]
     },
@@ -172,7 +173,7 @@
       keys: ["what if it is wrong", "wrong", "mistake", "miss", "false alarm", "inaccurate", "fails", "error", "bad call", "blame"],
       answer:
         "It will be wrong sometimes, and the product is built so you can <strong>prove</strong> it was.\n\n" +
-        "When you commit to a play, the ledger snapshots the risk, the confidence and the account's metrics <em>as they stood at that moment</em>. The evidence is never back-dated. At renewal the same signals are re-read and the outcome is reported — cleared, improving, holding, or worse than when you started.\n\n" +
+        "When you commit to a play, the ledger snapshots the risk, the confidence and the account's metrics <em>as they stood at that moment</em>. The evidence is never back-dated. At renewal the same signals are re-read and the outcome is reported: cleared, improving, holding, or worse than when you started.\n\n" +
         "Being able to show the platform was wrong is the property an auditor is actually looking for. A tool that only remembers its wins is a tool you cannot forecast with.",
       chips: ["What is the decision ledger?", "How accurate is it?", "Schedule a demo"]
     },
@@ -199,8 +200,8 @@
       keys: ["who built", "who made", "who is behind", "team", "founders", "behind this", "the company", "about you", "sachin", "sudharshan", "funding", "investors", "how many people"],
       answer:
         "Two founders.\n\n" +
-        "<strong>Sudharshan — Founder &amp; CEO.</strong> Fifteen years across customer operations, customer experience and enterprise SaaS, more recently executive search.\n\n" +
-        "<strong>Sachin — Co-founder &amp; CTO.</strong> Enterprise AI, architecture and engineering. Owns the decision engine — the detectors, the confidence floor, and the insight contract that stops anything reaching a screen before it can be traced back to a record.\n\n" +
+        "<strong>Sudharshan, Founder &amp; CEO.</strong> Fifteen years across customer operations, customer experience and enterprise SaaS, more recently executive search.\n\n" +
+        "<strong>Sachin, Co-founder &amp; CTO.</strong> Enterprise AI, architecture and engineering. Owns the decision engine: the detectors, the confidence floor, and the insight contract that stops anything reaching a screen before it can be traced back to a record.\n\n" +
         "Small on purpose. You will not be handed to an account manager.",
       chips: ["What is the design partner programme?", "Talk to a human", "Can I see a demo?"]
     },
@@ -208,8 +209,8 @@
       id: "contract",
       keys: ["contract", "commitment", "lock in", "lock-in", "cancel", "notice period", "annual", "monthly", "terms", "minimum term", "refund"],
       answer:
-        "<strong>Design partners</strong> — no contract and no cost. Either side can walk away; we would just ask for the honest reason why.\n\n" +
-        "<strong>Paid plans</strong> — monthly, no minimum term. What varies by plan is how long the decision record is retained, because that is what actually costs money to run.\n\n" +
+        "<strong>Design partners</strong>: no contract and no cost. Either side can walk away; we would just ask for the honest reason why.\n\n" +
+        "<strong>Paid plans</strong>: monthly, no minimum term. What varies by plan is how long the decision record is retained, because that is what actually costs money to run.\n\n" +
         "Your data stays exportable throughout.",
       chips: ["What does it cost?", "What is the design partner programme?", "Talk to a human"]
     },
@@ -217,10 +218,10 @@
       id: "roadmap",
       keys: ["roadmap", "what is next", "coming", "future", "plans", "release", "when will", "timeline", "launch"],
       answer:
-        "<strong>Now</strong> — problem validation with renewal owners, sharpening which signals actually predict a non-renewal.\n" +
-        "<strong>In progress</strong> — the working engine you can open on this site: statistical detection, decomposed reasoning, exposure as a range.\n" +
-        "<strong>Next</strong> — design partner pilots with ten mid-market teams, detectors tuned per renewal motion.\n" +
-        "<strong>Then</strong> — native connectors, scalable architecture, launch.\n\n" +
+        "<strong>Now</strong>: problem validation with renewal owners, sharpening which signals actually predict a non-renewal.\n" +
+        "<strong>In progress</strong>: the working engine you can open on this site: statistical detection, decomposed reasoning, exposure as a range.\n" +
+        "<strong>Next</strong>: design partner pilots with ten mid-market teams, detectors tuned per renewal motion.\n" +
+        "<strong>Then</strong>: native connectors, scalable architecture, launch.\n\n" +
         "There is a full technical roadmap on the site if you want the engineering view.",
       chips: ["What is the design partner programme?", "Can I see a demo?", "Talk to a human"]
     },
@@ -228,7 +229,7 @@
       id: "contact",
       keys: ["talk to a human", "human", "contact", "speak to", "get in touch", "reach you", "email", "call", "sales", "someone", "person", "real person"],
       answer:
-        "Happy to hand you over — both founders answer everything themselves.\n\n" +
+        "Happy to hand you over. Both founders answer everything themselves.\n\n" +
         "Use the <strong>Schedule a demo</strong> form on this page and it reaches us directly. Thirty minutes, screen shared, your questions rather than our script.",
       chips: ["Schedule a demo", "What is the design partner programme?"]
     },
@@ -236,8 +237,8 @@
       id: "identity",
       keys: ["who are you", "what are you", "your name", "what is your name", "are you a bot", "are you human", "are you real", "are you a robot", "rioai", "rio ai", "what can you do", "how do you work", "are you an ai", "are you chatgpt", "what model are you"],
       answer:
-        "I am <strong>RioAI</strong> — the OpsPulse product assistant. Think of me as the product's own expert on call.\n\n" +
-        "Under the hood I run a small natural-language layer right here in your browser: I normalise your question, strip the filler words, forgive a typo or two, and match what you actually mean against a curated knowledge base of everything OpsPulse — then I answer from authored, verifiable copy.\n\n" +
+        "I am <strong>RioAI</strong>, the OpsPulse product assistant. Think of me as the product's own expert on call.\n\n" +
+        "Under the hood I run a small natural-language layer right here in your browser: I normalise your question, strip the filler words, forgive a typo or two, and match what you actually mean against a curated knowledge base of everything OpsPulse, then I answer from authored, verifiable copy.\n\n" +
         "I am not a cloud LLM, and that is deliberate: OpsPulse refuses to generate numbers it cannot trace, so its assistant refuses to generate answers it cannot stand behind. Ask me anything about the product.",
       chips: ["What is OpsPulse?", "How does it work?", "Does it use AI to make up numbers?"]
     },
@@ -245,22 +246,22 @@
       id: "greeting",
       keys: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening", "yo", "howdy", "greetings", "hiya", "sup"],
       answer:
-        "Hi, I am <strong>RioAI</strong> — the OpsPulse product expert. Ask me anything: what it does, how the engine reaches a verdict, pricing, integrations, security, or the design partner programme.\n\n" +
-        "I read your question with a small on-device language model rather than a cloud LLM, so every answer is authored and verifiable — and if I genuinely do not know something, I will say so and point you at a human instead of guessing.",
+        "Hi, I am <strong>RioAI</strong>, the OpsPulse product expert. Ask me anything: what it does, how the engine reaches a verdict, pricing, integrations, security, or the design partner programme.\n\n" +
+        "I read your question with a small on-device language model rather than a cloud LLM, so every answer is authored and verifiable, and if I genuinely do not know something, I will say so and point you at a human instead of guessing.",
       chips: ["What is OpsPulse?", "How does it work?", "What does it cost?"]
     },
     {
       id: "thanks",
       keys: ["thanks", "thank you", "cheers", "appreciate", "helpful", "great", "perfect", "awesome", "nice", "cool", "bye", "goodbye", "later"],
-      answer: "Any time — that is what I am here for. If you want to go further, the fastest next step is thirty minutes with one of the founders.",
+      answer: "Any time. That is what I am here for. If you want to go further, the fastest next step is thirty minutes with one of the founders.",
       chips: ["Schedule a demo", "What is the design partner programme?"]
     }
   ];
 
   var OPENING = {
     answer:
-      "Hi, I am <strong>RioAI</strong> 👋 — the product expert for OpsPulse. I can walk you through what it does, how the decision engine reaches a verdict, pricing, integrations, security, and the design partner programme.\n\n" +
-      "Ask in your own words — I understand full questions, not just keywords. And because I run on the product's own honesty rule, I never invent an answer: if I do not know, I will say so and hand you to a human.",
+      "Hi, I am <strong>RioAI</strong> 👋, the product expert for OpsPulse. I can walk you through what it does, how the decision engine reaches a verdict, pricing, integrations, security, and the design partner programme.\n\n" +
+      "Ask in your own words. I understand full questions, not just keywords. And because I run on the product's own honesty rule, I never invent an answer: if I do not know, I will say so and hand you to a human.",
     chips: ["What is OpsPulse?", "How is this different from a health score?", "What does it cost?", "What is the design partner programme?"]
   };
 
@@ -547,7 +548,7 @@
         setChips(intent.chips);
       } else {
         bubble("bot", render(
-          "That one is outside what I can answer with confidence, and I would rather tell you than guess — OpsPulse refuses to invent numbers, so RioAI refuses to invent answers.\n\n" +
+          "That one is outside what I can answer with confidence, and I would rather tell you than guess. OpsPulse refuses to invent numbers, so RioAI refuses to invent answers.\n\n" +
           "Both founders reply personally, though. Use the <strong>Schedule a demo</strong> form on this page and your question reaches them directly."
         ));
         setChips(FALLBACK_CHIPS);
@@ -566,7 +567,7 @@
       bubble("me", render(q));
       var target = document.getElementById("contact");
       if (target) {
-        reply({ answer: "Taking you to the form now — it goes straight to both founders.", chips: ["What is the design partner programme?", "What does it cost?"] });
+        reply({ answer: "Taking you to the form now. It goes straight to both founders.", chips: ["What is the design partner programme?", "What does it cost?"] });
         setTimeout(function () {
           target.scrollIntoView({ behavior: reduceMotion.matches ? "auto" : "smooth", block: "start" });
           var name = document.getElementById("cfName");

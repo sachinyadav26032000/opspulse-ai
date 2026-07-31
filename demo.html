@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Live Ops Floor — NorthDesk × OpsPulse AI</title>
+<title>Live Ops Floor · NorthDesk × OpsPulse AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -25,7 +25,10 @@
   .floor-bar .t { font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 9px; }
   .floor-bar .t svg { width: 18px; height: 18px; }
   .floor-bar .arrow { color: var(--emerald); font-size: 1.05rem; }
-  .floor-bar .exp { color: var(--text-dim); font-size: .78rem; max-width: 62ch; line-height: 1.45; }
+  .floor-bar .exp { color: var(--text-dim); font-size: .78rem; max-width: 78ch; line-height: 1.45; }
+  /* The upload invitation is the reason a prospect is on this page, so it is
+     brand-coloured and on its own line rather than buried in the explainer. */
+  .floor-bar .exp .try { display: block; margin-top: 3px; color: var(--emerald); font-weight: 600; }
   .floor-bar a { color: var(--text-soft); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
   .floor-bar a:hover { color: var(--text); }
 
@@ -58,7 +61,9 @@
     </span>
     <span class="exp">
       One dataset, two views. Tickets arriving in <strong>NorthDesk</strong> on the left are the same objects
-      <strong>OpsPulse</strong> is counting on the right — there is no sync step, because there is only one store.
+      <strong>OpsPulse</strong> is counting on the right, with no sync step, because there is only one store.
+      <b class="try">Bring your own: open Data Upload on the right and drop in a CSV export. The nine detectors
+      re-run against your rows and the decision feed rebuilds in front of you.</b>
     </span>
     <span style="margin-left:auto"></span>
     <a href="servicedesk.html">NorthDesk alone ↗</a>
@@ -68,11 +73,11 @@
 
   <div class="panes">
     <section class="pane">
-      <div class="pane-tag"><span class="n" style="background:#3987e5">1</span> Source system — the service desk your team works in</div>
+      <div class="pane-tag"><span class="n" style="background:#3987e5">1</span> Source system: the service desk your team works in</div>
       <div class="pane-host" id="deskHost"></div>
     </section>
     <section class="pane">
-      <div class="pane-tag"><span class="n" style="background:#34d399">2</span> Intelligence layer — what a director should do about it</div>
+      <div class="pane-tag"><span class="n" style="background:#34d399">2</span> Intelligence layer: what a director should do about it</div>
       <div class="pane-host" id="pulseHost"></div>
     </section>
   </div>

@@ -211,3 +211,162 @@
 .cf-sent-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .cf-copied { font-size: 0.8rem; color: var(--emerald); font-weight: 600; }
 .cf-copied[hidden] { display: none; }
+
+/* ---------- Hero: the lead renewal card ----------
+   The second alert in the hero mock stays a plain .alert-row. This one is
+   promoted to a full card because it is the product's whole argument in one
+   object: a named account, a date, exposure as a range, the two signals that
+   moved, and the play to run. A director should be able to read it top to
+   bottom and know what their next hour is for.
+
+   Built entirely from styles.css tokens. No new colours are introduced. */
+.risk-card {
+  background: var(--panel-3);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--danger);
+  border-radius: 10px;
+  padding: 12px 13px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.risk-top { display: flex; align-items: center; gap: 11px; }
+.risk-top > svg { flex: 0 0 auto; }
+.risk-name { font-size: 0.82rem; font-weight: 650; color: var(--text); min-width: 0; }
+.risk-name small { display: block; font-size: 0.72rem; font-weight: 500; color: var(--text-dim); margin-top: 1px; }
+
+/* Exposure sits on its own line at display size: it is the number that decides
+   whether this account outranks the other four, so it should not have to
+   compete with the account name for the eye. */
+.risk-exp { display: flex; align-items: baseline; gap: 8px; }
+.risk-exp b {
+  font-size: 1.16rem; font-weight: 800; letter-spacing: -0.02em;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.risk-exp span { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; }
+
+.risk-signals { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.risk-signals li { font-size: 0.745rem; color: var(--text-dim); line-height: 1.45; }
+.risk-signals i { font-style: normal; font-weight: 700; }
+.risk-signals i.dn { color: var(--danger); }
+.risk-signals i.fl { color: var(--warn); }
+
+/* The line that separates a decision engine from a dashboard. Tinted and
+   ruled off so it reads as the card's conclusion rather than a fourth fact. */
+.risk-act {
+  display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+  padding-top: 9px; border-top: 1px dashed var(--line-strong);
+}
+.risk-act .ra-k {
+  font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.1em;
+  font-weight: 700; color: var(--text-dim); flex: 0 0 auto;
+}
+.risk-act strong { font-size: 0.8rem; font-weight: 700; color: var(--emerald); }
+
+/* ---------- Trust bar: the proof line ----------
+   Sits under the role chips at reading size rather than caption size, because
+   it is a claim someone is meant to weigh, not a footnote. The trailing
+   sentence is dimmed one step: it is the honest caveat about missing logos,
+   and it should read as candour rather than as the headline.
+
+   Selector is .trust .trust-proof rather than .trust-proof alone because
+   styles.css already sets .trust p to uppercase caption styling, and that is
+   the more specific selector of the two. */
+.trust .trust-proof {
+  max-width: 82ch;
+  margin: 20px auto 0;
+  text-align: center;
+  font-size: 0.83rem;
+  line-height: 1.65;
+  color: var(--text-soft);
+  text-transform: none;
+  letter-spacing: normal;
+}
+.trust .trust-proof span { color: var(--text-dim); }
+
+/* ---------- The 60-second experiment ----------
+   Numbered steps for the upload path. A real <ol> rather than styled divs, so
+   the order is conveyed to a screen reader too and the numerals survive with
+   CSS off. The counter is drawn rather than using the default marker because
+   the default sits outside the content box and cannot take the gradient. */
+.try-steps {
+  list-style: none;
+  counter-reset: tryStep;
+  margin: 22px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.try-steps li {
+  counter-increment: tryStep;
+  position: relative;
+  padding-left: 40px;
+  font-size: 0.87rem;
+  line-height: 1.65;
+  color: var(--text-soft);
+}
+.try-steps li::before {
+  content: counter(tryStep);
+  position: absolute;
+  left: 0;
+  top: -1px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--grad);
+  color: #04120c;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.try-steps li b { color: var(--text); font-weight: 650; }
+
+/* The outcome block. Ruled off and tinted so it reads as the payoff of the
+   three steps above it rather than a fourth step. */
+.try-out {
+  margin-top: 24px;
+  padding: 16px 18px 15px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.055), transparent);
+}
+.try-out-k {
+  display: block;
+  font-size: 0.63rem;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  font-weight: 800;
+  color: var(--emerald);
+  margin-bottom: 11px;
+}
+.try-out ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.try-out li {
+  position: relative;
+  padding-left: 17px;
+  font-size: 0.83rem;
+  line-height: 1.6;
+  color: var(--text-soft);
+}
+.try-out li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.62em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--emerald);
+}
+.try-out li b { color: var(--text); font-weight: 650; }
+.try-out-note {
+  margin: 13px 0 0;
+  padding-top: 11px;
+  border-top: 1px dashed var(--line-strong);
+  font-size: 0.775rem;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
