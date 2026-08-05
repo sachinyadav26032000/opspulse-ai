@@ -25,6 +25,10 @@ import {
 } from '../engine/web/aggregate.js';
 import { KAGGLE_COLUMNS } from '../data/generator.js';
 import { toCsv } from '../data/csv.js';
+/* The composable query layer. The Copilot tries this first for questions about
+   accounts, and falls back to the insight narratives below for questions about
+   what the engine detected. Neither path can invent a number. */
+import { ask as runQuery, resolve as resolveStack, templateQuestions, reasonFor, SUPPORTED } from '../engine/web/query.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -57,7 +61,11 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
   const root = el('div', 'op-root');
   container.appendChild(root);
 
-  const state = { view: 'dash', filter: 'all', q: '', selected: null, chat: [], lastUpload: null };
+  /* `filters` is the Copilot's query stack: an ordered list of narrowing
+     queries, rendered as removable pills. It lives on view state rather than
+     in the store because it is one person's line of enquiry, not part of the
+     operation every tab shares. */
+  const state = { view: 'dash', filter: 'all', q: '', selected: null, chat: [], filters: [], lastUpload: null };
 
   /* ── Chrome ───────────────────────────────────────────────────────────── */
   const top = el('div', 'lv-top');
@@ -909,15 +917,20 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
   }
 
   /* ── Executive Copilot ────────────────────────────────────────────────── */
-  const SUGGESTIONS = [
-    'What should I focus on today?',
-    'Why did NPS drop?',
-    'What operational risks are emerging?',
-    'What is our biggest operational risk?',
-    'How is the new-hire cohort performing?',
-    'How much revenue is at risk?',
-    'Why is the backlog growing?',
-    'Are we exposed on compliance?',
+  /* The old hardcoded SUGGESTIONS array lived here. It is gone: template
+     questions are now derived from today's data by templateQuestions() in
+     engine/web/query.js, so a chip can never offer a question whose answer is
+     zero accounts.
+
+     These are the topics the INSIGHT narratives below cover, as distinct from
+     the account queries in query.js. Listed only so a refusal can name the
+     whole surface area rather than half of it. */
+  const INSIGHT_TOPICS = [
+    'the day’s priorities and what to do first',
+    'NPS and CSAT movement, with the drivers decomposed',
+    'the backlog, SLA position and queue capacity',
+    'the new-hire QA gap',
+    'emerging contact topics and compliance exposure',
   ];
 
   function answer(qRaw) {
@@ -1051,15 +1064,38 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       if (i) return { html: `${esc(i.what_happened)}<p style="margin:9px 0 0"><strong>Why:</strong> ${esc(i.why.root_cause)}</p><p style="margin:9px 0 0"><strong>Do:</strong> ${esc(i.recommended_action.action)}</p>`, chips: [chip('Open drill-down', () => drillInsight(i))] };
     }
 
-    /* Fallback: search the insight set rather than inventing an answer. */
-    const hits = e.insights.filter((i) => (i._meta.title + ' ' + i.what_happened + ' ' + i.why.root_cause).toLowerCase().split(/\W+/).some((w) => w.length > 3 && q.includes(w)));
+    /* Fallback: search the insight set rather than inventing an answer.
+
+       Matched on WHOLE WORDS, not substrings. The previous version tested
+       `q.includes(word)` against the raw question, so an insight containing
+       "here" matched a question containing "weather" and the Copilot answered
+       an unrelated question with "closest matches in the current feed". A
+       confident answer to a question nobody asked is worse than a refusal.
+
+       Question words are also dropped. "what", "which", "there" and friends
+       appear in ordinary insight prose, so leaving them in meant almost any
+       sentence starting "what is..." matched something. */
+    const NOISE = new Set([
+      'what', 'which', 'when', 'where', 'that', 'this', 'those', 'these', 'there',
+      'here', 'have', 'has', 'with', 'from', 'about', 'into', 'your', 'ours',
+      'tell', 'show', 'give', 'does', 'doing', 'been', 'were', 'will', 'would',
+      'could', 'should', 'much', 'many', 'more', 'most', 'some', 'over', 'than',
+      'then', 'they', 'them', 'their', 'like', 'just', 'only', 'also', 'know',
+    ]);
+    const qWords = new Set(q.split(/\W+/).filter((w) => w.length > 3 && !NOISE.has(w)));
+    const hits = qWords.size ? e.insights.filter((i) =>
+      (i._meta.title + ' ' + i.what_happened + ' ' + i.why.root_cause)
+        .toLowerCase().split(/\W+/).some((w) => w.length > 3 && qWords.has(w))) : [];
     if (hits.length) {
       return { html: `Closest matches in the current feed:<ul>${hits.slice(0, 3).map(insLine).join('')}</ul><div class="src">I answer from the ${e.insights.length} insights the engine has computed. I will not answer beyond the data.</div>`, chips: hits.slice(0, 3).map((i) => chip(i._meta.title, () => drillInsight(i))) };
     }
+    /* Flagged so `ask` can tell a genuine refusal from an answer. When BOTH
+       answerers decline, the caller renders one combined refusal listing the
+       account queries and the insight topics, rather than stacking two
+       partial "I cannot" messages that each omit half the capability. */
     return {
-      html: `I do not have an answer grounded in the current data for that, and I would rather say so than guess.
-        <p style="margin:9px 0 0">I can answer questions about: the day's priorities, NPS and CSAT movement, the backlog and SLA position, the new-hire QA gap, emerging contact topics, churn and renewal risk, compliance exposure, and where revenue is at risk.</p>
-        <div class="src">Offline build: answers are templated over the engine's computed insight objects, not generated by a language model. Every number above is traceable to a record.</div>`,
+      declined: true,
+      html: `I do not have an answer grounded in the current data for that, and I would rather say so than guess.`,
       chips: [],
     };
   }
@@ -1072,23 +1108,82 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     const log = el('div', 'chat-log');
 
     if (!state.chat.length) {
-      state.chat.push({ who: 'OpsPulse', html: `Good ${hourGreeting()}. I have analysed <strong>${fmt.int(eng().run.stats.records_in)}</strong> records across tickets, escalations, QA and NPS. Ask me anything about the operation, or start with the question most people open with.`, chips: [] });
+      state.chat.push({ who: 'OpsPulse', html: `Good ${hourGreeting()}. I have analysed <strong>${fmt.int(eng().run.stats.records_in)}</strong> records across tickets, escalations, QA, NPS and product usage. Ask a question, then keep narrowing: each follow-up filters the set you are already looking at.`, chips: [] });
     }
+
+    /* The filter stack, as removable pills. Rendered above the log rather than
+       inside it because it describes the CURRENT set, not a past turn: a user
+       scrolled up the transcript still needs to see what they have narrowed
+       to. Removing any pill re-resolves the whole stack from scratch. */
+    if (state.filters.length) {
+      const bar = el('div', 'qa-pills');
+      bar.appendChild(el('span', 'qa-pills-k', 'Filtered to'));
+      state.filters.forEach((f, idx) => {
+        const pill = el('button', 'qa-pill', `${esc(f.label)}<span aria-hidden="true">×</span>`);
+        pill.title = `Remove "${f.label}"`;
+        pill.setAttribute('aria-label', `Remove filter ${f.label}`);
+        pill.addEventListener('click', () => {
+          state.filters = state.filters.filter((_, i) => i !== idx);
+          const n = resolveStack(ds(), state.filters).length;
+          state.chat.push({
+            who: 'OpsPulse',
+            html: `Removed <strong>${esc(f.label)}</strong>. ${state.filters.length ? `Back to <strong>${fmt.int(n)}</strong> accounts.` : `Filters cleared, all <strong>${fmt.int(n)}</strong> accounts back in scope.`}`,
+            chips: [],
+          });
+          render();
+        });
+        bar.appendChild(pill);
+      });
+      const clear = el('button', 'qa-pill qa-pill-clear', 'Clear all');
+      clear.addEventListener('click', () => {
+        state.filters = [];
+        state.chat.push({ who: 'OpsPulse', html: `Filters cleared, all <strong>${fmt.int(resolveStack(ds(), []).length)}</strong> accounts back in scope.`, chips: [] });
+        render();
+      });
+      bar.appendChild(clear);
+      chat.appendChild(bar);
+    }
+
     for (const m of state.chat) {
       const box = el('div', 'msg' + (m.who === 'You' ? ' me' : ''));
-      box.innerHTML = `<span class="who">${esc(m.who)}</span><div class="bubble">${m.html}</div>`;
-      if (m.chips?.length) {
-        const acts = el('div', 'acts');
-        m.chips.forEach((c) => { const b = el('button', 'lv-btn', esc(c.label)); b.addEventListener('click', c.fn); acts.appendChild(b); });
-        box.appendChild(acts);
+      box.innerHTML = `<span class="who">${esc(m.who)}</span>`;
+      const bubble = el('div', 'bubble');
+      if (m.kind === 'query') {
+        bubble.appendChild(m.result.unanswerable ? renderCannotAnswer(m.result.unanswerable) : renderQueryAnswer(m.result));
+      } else {
+        bubble.innerHTML = m.html;
       }
+      box.appendChild(bubble);
+
+      /* Suggested next steps are further QUERIES, not free text, which is what
+         makes refinement feel continuous rather than like starting over. */
+      const acts = el('div', 'acts');
+      if (m.kind === 'query' && m.result.actions?.length) {
+        m.result.actions.forEach((a) => {
+          const b = el('button', 'lv-btn', esc(a.label));
+          b.addEventListener('click', () => ask(a.question));
+          acts.appendChild(b);
+        });
+      }
+      if (m.chips?.length) m.chips.forEach((c) => { const b = el('button', 'lv-btn', esc(c.label)); b.addEventListener('click', c.fn); acts.appendChild(b); });
+      if (acts.childNodes.length) box.appendChild(acts);
       log.appendChild(box);
     }
     chat.appendChild(log);
 
-    const sug = el('div', 'suggest');
-    SUGGESTIONS.forEach((s) => { const b = el('button', '', esc(s)); b.addEventListener('click', () => ask(s)); sug.appendChild(b); });
-    chat.appendChild(sug);
+    /* Template questions, derived from today's data rather than hardcoded, so
+       a chip never offers a question whose answer is zero. Shown only as the
+       empty state: once someone is asking, the per-answer suggestions are the
+       better next step because they refine the current set. */
+    if (state.chat.length <= 1) {
+      const sug = el('div', 'suggest');
+      templateQuestions(ds()).forEach((t) => {
+        const b = el('button', '', esc(t.label));
+        b.addEventListener('click', () => ask(t.question));
+        sug.appendChild(b);
+      });
+      chat.appendChild(sug);
+    }
 
     const ask_ = el('form', 'chat-ask');
     ask_.innerHTML = '<input id="cpQ" placeholder="Ask about risks, causes, customers, revenue…" autocomplete="off"/><button class="lv-btn primary" type="submit">Ask</button>';
@@ -1101,12 +1196,106 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     return wrap;
   }
 
+  /*
+    Two answerers, tried in order.
+
+    1. The query layer, for questions about ACCOUNTS: renewals in a window,
+       adoption thresholds, exposure, a named customer. These compose, so the
+       filter stack narrows and the pills grow.
+    2. The insight narratives, for questions about what the ENGINE DETECTED:
+       why NPS moved, the backlog, the new-hire QA gap. These read pre-computed
+       insight objects and do not filter anything.
+
+    Order matters. The query layer is strict (a question maps to a
+    parameterised type or to nothing), so letting it decline first means the
+    older narratives still catch everything they always did. If both decline,
+    we say so and name what is supported rather than guessing.
+  */
   function ask(q) {
     state.chat.push({ who: 'You', html: esc(q), chips: [] });
-    const a = answer(q);
-    state.chat.push({ who: 'OpsPulse', html: a.html, chips: a.chips });
+
+    const res = runQuery(ds(), state.filters, q);
+    if (!res.unanswerable) {
+      state.filters = res.nextStack;
+      state.chat.push({ who: 'OpsPulse', kind: 'query', result: res, chips: [] });
+    } else {
+      const a = answer(q);
+      if (a.declined) {
+        /* Both answerers declined. One combined refusal, listing everything
+           either of them could have answered, so the user learns the real
+           surface area instead of half of it. */
+        state.chat.push({
+          who: 'OpsPulse',
+          kind: 'query',
+          result: { unanswerable: { missing: res.unanswerable.missing, supported: [...SUPPORTED, ...INSIGHT_TOPICS] } },
+          chips: [],
+        });
+      } else {
+        state.chat.push({ who: 'OpsPulse', html: a.html, chips: a.chips });
+      }
+    }
+
     render();
     setTimeout(() => { const l = body.querySelector('.chat-log'); if (l) l.scrollTop = l.scrollHeight; }, 0);
+  }
+
+  /* ── Structured answer rendering ──────────────────────────────────────────
+     Every query answer renders in the same order, because the point of this
+     surface is that a director learns to read it once:
+       headline → the accounts → why → confidence and its limiter → next steps
+     The account list is capped at six with the true total always shown, so the
+     cap never reads as the answer. */
+  const ACCOUNT_CAP = 6;
+
+  function renderQueryAnswer(res) {
+    const box = el('div', 'qa');
+
+    box.appendChild(el('div', 'qa-head', `<span class="qa-n">${esc(res.headline.value)}</span><span class="qa-l">${esc(res.headline.label)}</span>`));
+
+    if (res.groups) {
+      const t = el('div', 'qa-groups');
+      t.innerHTML = res.groups.map((g) => `
+        <div class="qa-grp"><span class="qa-grp-l">${esc(g.label)}</span>
+        <span class="qa-grp-n">${g.n}</span>
+        <span class="qa-grp-a">${esc(fmt.usdK(g.arr))}</span></div>`).join('');
+      box.appendChild(t);
+    }
+
+    if (res.rows && res.rows.length) {
+      const shown = res.rows.slice(0, ACCOUNT_CAP);
+      const list = el('div', 'qa-rows');
+      list.innerHTML = shown.map((r) => {
+        const why = reasonFor(r);
+        return `<div class="qa-row">
+          <span class="qa-co">${esc(r.company)}<small>${esc(r.account_id)} · renews in ${r.renewal_in_days}d</small></span>
+          <span class="qa-why">${esc(why.label)}<small>${esc(why.detail)}</small></span>
+          <span class="qa-arr">${esc(fmt.usdK(r.arr_usd))}</span>
+        </div>`;
+      }).join('');
+      box.appendChild(list);
+      if (res.total > shown.length) {
+        box.appendChild(el('div', 'qa-more', `Showing ${shown.length} of <strong>${res.total}</strong>, largest contracts first.`));
+      }
+    }
+
+    if (res.why) box.appendChild(el('div', 'qa-why-line', esc(res.why)));
+
+    if (res.confidence && res.confidence.pct != null) {
+      box.appendChild(el('div', 'qa-conf',
+        `<strong>${res.confidence.pct}% data coverage</strong> · ${esc(res.confidence.limiting_factor)}`));
+    }
+    return box;
+  }
+
+  /* The refusal. Renders no number at all, on purpose: a figure next to "I
+     cannot answer this" is the exact thing that gets remembered and quoted. */
+  function renderCannotAnswer(u) {
+    const box = el('div', 'qa qa-no');
+    box.appendChild(el('div', 'qa-no-h', esc(u.missing)));
+    box.appendChild(el('div', 'qa-no-b',
+      `I will not guess at a number I cannot compute. What I can answer from the data connected today:<ul>${
+        (u.supported || SUPPORTED).map((s) => `<li>${esc(s)}</li>`).join('')}</ul>`));
+    return box;
   }
 
   /* ── Data Upload ──────────────────────────────────────────────────────── */

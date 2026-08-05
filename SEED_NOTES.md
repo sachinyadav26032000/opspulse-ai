@@ -54,7 +54,34 @@ route hallucinates joins and produces numbers that do not reconcile. An
 unmapped question is answered with "I cannot answer that", the missing data
 named, and the nearest supported query offered.
 
-*(Populated in Task 1.)*
+| Query type | Parameters | Reads | Filter? |
+|---|---|---|---|
+| `renewal_window` | quarter+year, or a day count | `renewal_in_days` (contract field, exact) | yes |
+| `adoption_threshold` | `lt`/`gte`, percentage | `adoption_pct` (derived) | yes |
+| `arr_threshold` | `lt`/`gte`, dollars | `arr_usd` (billing field, exact) | yes |
+| `risk_filter` | none | escalations, NPS, adoption delta | yes |
+| `account_lookup` | account id | the account's own row | no |
+| `exposure_rollup` | none | `arr_usd` over the current set | no |
+| `cause_grouping` | none | strongest reason per account | no |
+
+**Composition.** Filter types push onto an ordered stack ANDed together and
+render as removable pills; the other types read whatever the stack currently
+holds without changing it. A follow-up therefore narrows the previous result
+set rather than running fresh.
+
+**Confidence is data coverage, not a probability.** A filter either applied or
+it did not, so a statistical confidence would be invented. What is reported is
+the share of rows in scope for which every field the query touched is present,
+with the weakest field always named as the limiting factor.
+
+**Company names are not unique.** ~2,400 accounts share ~430 company names,
+some up to 13 times. A name in a question resolves against the *current
+filtered set* first (that is what "in there" means), then the whole book, and
+the answer states how many accounts share the name and which one it picked.
+
+**Nothing is guessed.** An unmapped question renders a refusal that carries no
+number at all and lists the full supported surface, both account queries and
+insight topics.
 
 ---
 
