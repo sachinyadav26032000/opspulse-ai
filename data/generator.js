@@ -730,7 +730,74 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
     }
   }
 
-  /* ---- 10. Compliance clock on privacy tickets ------------------------- */
+  /* ---- 10. Weekly product usage --------------------------------------- */
+  /*
+     Adoption is the one renewal signal the product talked about but could not
+     compute. Everything else here (tickets, escalations, QA, NPS) is a record
+     of someone *contacting* you; usage is the only stream that moves when a
+     customer quietly stops showing up, which is the failure mode that ends
+     contracts without ever opening a ticket.
+
+     Weekly, not daily, for two reasons. Weekly active seats is the metric the
+     domain actually reports, and 400 accounts × 90 days would triple the
+     dataset to push a number whose real cadence is a week anyway. Thirteen
+     buckets per account keeps the whole stream near the size of the NPS set.
+
+     `day_index` is the LAST day of the week, so every existing window helper
+     (`day_index >= recent_from`) segments usage correctly with no changes.
+
+     The decline is injected as a cohort but never labelled: nothing downstream
+     reads `usage_decline_cohort_ids` to find it. The drop has to be recovered
+     by comparing each account against its own baseline, exactly as the four
+     original patterns are. */
+  const WEEK_DAYS = 7;
+  const WEEKS = Math.floor(DAYS / WEEK_DAYS);                   // 12 full weeks
+  const RECENT_WEEK_FROM = Math.floor(RECENT_FROM / WEEK_DAYS); // first week inside the recent window
+
+  /* Packed onto the account as a plain array of integers rather than emitted
+     as a flat collection. 2,400 accounts × 12 weeks is 28,800 rows, which
+     would nearly quadruple a dataset that is currently ~11,600 records, to
+     carry a number that is one integer per bucket. Twelve ints per account
+     costs a fraction of that and every consumer wants the series anyway.
+
+     ONLY active_seats is stored. Adoption is deliberately NOT stored as a
+     rounded ratio: rule 1 says a printed figure must re-divide from its
+     printed inputs, and a 2-decimal ratio alongside exact seat counts drifts
+     from them. Seats and active seats are both exact integers, so the
+     percentage is derived at read time in aggregate.js and always reconciles. */
+
+  /* Roughly a fifth of the book slides. Weighted toward paying plans: a
+     Starter account shedding a seat is noise, an Enterprise account shedding
+     40% of its seats is the renewal conversation. */
+  const usagePool = rnd
+    .shuffle(accounts.filter((a) => a.plan !== 'Starter' || rnd.chance(0.3)).slice())
+    .slice(0, Math.round(accounts.length * 0.21));
+  const usageDeclineIds = new Set(usagePool.map((a) => a.account_id));
+
+  for (const acct of accounts) {
+    const declines = usageDeclineIds.has(acct.account_id);
+    /* Each account gets its own healthy adoption level and its own noise, so a
+       flat cross-account threshold would be meaningless and any detector has
+       to work per-account against that account's own baseline. */
+    const baseAdoption = rnd.range(0.52, 0.94);
+    /* Declining accounts lose 30-46% of their adoption across the recent
+       window. Ramped, not stepped: a cliff would be trivially detectable and
+       would not look like a real disengagement. */
+    const depth = declines ? rnd.range(0.30, 0.46) : 0;
+
+    const weeks = [];
+    for (let w = 0; w < WEEKS; w++) {
+      const t = w < RECENT_WEEK_FROM
+        ? 0
+        : (w - RECENT_WEEK_FROM) / Math.max(1, WEEKS - 1 - RECENT_WEEK_FROM);
+      const raw = baseAdoption * (1 - depth * t) + rnd.range(-0.035, 0.035);
+      const adoption = raw < 0.02 ? 0.02 : raw > 1 ? 1 : raw;
+      weeks.push(Math.max(1, Math.round(acct.seats * adoption)));
+    }
+    acct.usage_weeks = weeks;
+  }
+
+  /* ---- 11. Compliance clock on privacy tickets ------------------------- */
   for (const t of tickets) {
     if (t.category !== 'Data & Privacy') continue;
     if (t.tag === 'dsar' || t.tag === 'deletion') {
@@ -762,6 +829,13 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
       next_nps_seq: nid,
       next_qa_seq: QA_TOTAL,
       series: { inflow, backlog, throughput, backlog_target: backlogTarget },
+      /* Usage is a weekly series packed onto each account (acct.usage_weeks),
+         not a top-level collection, so it adds no rows to the record counts.
+         These two let a consumer segment the series without re-deriving the
+         week arithmetic. */
+      weeks: WEEKS,
+      recent_week_from: RECENT_WEEK_FROM,
+      week_days: WEEK_DAYS,
       counts: {
         tickets: tickets.length,
         escalations: escalations.length,
