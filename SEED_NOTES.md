@@ -124,6 +124,61 @@ external event.
 
 ---
 
-## Outcome / decision lifecycle
+## Outcome / decision lifecycle — *mixed, and labelled per row*
 
-*(Populated in Task 3.)*
+`data/ledger.js`. Two kinds of row live in the same ledger and every row says
+which it is via a `simulated` flag. The Impact surface states the split on
+screen rather than in this file only.
+
+### Real rows — *Generated → derived*
+
+Opened by the engine actually raising an insight in this session. `surfaced_at`,
+`viewed_at`, `actioned_at` and `action_taken` are genuine records of what the
+engine raised and what the user did. `arr_at_risk` is captured **at surfacing
+time and never recomputed**, so the ledger shows what was known then rather
+than what is known now.
+
+These persist to `localStorage` under `opspulse.ledger.v1`, surviving the ~9s
+engine pass and a page reload.
+
+### Seeded rows — *Seeded → illustrative*
+
+24 **closed** decisions dated 120–400 days before the as-of instant, so a
+prototype has finished outcomes to show. Marked `simulated: true`, deterministic
+from the dataset seed so two tabs agree, and dated outside the analysis window
+so they can never collide with a live episode.
+
+The outcome distribution is deliberately **not flattering**: ~62% retained, ~20%
+churned anyway, ~10% expanded. A ledger that only remembers its wins is one you
+cannot forecast with, and that is the first thing a sceptical buyer checks.
+
+### Episodes — the correctness rule that matters
+
+`insight_id` is a deterministic hash of the anomaly key, so the same anomaly
+returns the same id on every pass. That is what lets a lifecycle row attach at
+all, and it carries one hazard: an anomaly that clears and returns months later
+gets the **same id**. Without a boundary a save recorded in Q2 would silently
+absorb a Q4 recurrence and corrupt the retention figure.
+
+So rows are keyed `insight_id#episode`. A new episode opens **only when the
+previous one has closed with an outcome**. A detector flickering across its
+threshold for a pass or two stays one episode, which keeps one save from being
+split across several rows.
+
+### The naming rule
+
+The financial metric is **`arr_on_flagged_retained`**, rendered as **"ARR
+retained on flagged accounts"**. Never *ARR saved*, never *influenced*.
+
+The product knows it flagged an account and knows the account renewed. It does
+not know the second happened because of the first, because nobody ran the
+account without the intervention, so no counterfactual exists. The caveat is
+rendered **on the Impact surface itself**, not in a footnote: if the number is
+going under a pricing conversation, the limit of what it claims belongs on the
+same screen.
+
+### MCP stays read-only
+
+Recording a decision is a mutation, and the standing rule is that adding a
+mutating MCP tool is a decision to escalate rather than make. Ledger writes are
+therefore **UI-only**; all seven MCP tools remain read-only and unchanged.

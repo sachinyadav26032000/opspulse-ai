@@ -29,6 +29,10 @@ import { toCsv } from '../data/csv.js';
    accounts, and falls back to the insight narratives below for questions about
    what the engine detected. Neither path can invent a number. */
 import { ask as runQuery, resolve as resolveStack, templateQuestions, reasonFor, SUPPORTED } from '../engine/web/query.js';
+/* The decision ledger. Writes happen here in the UI only: the seven MCP tools
+   stay read-only, per the standing rule that adding a mutating tool is a
+   decision to escalate rather than make. */
+import { createLedger, buildSeededHistory, impactRollup, OUTCOME } from '../data/ledger.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -53,7 +57,7 @@ const moneyRange = (i) => {
   return `${fmt.usdK(e.range_low_usd)} – ${fmt.usdK(e.range_high_usd)}`;
 };
 
-export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
+export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = false } = {}) {
   /* One root child, for the same reason as the service desk: host pages size
      the app with `#app > * { flex: 1 }`, and appending the toolbar as a
      sibling of the body made the toolbar grow to half the viewport. */
@@ -66,6 +70,12 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
      in the store because it is one person's line of enquiry, not part of the
      operation every tab shares. */
   const state = { view: 'dash', filter: 'all', q: '', selected: null, chat: [], filters: [], lastUpload: null };
+
+  /* One ledger per mounted app. Seeded history is added once so the Impact
+     surface has closed decisions to show; live rows accumulate on top as the
+     engine raises insights and the user acts on them. */
+  const ledger = createLedger({ fresh: freshLedger });
+  let seededOnce = false;
 
   /* ── Chrome ───────────────────────────────────────────────────────────── */
   const top = el('div', 'lv-top');
@@ -90,6 +100,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     { id: 'feed', label: 'Decision Feed', icon: IC.feed, badge: () => store.engine.insights.length },
     { id: 'radar', label: 'Risk Radar', icon: IC.radar },
     { id: 'copilot', label: 'Executive Copilot', icon: IC.chat },
+    { id: 'impact', label: 'Impact', icon: IC.up },
     { id: 'upload', label: 'Data Upload', icon: IC.up },
   ];
   const nav = root.querySelector('#opNav');
@@ -207,6 +218,10 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
      ══════════════════════════════════════════════════════════════════════ */
 
   function drillInsight(ins) {
+    /* Opening the drill IS the view event. Recorded before rendering so the
+       time-to-first-view figure measures the engine raising it to a human
+       reading it, not to a human finishing reading it. */
+    ledger.markViewed(ins.insight_id);
     const d = ds(), m = ins._meta;
     const from = Math.max(0, d.meta.days - 45), to = d.meta.days - 1;
     const labels = labelsFor(from, to);
@@ -1307,6 +1322,108 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     return box;
   }
 
+  /* ── Impact ───────────────────────────────────────────────────────────────
+     What was flagged and what happened next, in the three terms a buyer asks
+     about: financial, adoption, operational.
+
+     The financial headline is "ARR retained on flagged accounts" and it is
+     never anything else. The product knows it flagged an account and knows the
+     account renewed; it does NOT know the second happened because of the
+     first, because nobody ran the account without the intervention. "ARR
+     saved" would be a causal claim with no counterfactual behind it, and it is
+     the exact claim a sceptical buyer probes when money is discussed. */
+  function viewImpact() {
+    const wrap = el('div', 'lv-view');
+    const rows = resolveStack(ds(), []);
+    const r = impactRollup(ledger, rows);
+    const f = r.financial, ad = r.adoption, op = r.operational;
+
+    const hrs = (ms) => (ms == null ? 'n/a' : ms < 3600000 ? `${Math.round(ms / 60000)} min` : `${(ms / 3600000).toFixed(1)} hrs`);
+    /* Local rather than extending the shared fmt.usdK, which stops at
+       thousands and is relied on by every other surface. Ledger totals roll
+       into millions, and "$2455k" reads as a typo. */
+    const bigMoney = (v) => (v == null ? 'n/a'
+      : Math.abs(v) >= 1e6 ? '$' + (v / 1e6).toFixed(1) + 'm'
+      : fmt.usdK(v));
+
+    const p = el('div', 'panel');
+    p.innerHTML = `<div class="panel-hd"><h3>Impact</h3><span class="hint">${fmt.int(r.total_rows)} decisions on the ledger · ${fmt.int(f.decisions_closed)} closed</span></div>`;
+    const bd = el('div', 'panel-bd');
+
+    bd.appendChild(el('div', 'imp-grid', `
+      <div class="imp-card">
+        <span class="imp-k">Financial</span>
+        <div class="imp-n">${esc(bigMoney(f.arr_on_flagged_retained))}</div>
+        <div class="imp-l">ARR retained on flagged accounts</div>
+        <ul class="imp-list">
+          <li><span>ARR flagged</span><b>${esc(bigMoney(f.arr_flagged))}</b></li>
+          <li><span>On flagged accounts that churned anyway</span><b>${esc(bigMoney(f.arr_on_flagged_churned))}</b></li>
+          <li><span>Expansion surfaced</span><b>${esc(bigMoney(f.arr_expansion_surfaced))}</b></li>
+          <li><span>Closed decisions that renewed</span><b>${f.retained_share == null ? 'n/a' : f.retained_share + '%'}</b></li>
+        </ul>
+      </div>
+      <div class="imp-card">
+        <span class="imp-k">Adoption</span>
+        <div class="imp-n">${fmt.int(ad.below_threshold)}</div>
+        <div class="imp-l">accounts below ${ad.threshold_pct}% adoption</div>
+        <ul class="imp-list">
+          <li><span>Accounts with usage data</span><b>${fmt.int(ad.accounts_with_usage)}</b></li>
+          <li><span>Recovered above ${ad.threshold_pct}%</span><b>${fmt.int(ad.recovered_above)}</b></li>
+        </ul>
+      </div>
+      <div class="imp-card">
+        <span class="imp-k">Operational</span>
+        <div class="imp-n">${fmt.int(op.surfaced_unprompted)}</div>
+        <div class="imp-l">decisions surfaced without anyone asking</div>
+        <ul class="imp-list">
+          <li><span>Opened by a human</span><b>${fmt.int(op.viewed)}</b></li>
+          <li><span>Actioned</span><b>${fmt.int(op.actioned)}</b></li>
+          <li><span>Median time to first view</span><b>${esc(hrs(op.median_time_to_view_ms))}</b></li>
+          <li><span>Still pending</span><b>${fmt.int(op.pending)}</b></li>
+        </ul>
+      </div>`));
+
+    /* The attribution caveat is part of the surface, not a footnote. If this
+       number is going to sit under a pricing conversation, the limit of what
+       it claims has to be on the same screen as the number. */
+    bd.appendChild(el('div', 'imp-note', `
+      <strong>What this does and does not say.</strong>
+      These accounts were flagged and these are their outcomes. That is not the same as saying they renewed
+      <em>because</em> they were flagged: nobody ran the account without the intervention, so no counterfactual exists.
+      The metric is deliberately named <strong>ARR retained on flagged accounts</strong> rather than ARR saved.
+      ${r.simulated_rows ? `<br><br><strong>${fmt.int(r.simulated_rows)} of ${fmt.int(r.total_rows)} rows are seeded history</strong>, dated before the current
+      analysis window so a prototype has closed decisions to show. They are marked <code>simulated</code> in the ledger.
+      Rows opened in this session are real records of what the engine raised and what you did with it.` : ''}`));
+
+    p.appendChild(bd);
+    wrap.appendChild(p);
+
+    /* The ledger itself, most recent first. Nothing is hidden: decisions that
+       ended badly sit in the same list as the ones that did not, because a
+       ledger that only remembers its wins is one you cannot forecast with. */
+    const recent = ledger.all().slice().sort((a, b) => b.surfaced_at - a.surfaced_at).slice(0, 14);
+    if (recent.length) {
+      wrap.appendChild(table(
+        [
+          { k: 'title', label: 'Decision' },
+          { k: 'when', label: 'Surfaced' },
+          { k: 'arr', label: 'ARR at risk' },
+          { k: 'action', label: 'Action taken' },
+          { k: 'outcome', label: 'Outcome' },
+        ],
+        recent.map((d) => ({
+          title: d.title + (d.simulated ? ' ·seeded' : ''),
+          when: new Date(d.surfaced_at).toLocaleDateString(),
+          arr: d.arr_at_risk == null ? 'not costed' : bigMoney(d.arr_at_risk),
+          action: d.action_taken || (d.viewed_at ? 'viewed, not actioned' : 'not yet opened'),
+          outcome: d.outcome,
+        })),
+        { title: 'Decision ledger', hint: 'most recent first · outcomes include the ones that went badly' },
+      ));
+    }
+    return wrap;
+  }
+
   /* ── Data Upload ──────────────────────────────────────────────────────── */
   function viewUpload() {
     const d = ds();
@@ -1419,6 +1536,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     const v = state.view === 'dash' ? viewDashboard()
       : state.view === 'feed' ? viewFeed()
       : state.view === 'radar' ? viewRadar()
+      : state.view === 'impact' ? viewImpact()
       : state.view === 'copilot' ? viewCopilot()
       : viewUpload();
     body.appendChild(v);
@@ -1461,6 +1579,17 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       return;
     }
     if (evt.type === 'engine' || evt.type === 'reset') {
+      /* Record what the engine is raising right now. Seeded history is added
+         once, on the first pass, so the Impact surface has closed decisions
+         to show alongside the live ones. */
+      try {
+        const insights = eng().insights || [];
+        if (!seededOnce) {
+          seededOnce = true;
+          ledger.seedHistory(buildSeededHistory(ds(), resolveStack(ds(), [])));
+        }
+        ledger.sync(insights);
+      } catch { /* the ledger must never be able to break a render */ }
       // Never rebuild the DOM out from under someone who is mid-interaction:
       // an open drill-down, or a half-typed question in the copilot / search
       // box (render() recreates the input, dropping its value and focus).

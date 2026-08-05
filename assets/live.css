@@ -570,3 +570,32 @@
   border-radius: 4px; background: rgba(255,255,255,.09); color: var(--text-dim);
   font-size: .58rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
 }
+
+/* ---------- Impact rollup ---------- */
+.imp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.imp-card { padding: 15px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-3); }
+.imp-k { font-size: .62rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; color: var(--emerald); }
+.imp-n {
+  margin-top: 9px; font-size: 1.85rem; font-weight: 800; letter-spacing: -.025em; line-height: 1;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.imp-l { margin-top: 5px; font-size: .78rem; color: var(--text-soft); font-weight: 600; line-height: 1.4; }
+.imp-list { list-style: none; margin: 13px 0 0; padding: 12px 0 0; border-top: 1px dashed var(--line-strong);
+  display: flex; flex-direction: column; gap: 7px; }
+.imp-list li { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; font-size: .75rem; }
+.imp-list span { color: var(--text-dim); line-height: 1.4; }
+.imp-list b { color: var(--text); font-weight: 700; white-space: nowrap; }
+
+/* The attribution caveat sits ON the surface, not in a footnote: if the number
+   is going under a pricing conversation, the limit of what it claims belongs
+   on the same screen. */
+.imp-note {
+  margin-top: 15px; padding: 13px 15px;
+  border: 1px solid var(--line-strong); border-radius: 10px;
+  background: rgba(255,255,255,.02);
+  font-size: .77rem; line-height: 1.65; color: var(--text-dim);
+}
+.imp-note strong { color: var(--text); }
+.imp-note em { color: var(--text-soft); font-style: italic; }
+.imp-note code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .72rem; color: var(--cyan); }
