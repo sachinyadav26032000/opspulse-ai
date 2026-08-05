@@ -42,6 +42,7 @@ export const QUERY_TYPES = {
   ACCOUNT_LOOKUP: 'account_lookup',
   EXPOSURE_ROLLUP: 'exposure_rollup',
   CAUSE_GROUPING: 'cause_grouping',
+  EXTERNAL_FILTER: 'external_filter',
 };
 
 /* Which types narrow the set (push a pill) and which read whatever the stack
@@ -52,6 +53,7 @@ const FILTERS = new Set([
   QUERY_TYPES.ADOPTION_THRESHOLD,
   QUERY_TYPES.ARR_THRESHOLD,
   QUERY_TYPES.RISK_FILTER,
+  QUERY_TYPES.EXTERNAL_FILTER,
 ]);
 export const isFilter = (q) => FILTERS.has(q?.type);
 
@@ -70,6 +72,10 @@ const FIELDS_USED = {
   [QUERY_TYPES.ACCOUNT_LOOKUP]: ['adoption_pct', 'renewal_in_days', 'arr_usd'],
   [QUERY_TYPES.EXPOSURE_ROLLUP]: ['arr_usd', 'renewal_in_days'],
   [QUERY_TYPES.CAUSE_GROUPING]: ['adoption_pct', 'recent_escalations', 'nps'],
+  /* External coverage is deliberately NOT reported as a percentage of the
+     book: no feed covers every company, so a low number here would read as a
+     data-quality failure when it is simply how corporate events work. */
+  [QUERY_TYPES.EXTERNAL_FILTER]: ['arr_usd'],
 };
 
 /* Human names, so the limiting factor reads as a sentence rather than a column. */
@@ -141,11 +147,20 @@ function applyOne(rows, q, ds) {
       /* The same at-risk rule the engine's churn detector uses, kept here in
          one place so the Copilot and the Feed cannot disagree about who is at
          risk: a recent escalation, or a detractor NPS, or adoption down 10+
-         points against the account's own baseline. */
+         points against the account's own baseline.
+
+         An external risk event qualifies ON ITS OWN. That is the entire point
+         of the external feed: an account being acquired is at risk precisely
+         WHEN its internal metrics look healthy, so requiring an internal
+         signal too would filter out exactly the accounts this data exists to
+         catch. */
       return rows.filter((r) =>
+        externalReasonFor(r) != null ||
         (r.recent_escalations > 0) ||
         (r.nps != null && r.nps <= 6) ||
         (r.adoption_delta_pct != null && r.adoption_delta_pct <= -10));
+    case QUERY_TYPES.EXTERNAL_FILTER:
+      return rows.filter((r) => (r.external_signals || []).some((s) => !q.params.type || s.type === q.params.type));
     default:
       return rows;
   }
@@ -238,6 +253,25 @@ export function parseQuestion(text, ds, scope) {
     return { type: QUERY_TYPES.CAUSE_GROUPING, params: {}, label: 'reasons, ranked' };
   }
 
+  /* External events: "which customers have been acquired", "any acquisitions",
+     "who lost their champion". Tested before the generic risk filter so the
+     more specific question wins. */
+  if (/(acqui|merger|merged|bought|takeover)/.test(q)) {
+    return { type: QUERY_TYPES.EXTERNAL_FILTER, params: { type: 'acquisition' }, label: 'acquisition or merger' };
+  }
+  if (/(bankrupt|distress|insolven|administration|restructur)/.test(q)) {
+    return { type: QUERY_TYPES.EXTERNAL_FILTER, params: { type: 'distress' }, label: 'financial distress' };
+  }
+  if (/(champion|stakeholder|sponsor|left|departur|departed)/.test(q)) {
+    return { type: QUERY_TYPES.EXTERNAL_FILTER, params: { type: 'stakeholder_change' }, label: 'stakeholder departure' };
+  }
+  if (/(funding|raised|series [a-e]|expansion opportunit)/.test(q)) {
+    return { type: QUERY_TYPES.EXTERNAL_FILTER, params: { type: 'funding' }, label: 'funding raised' };
+  }
+  if (/(external|corporate event|news)/.test(q)) {
+    return { type: QUERY_TYPES.EXTERNAL_FILTER, params: {}, label: 'any external event' };
+  }
+
   /* Risk filter: "which accounts warrant attention", "who is at risk" */
   if (/(at risk|attention|worry|watch|trouble|churn)/.test(q)) {
     return { type: QUERY_TYPES.RISK_FILTER, params: {}, label: 'at-risk accounts' };
@@ -307,6 +341,7 @@ export const SUPPORTED = [
   'total ARR exposed across the current set',
   'the reasons behind the current set, ranked',
   'a single account by name',
+  'accounts carrying an external corporate event (acquisition, distress, stakeholder change, funding)',
 ];
 
 /* ==========================================================================
@@ -484,8 +519,10 @@ function whyFilter(q, rows, ds) {
       return `Adoption is weekly active seats over contracted seats, averaged across the ${ds.meta.days - ds.meta.recent_from}-day analysis window and compared with each account's own earlier baseline.`;
     case QUERY_TYPES.ARR_THRESHOLD:
       return `Filtered on contract value, which comes from billing rather than from any model.`;
+    case QUERY_TYPES.EXTERNAL_FILTER:
+      return `External corporate events, which internal metrics cannot see. These are SEEDED sample records, not a live feed: every one is marked as such and carries no source link, because a fabricated citation is worse than none.`;
     case QUERY_TYPES.RISK_FILTER:
-      return `An account is at risk if it has an escalation in the current window, a detractor NPS, or adoption down 10 or more points against its own baseline. The same rule the Decision Feed applies.`;
+      return `An account is at risk if it carries an external risk event, an escalation in the current window, a detractor NPS, or adoption down 10 or more points against its own baseline. An external event qualifies on its own, because an acquisition is most dangerous exactly when the internal metrics look fine.`;
     default:
       return '';
   }
@@ -508,6 +545,9 @@ function suggestions(ds, stack, rows) {
   }
   if (!has(QUERY_TYPES.RENEWAL_WINDOW)) {
     out.push({ label: 'Renewing within 90 days', question: 'renewing in the next 90 days' });
+  }
+  if (!has(QUERY_TYPES.EXTERNAL_FILTER) && rows.some((r) => (r.external_signals || []).length)) {
+    out.push({ label: 'Only external events', question: 'which have an external event' });
   }
   out.push({ label: 'Total ARR exposed', question: 'how much ARR is at risk' });
   out.push({ label: 'Break down the reasons', question: 'what are the reasons' });

@@ -85,9 +85,42 @@ insight topics.
 
 ---
 
-## External signals
+## External signals — *Seeded → illustrative*
 
-*(Populated in Task 2.)*
+**These are fixtures. Nothing here is detected, retrieved or verified.** They
+exist so the schema, the precedence rule and the surfacing can be built and
+reviewed now; real feeds (Crunchbase, Tracxn, ZoomInfo) are licensed data and a
+procurement decision rather than an engineering one.
+
+- **Volume.** ~2.5% of accounts carry exactly one signal, roughly 60 on this
+  dataset. Deliberately sparse: a book where a fifth of customers were being
+  acquired would read as obviously fake.
+- **Types.** `acquisition` and `distress` (`risk_up`, high confidence),
+  `stakeholder_change` (`risk_up`, lower confidence), `funding`
+  (`opportunity`, runs the other way).
+- **Every record is marked `seeded: true`.**
+
+### The one deliberate departure from the brief
+
+The brief asks each signal to carry a `source_url` that links out. That is
+right for a live feed and wrong for a fixture: **a fabricated link to a real
+news domain is a citation that does not exist**, and it is the first thing
+someone clicks in a demo. So seeded records carry a `source` naming the sample
+feed, a real `detected_at`, and a **null `source_url`**. The UI renders
+provenance either way and shows a `sample` badge in place of a dead link. When
+a real feed is connected it supplies real URLs, and the badge disappears on its
+own with no UI change.
+
+### Precedence
+
+`external_event` sits at the top of the reason taxonomy in `reasonFor()`, above
+adoption decline, escalations and detractor NPS. An external risk event also
+qualifies an account as at-risk **on its own**, without any internal signal.
+That is the entire point: an acquisition is most dangerous exactly when the
+internal metrics look healthy, so requiring corroboration would filter out the
+accounts this data exists to catch. Verified: an account with zero escalations,
+healthy NPS and flat adoption still surfaces, and the reason shown is the
+external event.
 
 ---
 

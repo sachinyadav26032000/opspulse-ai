@@ -1266,9 +1266,18 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       const list = el('div', 'qa-rows');
       list.innerHTML = shown.map((r) => {
         const why = reasonFor(r);
-        return `<div class="qa-row">
+        /* Provenance is mandatory on an external signal. An unsourced claim
+           that a customer was acquired is worse than no claim at all, so the
+           source and detection date always render. Seeded records show a
+           "sample" badge instead of a link rather than a fabricated URL. */
+        const ext = why.external;
+        const prov = ext
+          ? `<span class="qa-prov">${ext.seeded ? '<b class="qa-seed">sample</b> ' : ''}${esc(ext.source)} · ${new Date(ext.detected_at).toLocaleDateString()}${
+              ext.source_url ? ` · <a href="${esc(ext.source_url)}" target="_blank" rel="noopener noreferrer">source</a>` : ''}</span>`
+          : '';
+        return `<div class="qa-row${ext ? ' qa-row-ext' : ''}">
           <span class="qa-co">${esc(r.company)}<small>${esc(r.account_id)} · renews in ${r.renewal_in_days}d</small></span>
-          <span class="qa-why">${esc(why.label)}<small>${esc(why.detail)}</small></span>
+          <span class="qa-why">${esc(why.label)}<small>${esc(why.detail)}</small>${prov}</span>
           <span class="qa-arr">${esc(fmt.usdK(r.arr_usd))}</span>
         </div>`;
       }).join('');

@@ -797,7 +797,68 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
     acct.usage_weeks = weeks;
   }
 
-  /* ---- 11. Compliance clock on privacy tickets ------------------------- */
+  /* ---- 11. External corporate signals (SEEDED, not detected) -----------
+     Every competitor scores churn from internal data. A customer being
+     acquired is invisible to all of them, and it is the event that actually
+     ends contracts: the acquirer already has a vendor for this.
+
+     These are SEEDED FIXTURES, not detections, and they are marked as such on
+     every record. Real feeds (Crunchbase, Tracxn, ZoomInfo) are licensed data
+     and a procurement decision rather than an engineering one. The schema and
+     the surfacing are built now so the wiring is a swap later.
+
+     On provenance, one deliberate departure from the brief. The brief asks for
+     a source_url that links out, which is right for a live feed. For a seeded
+     record it is not: a fabricated link to a real news domain is a citation
+     that does not exist, which is a worse failure than no link, and precisely
+     the thing that ends a demo when someone clicks it. So seeded signals carry
+     `seeded: true`, a source naming the sample feed, and a NULL source_url.
+     The UI renders provenance either way and shows a "sample" badge instead of
+     a dead link. When a real feed is connected it supplies real URLs and the
+     badge disappears on its own. */
+  const EXTERNAL_TEMPLATES = [
+    { type: 'acquisition', effect: 'risk_up', confidence: 0.92,
+      headline: (c) => `${c} to be acquired; integration of overlapping vendor contracts expected`,
+      source: 'Sample M&A feed' },
+    { type: 'acquisition', effect: 'risk_up', confidence: 0.88,
+      headline: (c) => `${c} announces merger; procurement consolidation under review`,
+      source: 'Sample M&A feed' },
+    { type: 'distress', effect: 'risk_up', confidence: 0.9,
+      headline: (c) => `${c} enters restructuring; discretionary software spend frozen`,
+      source: 'Sample credit-risk feed' },
+    { type: 'stakeholder_change', effect: 'risk_up', confidence: 0.71,
+      headline: (c) => `VP Operations departs ${c}; successor not yet announced`,
+      source: 'Sample people feed' },
+    { type: 'stakeholder_change', effect: 'risk_up', confidence: 0.68,
+      headline: (c) => `${c} reorganises customer operations; programme sponsor moved on`,
+      source: 'Sample people feed' },
+    { type: 'funding', effect: 'opportunity', confidence: 0.85,
+      headline: (c) => `${c} raises Series C; headcount plan implies seat expansion`,
+      source: 'Sample funding feed' },
+  ];
+
+  /* Deliberately sparse. External events are rare, and a book where a fifth of
+     accounts were being acquired would read as obviously fake. ~2.5% carry one,
+     which on this dataset is roughly 60 accounts across all four types. */
+  const externalPool = rnd.shuffle(accounts.slice()).slice(0, Math.round(accounts.length * 0.025));
+  for (const acct of externalPool) {
+    const t = rnd.pick(EXTERNAL_TEMPLATES);
+    /* Detected somewhere in the recent window, so the event is current news
+       rather than something that should already have been actioned. */
+    const detectedDay = rnd.int(RECENT_FROM, DAYS - 1);
+    acct.external_signals = [{
+      type: t.type,
+      detected_at: dayMs(detectedDay),
+      source: t.source,
+      source_url: null,          // null on purpose: see the note above
+      headline: t.headline(acct.company),
+      confidence: t.confidence,
+      effect: t.effect,
+      seeded: true,
+    }];
+  }
+
+  /* ---- 12. Compliance clock on privacy tickets ------------------------- */
   for (const t of tickets) {
     if (t.category !== 'Data & Privacy') continue;
     if (t.tag === 'dsar' || t.tag === 'deletion') {

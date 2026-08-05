@@ -553,3 +553,20 @@
 .qa-no-b { font-size: .79rem; line-height: 1.6; color: var(--text-soft); }
 .qa-no-b ul { margin: 7px 0 0; padding-left: 17px; display: flex; flex-direction: column; gap: 3px; }
 .qa-no-b li { color: var(--text-dim); }
+
+/* ---------- External signal provenance ----------
+   An external event outranks internal scoring, so the row is marked. The
+   provenance line is mandatory: source and detection date always render, and
+   a seeded record shows a "sample" badge rather than a fabricated link. */
+.qa-row-ext { border-left: 3px solid var(--cyan); }
+.qa-row-ext .qa-why { color: var(--cyan); }
+.qa-prov {
+  display: block; margin-top: 4px;
+  font-size: .66rem; font-weight: 500; color: var(--text-dim); line-height: 1.4;
+}
+.qa-prov a { color: var(--cyan); text-decoration: underline; text-underline-offset: 2px; }
+.qa-seed {
+  display: inline-block; margin-right: 6px; padding: 1px 5px;
+  border-radius: 4px; background: rgba(255,255,255,.09); color: var(--text-dim);
+  font-size: .58rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
+}
