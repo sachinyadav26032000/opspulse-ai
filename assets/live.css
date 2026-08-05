@@ -455,3 +455,147 @@
   .sd-table .c-sm { display: none; }
   .drill-kpis { grid-template-columns: 1fr 1fr; }
 }
+
+/* ==========================================================================
+   Copilot: composable query answers
+   --------------------------------------------------------------------------
+   Every query answer renders in one fixed order, because the value of this
+   surface is that a director learns to read it once and then reads every
+   later answer at a glance:
+
+     headline number → the accounts → why → confidence → next steps
+
+   Built from the tokens already in styles.css. No new colours.
+   ========================================================================== */
+
+/* ---------- The filter stack ---------- */
+.qa-pills {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
+  padding: 10px 14px; margin-bottom: 2px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(52, 211, 153, .04);
+}
+.qa-pills-k {
+  font-size: .62rem; text-transform: uppercase; letter-spacing: .11em;
+  font-weight: 800; color: var(--text-dim); margin-right: 2px;
+}
+.qa-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 9px 5px 11px; border-radius: 100px;
+  border: 1px solid rgba(52, 211, 153, .35);
+  background: rgba(52, 211, 153, .1);
+  color: var(--text); font: inherit; font-size: .73rem; font-weight: 600;
+  cursor: pointer; transition: background .18s, border-color .18s;
+}
+.qa-pill:hover { background: rgba(52, 211, 153, .18); border-color: rgba(52, 211, 153, .55); }
+.qa-pill span { font-size: .95rem; line-height: 1; color: var(--text-dim); }
+.qa-pill:hover span { color: var(--text); }
+.qa-pill-clear {
+  border-color: var(--line-strong); background: transparent; color: var(--text-dim);
+}
+.qa-pill-clear:hover { background: rgba(255,255,255,.05); color: var(--text); }
+
+/* ---------- The answer ---------- */
+.qa { display: flex; flex-direction: column; gap: 11px; }
+
+.qa-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.qa-n {
+  font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; line-height: 1;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.qa-l { font-size: .8rem; color: var(--text-dim); font-weight: 600; }
+
+/* Account rows. Three columns so the eye can scan one at a time: who, why,
+   how much. Collapses to stacked on narrow panes. */
+.qa-rows { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.qa-row {
+  display: grid; grid-template-columns: 1.3fr 1.5fr auto; gap: 12px;
+  padding: 9px 12px; align-items: center;
+  background: var(--panel-3);
+}
+.qa-row + .qa-row { border-top: 1px solid var(--line); }
+.qa-co, .qa-why { min-width: 0; font-size: .8rem; color: var(--text); font-weight: 600; }
+.qa-co small, .qa-why small { display: block; font-size: .69rem; font-weight: 500; color: var(--text-dim); margin-top: 2px; }
+.qa-why { color: var(--warn); }
+.qa-arr { font-size: .82rem; font-weight: 700; color: var(--text); white-space: nowrap; }
+@media (max-width: 560px) {
+  .qa-row { grid-template-columns: 1fr auto; }
+  .qa-why { grid-column: 1 / -1; }
+}
+
+.qa-more { font-size: .73rem; color: var(--text-dim); }
+.qa-why-line { font-size: .79rem; line-height: 1.6; color: var(--text-soft); }
+
+/* Confidence is coverage, and its limiting factor is always named. Ruled off
+   so it reads as a qualification of the number above, not another fact. */
+.qa-conf {
+  font-size: .72rem; color: var(--text-dim); line-height: 1.5;
+  padding-top: 9px; border-top: 1px dashed var(--line-strong);
+}
+.qa-conf strong { color: var(--emerald); font-weight: 700; }
+
+/* ---------- Reason grouping ---------- */
+.qa-groups { display: flex; flex-direction: column; gap: 5px; }
+.qa-grp {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: baseline;
+  padding: 7px 11px; border-radius: 8px; background: var(--panel-3); border: 1px solid var(--line);
+}
+.qa-grp-l { font-size: .78rem; font-weight: 650; color: var(--text); }
+.qa-grp-n { font-size: .74rem; color: var(--text-dim); }
+.qa-grp-a { font-size: .78rem; font-weight: 700; color: var(--text); white-space: nowrap; }
+
+/* ---------- The refusal ----------
+   Deliberately carries NO number. A figure sitting next to "I cannot answer
+   this" is the one a reader remembers and repeats. */
+.qa-no { gap: 9px; }
+.qa-no-h { font-size: .87rem; font-weight: 650; color: var(--warn); }
+.qa-no-b { font-size: .79rem; line-height: 1.6; color: var(--text-soft); }
+.qa-no-b ul { margin: 7px 0 0; padding-left: 17px; display: flex; flex-direction: column; gap: 3px; }
+.qa-no-b li { color: var(--text-dim); }
+
+/* ---------- External signal provenance ----------
+   An external event outranks internal scoring, so the row is marked. The
+   provenance line is mandatory: source and detection date always render, and
+   a seeded record shows a "sample" badge rather than a fabricated link. */
+.qa-row-ext { border-left: 3px solid var(--cyan); }
+.qa-row-ext .qa-why { color: var(--cyan); }
+.qa-prov {
+  display: block; margin-top: 4px;
+  font-size: .66rem; font-weight: 500; color: var(--text-dim); line-height: 1.4;
+}
+.qa-prov a { color: var(--cyan); text-decoration: underline; text-underline-offset: 2px; }
+.qa-seed {
+  display: inline-block; margin-right: 6px; padding: 1px 5px;
+  border-radius: 4px; background: rgba(255,255,255,.09); color: var(--text-dim);
+  font-size: .58rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
+}
+
+/* ---------- Impact rollup ---------- */
+.imp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.imp-card { padding: 15px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-3); }
+.imp-k { font-size: .62rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; color: var(--emerald); }
+.imp-n {
+  margin-top: 9px; font-size: 1.85rem; font-weight: 800; letter-spacing: -.025em; line-height: 1;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.imp-l { margin-top: 5px; font-size: .78rem; color: var(--text-soft); font-weight: 600; line-height: 1.4; }
+.imp-list { list-style: none; margin: 13px 0 0; padding: 12px 0 0; border-top: 1px dashed var(--line-strong);
+  display: flex; flex-direction: column; gap: 7px; }
+.imp-list li { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; font-size: .75rem; }
+.imp-list span { color: var(--text-dim); line-height: 1.4; }
+.imp-list b { color: var(--text); font-weight: 700; white-space: nowrap; }
+
+/* The attribution caveat sits ON the surface, not in a footnote: if the number
+   is going under a pricing conversation, the limit of what it claims belongs
+   on the same screen. */
+.imp-note {
+  margin-top: 15px; padding: 13px 15px;
+  border: 1px solid var(--line-strong); border-radius: 10px;
+  background: rgba(255,255,255,.02);
+  font-size: .77rem; line-height: 1.65; color: var(--text-dim);
+}
+.imp-note strong { color: var(--text); }
+.imp-note em { color: var(--text-soft); font-style: italic; }
+.imp-note code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .72rem; color: var(--cyan); }

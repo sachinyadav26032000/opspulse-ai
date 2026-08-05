@@ -25,6 +25,14 @@ import {
 } from '../engine/web/aggregate.js';
 import { KAGGLE_COLUMNS } from '../data/generator.js';
 import { toCsv } from '../data/csv.js';
+/* The composable query layer. The Copilot tries this first for questions about
+   accounts, and falls back to the insight narratives below for questions about
+   what the engine detected. Neither path can invent a number. */
+import { ask as runQuery, resolve as resolveStack, templateQuestions, reasonFor, SUPPORTED } from '../engine/web/query.js';
+/* The decision ledger. Writes happen here in the UI only: the seven MCP tools
+   stay read-only, per the standing rule that adding a mutating tool is a
+   decision to escalate rather than make. */
+import { createLedger, buildSeededHistory, impactRollup, OUTCOME } from '../data/ledger.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -49,7 +57,7 @@ const moneyRange = (i) => {
   return `${fmt.usdK(e.range_low_usd)} – ${fmt.usdK(e.range_high_usd)}`;
 };
 
-export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
+export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = false } = {}) {
   /* One root child, for the same reason as the service desk: host pages size
      the app with `#app > * { flex: 1 }`, and appending the toolbar as a
      sibling of the body made the toolbar grow to half the viewport. */
@@ -57,7 +65,17 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
   const root = el('div', 'op-root');
   container.appendChild(root);
 
-  const state = { view: 'dash', filter: 'all', q: '', selected: null, chat: [], lastUpload: null };
+  /* `filters` is the Copilot's query stack: an ordered list of narrowing
+     queries, rendered as removable pills. It lives on view state rather than
+     in the store because it is one person's line of enquiry, not part of the
+     operation every tab shares. */
+  const state = { view: 'dash', filter: 'all', q: '', selected: null, chat: [], filters: [], lastUpload: null };
+
+  /* One ledger per mounted app. Seeded history is added once so the Impact
+     surface has closed decisions to show; live rows accumulate on top as the
+     engine raises insights and the user acts on them. */
+  const ledger = createLedger({ fresh: freshLedger });
+  let seededOnce = false;
 
   /* ── Chrome ───────────────────────────────────────────────────────────── */
   const top = el('div', 'lv-top');
@@ -82,6 +100,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     { id: 'feed', label: 'Decision Feed', icon: IC.feed, badge: () => store.engine.insights.length },
     { id: 'radar', label: 'Risk Radar', icon: IC.radar },
     { id: 'copilot', label: 'Executive Copilot', icon: IC.chat },
+    { id: 'impact', label: 'Impact', icon: IC.up },
     { id: 'upload', label: 'Data Upload', icon: IC.up },
   ];
   const nav = root.querySelector('#opNav');
@@ -199,6 +218,10 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
      ══════════════════════════════════════════════════════════════════════ */
 
   function drillInsight(ins) {
+    /* Opening the drill IS the view event. Recorded before rendering so the
+       time-to-first-view figure measures the engine raising it to a human
+       reading it, not to a human finishing reading it. */
+    ledger.markViewed(ins.insight_id);
     const d = ds(), m = ins._meta;
     const from = Math.max(0, d.meta.days - 45), to = d.meta.days - 1;
     const labels = labelsFor(from, to);
@@ -909,15 +932,20 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
   }
 
   /* ── Executive Copilot ────────────────────────────────────────────────── */
-  const SUGGESTIONS = [
-    'What should I focus on today?',
-    'Why did NPS drop?',
-    'What operational risks are emerging?',
-    'What is our biggest operational risk?',
-    'How is the new-hire cohort performing?',
-    'How much revenue is at risk?',
-    'Why is the backlog growing?',
-    'Are we exposed on compliance?',
+  /* The old hardcoded SUGGESTIONS array lived here. It is gone: template
+     questions are now derived from today's data by templateQuestions() in
+     engine/web/query.js, so a chip can never offer a question whose answer is
+     zero accounts.
+
+     These are the topics the INSIGHT narratives below cover, as distinct from
+     the account queries in query.js. Listed only so a refusal can name the
+     whole surface area rather than half of it. */
+  const INSIGHT_TOPICS = [
+    'the day’s priorities and what to do first',
+    'NPS and CSAT movement, with the drivers decomposed',
+    'the backlog, SLA position and queue capacity',
+    'the new-hire QA gap',
+    'emerging contact topics and compliance exposure',
   ];
 
   function answer(qRaw) {
@@ -1051,15 +1079,38 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       if (i) return { html: `${esc(i.what_happened)}<p style="margin:9px 0 0"><strong>Why:</strong> ${esc(i.why.root_cause)}</p><p style="margin:9px 0 0"><strong>Do:</strong> ${esc(i.recommended_action.action)}</p>`, chips: [chip('Open drill-down', () => drillInsight(i))] };
     }
 
-    /* Fallback: search the insight set rather than inventing an answer. */
-    const hits = e.insights.filter((i) => (i._meta.title + ' ' + i.what_happened + ' ' + i.why.root_cause).toLowerCase().split(/\W+/).some((w) => w.length > 3 && q.includes(w)));
+    /* Fallback: search the insight set rather than inventing an answer.
+
+       Matched on WHOLE WORDS, not substrings. The previous version tested
+       `q.includes(word)` against the raw question, so an insight containing
+       "here" matched a question containing "weather" and the Copilot answered
+       an unrelated question with "closest matches in the current feed". A
+       confident answer to a question nobody asked is worse than a refusal.
+
+       Question words are also dropped. "what", "which", "there" and friends
+       appear in ordinary insight prose, so leaving them in meant almost any
+       sentence starting "what is..." matched something. */
+    const NOISE = new Set([
+      'what', 'which', 'when', 'where', 'that', 'this', 'those', 'these', 'there',
+      'here', 'have', 'has', 'with', 'from', 'about', 'into', 'your', 'ours',
+      'tell', 'show', 'give', 'does', 'doing', 'been', 'were', 'will', 'would',
+      'could', 'should', 'much', 'many', 'more', 'most', 'some', 'over', 'than',
+      'then', 'they', 'them', 'their', 'like', 'just', 'only', 'also', 'know',
+    ]);
+    const qWords = new Set(q.split(/\W+/).filter((w) => w.length > 3 && !NOISE.has(w)));
+    const hits = qWords.size ? e.insights.filter((i) =>
+      (i._meta.title + ' ' + i.what_happened + ' ' + i.why.root_cause)
+        .toLowerCase().split(/\W+/).some((w) => w.length > 3 && qWords.has(w))) : [];
     if (hits.length) {
       return { html: `Closest matches in the current feed:<ul>${hits.slice(0, 3).map(insLine).join('')}</ul><div class="src">I answer from the ${e.insights.length} insights the engine has computed. I will not answer beyond the data.</div>`, chips: hits.slice(0, 3).map((i) => chip(i._meta.title, () => drillInsight(i))) };
     }
+    /* Flagged so `ask` can tell a genuine refusal from an answer. When BOTH
+       answerers decline, the caller renders one combined refusal listing the
+       account queries and the insight topics, rather than stacking two
+       partial "I cannot" messages that each omit half the capability. */
     return {
-      html: `I do not have an answer grounded in the current data for that, and I would rather say so than guess.
-        <p style="margin:9px 0 0">I can answer questions about: the day's priorities, NPS and CSAT movement, the backlog and SLA position, the new-hire QA gap, emerging contact topics, churn and renewal risk, compliance exposure, and where revenue is at risk.</p>
-        <div class="src">Offline build: answers are templated over the engine's computed insight objects, not generated by a language model. Every number above is traceable to a record.</div>`,
+      declined: true,
+      html: `I do not have an answer grounded in the current data for that, and I would rather say so than guess.`,
       chips: [],
     };
   }
@@ -1072,23 +1123,82 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     const log = el('div', 'chat-log');
 
     if (!state.chat.length) {
-      state.chat.push({ who: 'OpsPulse', html: `Good ${hourGreeting()}. I have analysed <strong>${fmt.int(eng().run.stats.records_in)}</strong> records across tickets, escalations, QA and NPS. Ask me anything about the operation, or start with the question most people open with.`, chips: [] });
+      state.chat.push({ who: 'OpsPulse', html: `Good ${hourGreeting()}. I have analysed <strong>${fmt.int(eng().run.stats.records_in)}</strong> records across tickets, escalations, QA, NPS and product usage. Ask a question, then keep narrowing: each follow-up filters the set you are already looking at.`, chips: [] });
     }
+
+    /* The filter stack, as removable pills. Rendered above the log rather than
+       inside it because it describes the CURRENT set, not a past turn: a user
+       scrolled up the transcript still needs to see what they have narrowed
+       to. Removing any pill re-resolves the whole stack from scratch. */
+    if (state.filters.length) {
+      const bar = el('div', 'qa-pills');
+      bar.appendChild(el('span', 'qa-pills-k', 'Filtered to'));
+      state.filters.forEach((f, idx) => {
+        const pill = el('button', 'qa-pill', `${esc(f.label)}<span aria-hidden="true">×</span>`);
+        pill.title = `Remove "${f.label}"`;
+        pill.setAttribute('aria-label', `Remove filter ${f.label}`);
+        pill.addEventListener('click', () => {
+          state.filters = state.filters.filter((_, i) => i !== idx);
+          const n = resolveStack(ds(), state.filters).length;
+          state.chat.push({
+            who: 'OpsPulse',
+            html: `Removed <strong>${esc(f.label)}</strong>. ${state.filters.length ? `Back to <strong>${fmt.int(n)}</strong> accounts.` : `Filters cleared, all <strong>${fmt.int(n)}</strong> accounts back in scope.`}`,
+            chips: [],
+          });
+          render();
+        });
+        bar.appendChild(pill);
+      });
+      const clear = el('button', 'qa-pill qa-pill-clear', 'Clear all');
+      clear.addEventListener('click', () => {
+        state.filters = [];
+        state.chat.push({ who: 'OpsPulse', html: `Filters cleared, all <strong>${fmt.int(resolveStack(ds(), []).length)}</strong> accounts back in scope.`, chips: [] });
+        render();
+      });
+      bar.appendChild(clear);
+      chat.appendChild(bar);
+    }
+
     for (const m of state.chat) {
       const box = el('div', 'msg' + (m.who === 'You' ? ' me' : ''));
-      box.innerHTML = `<span class="who">${esc(m.who)}</span><div class="bubble">${m.html}</div>`;
-      if (m.chips?.length) {
-        const acts = el('div', 'acts');
-        m.chips.forEach((c) => { const b = el('button', 'lv-btn', esc(c.label)); b.addEventListener('click', c.fn); acts.appendChild(b); });
-        box.appendChild(acts);
+      box.innerHTML = `<span class="who">${esc(m.who)}</span>`;
+      const bubble = el('div', 'bubble');
+      if (m.kind === 'query') {
+        bubble.appendChild(m.result.unanswerable ? renderCannotAnswer(m.result.unanswerable) : renderQueryAnswer(m.result));
+      } else {
+        bubble.innerHTML = m.html;
       }
+      box.appendChild(bubble);
+
+      /* Suggested next steps are further QUERIES, not free text, which is what
+         makes refinement feel continuous rather than like starting over. */
+      const acts = el('div', 'acts');
+      if (m.kind === 'query' && m.result.actions?.length) {
+        m.result.actions.forEach((a) => {
+          const b = el('button', 'lv-btn', esc(a.label));
+          b.addEventListener('click', () => ask(a.question));
+          acts.appendChild(b);
+        });
+      }
+      if (m.chips?.length) m.chips.forEach((c) => { const b = el('button', 'lv-btn', esc(c.label)); b.addEventListener('click', c.fn); acts.appendChild(b); });
+      if (acts.childNodes.length) box.appendChild(acts);
       log.appendChild(box);
     }
     chat.appendChild(log);
 
-    const sug = el('div', 'suggest');
-    SUGGESTIONS.forEach((s) => { const b = el('button', '', esc(s)); b.addEventListener('click', () => ask(s)); sug.appendChild(b); });
-    chat.appendChild(sug);
+    /* Template questions, derived from today's data rather than hardcoded, so
+       a chip never offers a question whose answer is zero. Shown only as the
+       empty state: once someone is asking, the per-answer suggestions are the
+       better next step because they refine the current set. */
+    if (state.chat.length <= 1) {
+      const sug = el('div', 'suggest');
+      templateQuestions(ds()).forEach((t) => {
+        const b = el('button', '', esc(t.label));
+        b.addEventListener('click', () => ask(t.question));
+        sug.appendChild(b);
+      });
+      chat.appendChild(sug);
+    }
 
     const ask_ = el('form', 'chat-ask');
     ask_.innerHTML = '<input id="cpQ" placeholder="Ask about risks, causes, customers, revenue…" autocomplete="off"/><button class="lv-btn primary" type="submit">Ask</button>';
@@ -1101,12 +1211,217 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     return wrap;
   }
 
+  /*
+    Two answerers, tried in order.
+
+    1. The query layer, for questions about ACCOUNTS: renewals in a window,
+       adoption thresholds, exposure, a named customer. These compose, so the
+       filter stack narrows and the pills grow.
+    2. The insight narratives, for questions about what the ENGINE DETECTED:
+       why NPS moved, the backlog, the new-hire QA gap. These read pre-computed
+       insight objects and do not filter anything.
+
+    Order matters. The query layer is strict (a question maps to a
+    parameterised type or to nothing), so letting it decline first means the
+    older narratives still catch everything they always did. If both decline,
+    we say so and name what is supported rather than guessing.
+  */
   function ask(q) {
     state.chat.push({ who: 'You', html: esc(q), chips: [] });
-    const a = answer(q);
-    state.chat.push({ who: 'OpsPulse', html: a.html, chips: a.chips });
+
+    const res = runQuery(ds(), state.filters, q);
+    if (!res.unanswerable) {
+      state.filters = res.nextStack;
+      state.chat.push({ who: 'OpsPulse', kind: 'query', result: res, chips: [] });
+    } else {
+      const a = answer(q);
+      if (a.declined) {
+        /* Both answerers declined. One combined refusal, listing everything
+           either of them could have answered, so the user learns the real
+           surface area instead of half of it. */
+        state.chat.push({
+          who: 'OpsPulse',
+          kind: 'query',
+          result: { unanswerable: { missing: res.unanswerable.missing, supported: [...SUPPORTED, ...INSIGHT_TOPICS] } },
+          chips: [],
+        });
+      } else {
+        state.chat.push({ who: 'OpsPulse', html: a.html, chips: a.chips });
+      }
+    }
+
     render();
     setTimeout(() => { const l = body.querySelector('.chat-log'); if (l) l.scrollTop = l.scrollHeight; }, 0);
+  }
+
+  /* ── Structured answer rendering ──────────────────────────────────────────
+     Every query answer renders in the same order, because the point of this
+     surface is that a director learns to read it once:
+       headline → the accounts → why → confidence and its limiter → next steps
+     The account list is capped at six with the true total always shown, so the
+     cap never reads as the answer. */
+  const ACCOUNT_CAP = 6;
+
+  function renderQueryAnswer(res) {
+    const box = el('div', 'qa');
+
+    box.appendChild(el('div', 'qa-head', `<span class="qa-n">${esc(res.headline.value)}</span><span class="qa-l">${esc(res.headline.label)}</span>`));
+
+    if (res.groups) {
+      const t = el('div', 'qa-groups');
+      t.innerHTML = res.groups.map((g) => `
+        <div class="qa-grp"><span class="qa-grp-l">${esc(g.label)}</span>
+        <span class="qa-grp-n">${g.n}</span>
+        <span class="qa-grp-a">${esc(fmt.usdK(g.arr))}</span></div>`).join('');
+      box.appendChild(t);
+    }
+
+    if (res.rows && res.rows.length) {
+      const shown = res.rows.slice(0, ACCOUNT_CAP);
+      const list = el('div', 'qa-rows');
+      list.innerHTML = shown.map((r) => {
+        const why = reasonFor(r);
+        /* Provenance is mandatory on an external signal. An unsourced claim
+           that a customer was acquired is worse than no claim at all, so the
+           source and detection date always render. Seeded records show a
+           "sample" badge instead of a link rather than a fabricated URL. */
+        const ext = why.external;
+        const prov = ext
+          ? `<span class="qa-prov">${ext.seeded ? '<b class="qa-seed">sample</b> ' : ''}${esc(ext.source)} · ${new Date(ext.detected_at).toLocaleDateString()}${
+              ext.source_url ? ` · <a href="${esc(ext.source_url)}" target="_blank" rel="noopener noreferrer">source</a>` : ''}</span>`
+          : '';
+        return `<div class="qa-row${ext ? ' qa-row-ext' : ''}">
+          <span class="qa-co">${esc(r.company)}<small>${esc(r.account_id)} · renews in ${r.renewal_in_days}d</small></span>
+          <span class="qa-why">${esc(why.label)}<small>${esc(why.detail)}</small>${prov}</span>
+          <span class="qa-arr">${esc(fmt.usdK(r.arr_usd))}</span>
+        </div>`;
+      }).join('');
+      box.appendChild(list);
+      if (res.total > shown.length) {
+        box.appendChild(el('div', 'qa-more', `Showing ${shown.length} of <strong>${res.total}</strong>, largest contracts first.`));
+      }
+    }
+
+    if (res.why) box.appendChild(el('div', 'qa-why-line', esc(res.why)));
+
+    if (res.confidence && res.confidence.pct != null) {
+      box.appendChild(el('div', 'qa-conf',
+        `<strong>${res.confidence.pct}% data coverage</strong> · ${esc(res.confidence.limiting_factor)}`));
+    }
+    return box;
+  }
+
+  /* The refusal. Renders no number at all, on purpose: a figure next to "I
+     cannot answer this" is the exact thing that gets remembered and quoted. */
+  function renderCannotAnswer(u) {
+    const box = el('div', 'qa qa-no');
+    box.appendChild(el('div', 'qa-no-h', esc(u.missing)));
+    box.appendChild(el('div', 'qa-no-b',
+      `I will not guess at a number I cannot compute. What I can answer from the data connected today:<ul>${
+        (u.supported || SUPPORTED).map((s) => `<li>${esc(s)}</li>`).join('')}</ul>`));
+    return box;
+  }
+
+  /* ── Impact ───────────────────────────────────────────────────────────────
+     What was flagged and what happened next, in the three terms a buyer asks
+     about: financial, adoption, operational.
+
+     The financial headline is "ARR retained on flagged accounts" and it is
+     never anything else. The product knows it flagged an account and knows the
+     account renewed; it does NOT know the second happened because of the
+     first, because nobody ran the account without the intervention. "ARR
+     saved" would be a causal claim with no counterfactual behind it, and it is
+     the exact claim a sceptical buyer probes when money is discussed. */
+  function viewImpact() {
+    const wrap = el('div', 'lv-view');
+    const rows = resolveStack(ds(), []);
+    const r = impactRollup(ledger, rows);
+    const f = r.financial, ad = r.adoption, op = r.operational;
+
+    const hrs = (ms) => (ms == null ? 'n/a' : ms < 3600000 ? `${Math.round(ms / 60000)} min` : `${(ms / 3600000).toFixed(1)} hrs`);
+    /* Local rather than extending the shared fmt.usdK, which stops at
+       thousands and is relied on by every other surface. Ledger totals roll
+       into millions, and "$2455k" reads as a typo. */
+    const bigMoney = (v) => (v == null ? 'n/a'
+      : Math.abs(v) >= 1e6 ? '$' + (v / 1e6).toFixed(1) + 'm'
+      : fmt.usdK(v));
+
+    const p = el('div', 'panel');
+    p.innerHTML = `<div class="panel-hd"><h3>Impact</h3><span class="hint">${fmt.int(r.total_rows)} decisions on the ledger · ${fmt.int(f.decisions_closed)} closed</span></div>`;
+    const bd = el('div', 'panel-bd');
+
+    bd.appendChild(el('div', 'imp-grid', `
+      <div class="imp-card">
+        <span class="imp-k">Financial</span>
+        <div class="imp-n">${esc(bigMoney(f.arr_on_flagged_retained))}</div>
+        <div class="imp-l">ARR retained on flagged accounts</div>
+        <ul class="imp-list">
+          <li><span>ARR flagged</span><b>${esc(bigMoney(f.arr_flagged))}</b></li>
+          <li><span>On flagged accounts that churned anyway</span><b>${esc(bigMoney(f.arr_on_flagged_churned))}</b></li>
+          <li><span>Expansion surfaced</span><b>${esc(bigMoney(f.arr_expansion_surfaced))}</b></li>
+          <li><span>Closed decisions that renewed</span><b>${f.retained_share == null ? 'n/a' : f.retained_share + '%'}</b></li>
+        </ul>
+      </div>
+      <div class="imp-card">
+        <span class="imp-k">Adoption</span>
+        <div class="imp-n">${fmt.int(ad.below_threshold)}</div>
+        <div class="imp-l">accounts below ${ad.threshold_pct}% adoption</div>
+        <ul class="imp-list">
+          <li><span>Accounts with usage data</span><b>${fmt.int(ad.accounts_with_usage)}</b></li>
+          <li><span>Recovered above ${ad.threshold_pct}%</span><b>${fmt.int(ad.recovered_above)}</b></li>
+        </ul>
+      </div>
+      <div class="imp-card">
+        <span class="imp-k">Operational</span>
+        <div class="imp-n">${fmt.int(op.surfaced_unprompted)}</div>
+        <div class="imp-l">decisions surfaced without anyone asking</div>
+        <ul class="imp-list">
+          <li><span>Opened by a human</span><b>${fmt.int(op.viewed)}</b></li>
+          <li><span>Actioned</span><b>${fmt.int(op.actioned)}</b></li>
+          <li><span>Median time to first view</span><b>${esc(hrs(op.median_time_to_view_ms))}</b></li>
+          <li><span>Still pending</span><b>${fmt.int(op.pending)}</b></li>
+        </ul>
+      </div>`));
+
+    /* The attribution caveat is part of the surface, not a footnote. If this
+       number is going to sit under a pricing conversation, the limit of what
+       it claims has to be on the same screen as the number. */
+    bd.appendChild(el('div', 'imp-note', `
+      <strong>What this does and does not say.</strong>
+      These accounts were flagged and these are their outcomes. That is not the same as saying they renewed
+      <em>because</em> they were flagged: nobody ran the account without the intervention, so no counterfactual exists.
+      The metric is deliberately named <strong>ARR retained on flagged accounts</strong> rather than ARR saved.
+      ${r.simulated_rows ? `<br><br><strong>${fmt.int(r.simulated_rows)} of ${fmt.int(r.total_rows)} rows are seeded history</strong>, dated before the current
+      analysis window so a prototype has closed decisions to show. They are marked <code>simulated</code> in the ledger.
+      Rows opened in this session are real records of what the engine raised and what you did with it.` : ''}`));
+
+    p.appendChild(bd);
+    wrap.appendChild(p);
+
+    /* The ledger itself, most recent first. Nothing is hidden: decisions that
+       ended badly sit in the same list as the ones that did not, because a
+       ledger that only remembers its wins is one you cannot forecast with. */
+    const recent = ledger.all().slice().sort((a, b) => b.surfaced_at - a.surfaced_at).slice(0, 14);
+    if (recent.length) {
+      wrap.appendChild(table(
+        [
+          { k: 'title', label: 'Decision' },
+          { k: 'when', label: 'Surfaced' },
+          { k: 'arr', label: 'ARR at risk' },
+          { k: 'action', label: 'Action taken' },
+          { k: 'outcome', label: 'Outcome' },
+        ],
+        recent.map((d) => ({
+          title: d.title + (d.simulated ? ' ·seeded' : ''),
+          when: new Date(d.surfaced_at).toLocaleDateString(),
+          arr: d.arr_at_risk == null ? 'not costed' : bigMoney(d.arr_at_risk),
+          action: d.action_taken || (d.viewed_at ? 'viewed, not actioned' : 'not yet opened'),
+          outcome: d.outcome,
+        })),
+        { title: 'Decision ledger', hint: 'most recent first · outcomes include the ones that went badly' },
+      ));
+    }
+    return wrap;
   }
 
   /* ── Data Upload ──────────────────────────────────────────────────────── */
@@ -1221,6 +1536,7 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
     const v = state.view === 'dash' ? viewDashboard()
       : state.view === 'feed' ? viewFeed()
       : state.view === 'radar' ? viewRadar()
+      : state.view === 'impact' ? viewImpact()
       : state.view === 'copilot' ? viewCopilot()
       : viewUpload();
     body.appendChild(v);
@@ -1263,6 +1579,17 @@ export function mountOpsPulse(container, store, { onOpenTicket } = {}) {
       return;
     }
     if (evt.type === 'engine' || evt.type === 'reset') {
+      /* Record what the engine is raising right now. Seeded history is added
+         once, on the first pass, so the Impact surface has closed decisions
+         to show alongside the live ones. */
+      try {
+        const insights = eng().insights || [];
+        if (!seededOnce) {
+          seededOnce = true;
+          ledger.seedHistory(buildSeededHistory(ds(), resolveStack(ds(), [])));
+        }
+        ledger.sync(insights);
+      } catch { /* the ledger must never be able to break a render */ }
       // Never rebuild the DOM out from under someone who is mid-interaction:
       // an open drill-down, or a half-typed question in the copilot / search
       // box (render() recreates the input, dropping its value and focus).

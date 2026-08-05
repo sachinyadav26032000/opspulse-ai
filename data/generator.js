@@ -730,7 +730,135 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
     }
   }
 
-  /* ---- 10. Compliance clock on privacy tickets ------------------------- */
+  /* ---- 10. Weekly product usage --------------------------------------- */
+  /*
+     Adoption is the one renewal signal the product talked about but could not
+     compute. Everything else here (tickets, escalations, QA, NPS) is a record
+     of someone *contacting* you; usage is the only stream that moves when a
+     customer quietly stops showing up, which is the failure mode that ends
+     contracts without ever opening a ticket.
+
+     Weekly, not daily, for two reasons. Weekly active seats is the metric the
+     domain actually reports, and 400 accounts × 90 days would triple the
+     dataset to push a number whose real cadence is a week anyway. Thirteen
+     buckets per account keeps the whole stream near the size of the NPS set.
+
+     `day_index` is the LAST day of the week, so every existing window helper
+     (`day_index >= recent_from`) segments usage correctly with no changes.
+
+     The decline is injected as a cohort but never labelled: nothing downstream
+     reads `usage_decline_cohort_ids` to find it. The drop has to be recovered
+     by comparing each account against its own baseline, exactly as the four
+     original patterns are. */
+  const WEEK_DAYS = 7;
+  const WEEKS = Math.floor(DAYS / WEEK_DAYS);                   // 12 full weeks
+  const RECENT_WEEK_FROM = Math.floor(RECENT_FROM / WEEK_DAYS); // first week inside the recent window
+
+  /* Packed onto the account as a plain array of integers rather than emitted
+     as a flat collection. 2,400 accounts × 12 weeks is 28,800 rows, which
+     would nearly quadruple a dataset that is currently ~11,600 records, to
+     carry a number that is one integer per bucket. Twelve ints per account
+     costs a fraction of that and every consumer wants the series anyway.
+
+     ONLY active_seats is stored. Adoption is deliberately NOT stored as a
+     rounded ratio: rule 1 says a printed figure must re-divide from its
+     printed inputs, and a 2-decimal ratio alongside exact seat counts drifts
+     from them. Seats and active seats are both exact integers, so the
+     percentage is derived at read time in aggregate.js and always reconciles. */
+
+  /* Roughly a fifth of the book slides. Weighted toward paying plans: a
+     Starter account shedding a seat is noise, an Enterprise account shedding
+     40% of its seats is the renewal conversation. */
+  const usagePool = rnd
+    .shuffle(accounts.filter((a) => a.plan !== 'Starter' || rnd.chance(0.3)).slice())
+    .slice(0, Math.round(accounts.length * 0.21));
+  const usageDeclineIds = new Set(usagePool.map((a) => a.account_id));
+
+  for (const acct of accounts) {
+    const declines = usageDeclineIds.has(acct.account_id);
+    /* Each account gets its own healthy adoption level and its own noise, so a
+       flat cross-account threshold would be meaningless and any detector has
+       to work per-account against that account's own baseline. */
+    const baseAdoption = rnd.range(0.52, 0.94);
+    /* Declining accounts lose 30-46% of their adoption across the recent
+       window. Ramped, not stepped: a cliff would be trivially detectable and
+       would not look like a real disengagement. */
+    const depth = declines ? rnd.range(0.30, 0.46) : 0;
+
+    const weeks = [];
+    for (let w = 0; w < WEEKS; w++) {
+      const t = w < RECENT_WEEK_FROM
+        ? 0
+        : (w - RECENT_WEEK_FROM) / Math.max(1, WEEKS - 1 - RECENT_WEEK_FROM);
+      const raw = baseAdoption * (1 - depth * t) + rnd.range(-0.035, 0.035);
+      const adoption = raw < 0.02 ? 0.02 : raw > 1 ? 1 : raw;
+      weeks.push(Math.max(1, Math.round(acct.seats * adoption)));
+    }
+    acct.usage_weeks = weeks;
+  }
+
+  /* ---- 11. External corporate signals (SEEDED, not detected) -----------
+     Every competitor scores churn from internal data. A customer being
+     acquired is invisible to all of them, and it is the event that actually
+     ends contracts: the acquirer already has a vendor for this.
+
+     These are SEEDED FIXTURES, not detections, and they are marked as such on
+     every record. Real feeds (Crunchbase, Tracxn, ZoomInfo) are licensed data
+     and a procurement decision rather than an engineering one. The schema and
+     the surfacing are built now so the wiring is a swap later.
+
+     On provenance, one deliberate departure from the brief. The brief asks for
+     a source_url that links out, which is right for a live feed. For a seeded
+     record it is not: a fabricated link to a real news domain is a citation
+     that does not exist, which is a worse failure than no link, and precisely
+     the thing that ends a demo when someone clicks it. So seeded signals carry
+     `seeded: true`, a source naming the sample feed, and a NULL source_url.
+     The UI renders provenance either way and shows a "sample" badge instead of
+     a dead link. When a real feed is connected it supplies real URLs and the
+     badge disappears on its own. */
+  const EXTERNAL_TEMPLATES = [
+    { type: 'acquisition', effect: 'risk_up', confidence: 0.92,
+      headline: (c) => `${c} to be acquired; integration of overlapping vendor contracts expected`,
+      source: 'Sample M&A feed' },
+    { type: 'acquisition', effect: 'risk_up', confidence: 0.88,
+      headline: (c) => `${c} announces merger; procurement consolidation under review`,
+      source: 'Sample M&A feed' },
+    { type: 'distress', effect: 'risk_up', confidence: 0.9,
+      headline: (c) => `${c} enters restructuring; discretionary software spend frozen`,
+      source: 'Sample credit-risk feed' },
+    { type: 'stakeholder_change', effect: 'risk_up', confidence: 0.71,
+      headline: (c) => `VP Operations departs ${c}; successor not yet announced`,
+      source: 'Sample people feed' },
+    { type: 'stakeholder_change', effect: 'risk_up', confidence: 0.68,
+      headline: (c) => `${c} reorganises customer operations; programme sponsor moved on`,
+      source: 'Sample people feed' },
+    { type: 'funding', effect: 'opportunity', confidence: 0.85,
+      headline: (c) => `${c} raises Series C; headcount plan implies seat expansion`,
+      source: 'Sample funding feed' },
+  ];
+
+  /* Deliberately sparse. External events are rare, and a book where a fifth of
+     accounts were being acquired would read as obviously fake. ~2.5% carry one,
+     which on this dataset is roughly 60 accounts across all four types. */
+  const externalPool = rnd.shuffle(accounts.slice()).slice(0, Math.round(accounts.length * 0.025));
+  for (const acct of externalPool) {
+    const t = rnd.pick(EXTERNAL_TEMPLATES);
+    /* Detected somewhere in the recent window, so the event is current news
+       rather than something that should already have been actioned. */
+    const detectedDay = rnd.int(RECENT_FROM, DAYS - 1);
+    acct.external_signals = [{
+      type: t.type,
+      detected_at: dayMs(detectedDay),
+      source: t.source,
+      source_url: null,          // null on purpose: see the note above
+      headline: t.headline(acct.company),
+      confidence: t.confidence,
+      effect: t.effect,
+      seeded: true,
+    }];
+  }
+
+  /* ---- 12. Compliance clock on privacy tickets ------------------------- */
   for (const t of tickets) {
     if (t.category !== 'Data & Privacy') continue;
     if (t.tag === 'dsar' || t.tag === 'deletion') {
@@ -762,6 +890,13 @@ export function generate(seed = 20260724, nowMs = Date.now()) {
       next_nps_seq: nid,
       next_qa_seq: QA_TOTAL,
       series: { inflow, backlog, throughput, backlog_target: backlogTarget },
+      /* Usage is a weekly series packed onto each account (acct.usage_weeks),
+         not a top-level collection, so it adds no rows to the record counts.
+         These two let a consumer segment the series without re-deriving the
+         week arithmetic. */
+      weeks: WEEKS,
+      recent_week_from: RECENT_WEEK_FROM,
+      week_days: WEEK_DAYS,
       counts: {
         tickets: tickets.length,
         escalations: escalations.length,

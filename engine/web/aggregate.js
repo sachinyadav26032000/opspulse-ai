@@ -164,7 +164,56 @@ export function accountRollup(ds) {
     if (r.day_index > a.nps_day) { a.nps = r.score; a.nps_day = r.day_index; a.nps_segment = r.segment; a.nps_driver = r.driver_tag; }
   }
   const meta = new Map(ds.accounts.map((a) => [a.account_id, a]));
-  return [...byAcct.values()].map((a) => ({ ...meta.get(a.account_id), ...a, csat_avg: a.csat.length ? mean(a.csat) : null }));
+  return [...byAcct.values()].map((a) => {
+    const m = meta.get(a.account_id) || {};
+    return { ...m, ...a, csat_avg: a.csat.length ? mean(a.csat) : null, ...adoptionOf(m, ds) };
+  });
+}
+
+/**
+ * Adoption, derived rather than stored.
+ *
+ * The generator packs only `usage_weeks` (exact integer active-seat counts) and
+ * `seats` (the contracted number) onto an account. Every percentage below is
+ * computed from those two integers at read time, so a printed "58%" genuinely
+ * re-divides from the printed seat counts. Storing a rounded ratio alongside
+ * exact counts would let the two drift, which is the failure rule 1 exists to
+ * prevent.
+ *
+ * `recent` is the mean of the weeks inside the analysis window and `baseline`
+ * the mean of everything before it, so the comparison is each account against
+ * its own history rather than against the book.
+ */
+export function adoptionOf(acct, ds) {
+  const w = acct?.usage_weeks;
+  if (!Array.isArray(w) || !w.length || !acct.seats) {
+    return { adoption_pct: null, adoption_baseline_pct: null, adoption_delta_pct: null, active_seats: null };
+  }
+  const from = ds?.meta?.recent_week_from ?? Math.max(0, w.length - 2);
+  const recentWeeks = w.slice(from);
+  const baseWeeks = w.slice(0, from);
+  const seatsMean = (xs) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
+
+  /* Round the seat means to whole seats FIRST, then divide. Deriving the
+     percentage from the unrounded mean while printing the rounded seat count
+     lets the two disagree by a point, which is exactly the drift rule 1
+     forbids: the printed inputs must multiply out to the printed figure. */
+  const round = (s) => (s == null ? null : Math.round(s));
+  const recentSeats = round(seatsMean(recentWeeks));
+  const baseSeats = round(seatsMean(baseWeeks));
+  const pct = (s) => (s == null ? null : Math.round((s / acct.seats) * 100));
+
+  const adoption = pct(recentSeats);
+  const baseline = pct(baseSeats);
+  return {
+    active_seats: recentSeats,
+    baseline_active_seats: baseSeats,
+    adoption_pct: adoption,
+    adoption_baseline_pct: baseline,
+    /* Difference of the two ROUNDED percentages, not a rounding of the true
+       difference, so "72% to 48%" always reports as exactly 24 points. */
+    adoption_delta_pct: adoption == null || baseline == null ? null : adoption - baseline,
+  };
 }
 
 /** Median helper re-exported so drill-downs don't import two modules. */
