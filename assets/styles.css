@@ -153,11 +153,18 @@ p  { margin: 0; }
   height: 68px;
 }
 .brand { display: flex; align-items: center; gap: 11px; font-weight: 700; font-size: 1.12rem; }
+/* The mark is a dark tile carrying four descending bars, the shortest in the
+   brand green. The tile used to be the green gradient with a dark glyph on
+   top; it is now the reverse, so the bars supply their own colour and the
+   tile stays out of their way. A hairline border keeps the tile legible as a
+   distinct object against the near-black page background, which the flat fill
+   alone would not do. */
 .brand .logo {
   width: 34px; height: 34px; border-radius: 9px;
-  background: var(--grad);
+  background: #0d1211;
+  border: 1px solid rgba(255, 255, 255, 0.09);
   display: grid; place-items: center;
-  box-shadow: 0 6px 20px -6px rgba(52, 211, 153, 0.6);
+  box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.9);
 }
 .brand .logo svg { width: 20px; height: 20px; }
 .nav-links { display: flex; align-items: center; gap: 30px; }
