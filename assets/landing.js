@@ -17,11 +17,26 @@
     io.observe(el);
   });
 
-  /* Animated pulse line in hero mock */
+  /* Animated pulse line in hero mock.
+
+     Gated three ways. A setInterval left running is throttled by the browser
+     once the tab is hidden and then FIRES ITS BACKLOG IN A BURST on return,
+     which reads as a stutter on a line that is supposed to be smooth. It also
+     kept animating while scrolled far past the hero, burning frames to redraw
+     something nobody was looking at. So it runs only while the hero is on
+     screen and the tab is visible, and not at all for a visitor who has asked
+     for reduced motion. */
   var line = document.getElementById("pulseLine");
-  if (line) {
+  var reduceMotion = window.matchMedia
+    ? window.matchMedia("(prefers-reduced-motion: reduce)")
+    : { matches: false };
+
+  if (line && !reduceMotion.matches) {
     var t = 0;
-    setInterval(function () {
+    var pulseTimer = null;
+    var heroVisible = true;
+
+    var tick = function () {
       t += 1;
       var pts = [];
       for (var x = 0; x <= 320; x += 8) {
@@ -35,20 +50,48 @@
         pts.push(x + "," + (base + wave + spike).toFixed(1));
       }
       line.setAttribute("points", pts.join(" "));
-    }, 120);
+    };
+
+    var sync = function () {
+      var shouldRun = heroVisible && !document.hidden;
+      if (shouldRun && !pulseTimer) pulseTimer = setInterval(tick, 120);
+      else if (!shouldRun && pulseTimer) { clearInterval(pulseTimer); pulseTimer = null; }
+    };
+
+    /* Watch the mock itself rather than the window, so the animation stops as
+       soon as it is scrolled away rather than at some arbitrary offset. */
+    var mock = line.closest(".mock") || line;
+    if (window.IntersectionObserver) {
+      new IntersectionObserver(function (entries) {
+        heroVisible = entries[0].isIntersecting;
+        sync();
+      }, { threshold: 0 }).observe(mock);
+    }
+    document.addEventListener("visibilitychange", sync);
+    sync();
   }
 
   /* Small live jitter on hero KPIs */
+  /* Same gating as the pulse line: a jitter nobody can see is a repaint for
+     nothing, and the post-throttle burst is what makes the KPI numbers appear
+     to flicker when a background tab is brought back to the front. */
   var health = document.getElementById("hHealth");
   var csat = document.getElementById("hCsat");
-  if (health && csat) {
-    setInterval(function () {
+  if (health && csat && !reduceMotion.matches) {
+    var jitterTimer = null;
+    var jitter = function () {
       var h = 80 + Math.floor(Math.random() * 5);
       health.textContent = h;
       var c = (3.4 + Math.random() * 1.6).toFixed(1);
-      csat.textContent = "−4." + c.split(".")[1] + "%";
       csat.textContent = "−" + c + "%";
-    }, 2600);
+    };
+
+    var syncJitter = function () {
+      if (!document.hidden && !jitterTimer) jitterTimer = setInterval(jitter, 2600);
+      else if (document.hidden && jitterTimer) { clearInterval(jitterTimer); jitterTimer = null; }
+    };
+    document.addEventListener("visibilitychange", syncJitter);
+    syncJitter();
   }
 
   /* Nav shadow on scroll */

@@ -69,7 +69,13 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
      queries, rendered as removable pills. It lives on view state rather than
      in the store because it is one person's line of enquiry, not part of the
      operation every tab shares. */
-  const state = { view: 'dash', filter: 'all', q: '', selected: null, chat: [], filters: [], lastUpload: null };
+  const state = {
+    view: 'dash', filter: 'all', q: '', selected: null, chat: [], filters: [], lastUpload: null,
+    /* Where the Copilot transcript was scrolled, and whether the reader was
+       sitting at the bottom of it. Kept on state so it survives the teardown
+       and rebuild that render() performs. */
+    chatScroll: null, chatStick: true,
+  };
 
   /* One ledger per mounted app. Seeded history is added once so the Impact
      surface has closed decisions to show; live rows accumulate on top as the
@@ -1207,7 +1213,18 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     p.appendChild(chat);
     wrap.appendChild(p);
 
-    setTimeout(() => { log.scrollTop = log.scrollHeight; }, 0);
+    /* Restore where the reader was, rather than yanking them to the bottom.
+       This used to be an unconditional `log.scrollTop = log.scrollHeight` on
+       every render, and render runs on every engine pass, so anyone reading an
+       earlier answer was thrown to the end of the transcript every ~9 seconds.
+
+       The rule now is the one every chat client uses: follow the bottom only
+       if the reader was already at the bottom, or if they just asked something.
+       Otherwise put them back exactly where they were. */
+    setTimeout(() => {
+      if (state.chatStick === false && state.chatScroll != null) log.scrollTop = state.chatScroll;
+      else log.scrollTop = log.scrollHeight;
+    }, 0);
     return wrap;
   }
 
@@ -1250,6 +1267,11 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
       }
     }
 
+    /* The user just asked something, so following the bottom is what they
+       want. Set before render so viewCopilot restores to the end rather than
+       to wherever they had scrolled to read an older answer. */
+    state.chatStick = true;
+    state.chatScroll = null;
     render();
     setTimeout(() => { const l = body.querySelector('.chat-log'); if (l) l.scrollTop = l.scrollHeight; }, 0);
   }
@@ -1528,10 +1550,64 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     reader.readAsText(file);
   }
 
-  /* ── Render loop ──────────────────────────────────────────────────────── */
-  function render() {
+  /* ── Render loop ──────────────────────────────────────────────────────────
+     render() tears the view down and rebuilds it. That is fine when something
+     actually changed and visibly wrong when nothing did: the engine pass fires
+     every ~9 seconds whether or not it found anything new, and an unconditional
+     rebuild repaints every card, chart and SVG on that cadence. That repaint is
+     the flicker.
+
+     So the render is now gated on a cheap signature of everything the view
+     actually draws from. If the signature is unchanged the DOM is left exactly
+     as it is. A pass that genuinely changes an insight still repaints; a pass
+     that confirms the same nine insights does nothing at all. */
+  let lastSig = null;
+
+  function renderSignature() {
+    let e;
+    try { e = eng(); } catch { return null; }
+    if (!e) return null;
+    /* Only what is rendered. Deliberately excludes the run id and timestamp:
+       those change on every pass by definition, which would defeat the whole
+       check. */
+    const ins = (e.insights || [])
+      .map((i) => `${i.insight_id}:${i.severity_score}:${i.status}:${Math.round((i.why?.confidence ?? 0) * 100)}`)
+      .join('|');
+    return [
+      state.view,
+      state.selected ?? '',
+      state.filter,
+      state.chat.length,
+      state.filters.map((f) => f.label).join(','),
+      state.lastUpload ? 'u' : '',
+      e.health?.score ?? '',
+      (e.run?.stats?.records_in ?? ''),
+      ins,
+    ].join('~');
+  }
+
+  /* `auto` marks a render the ENGINE asked for, not the user. Only those are
+     gated on the signature. Anything the user did renders unconditionally,
+     because a user action can change view state the signature does not model,
+     and a dropped user render is a far worse bug than a redundant repaint. */
+  function render({ auto = false } = {}) {
+    const sig = renderSignature();
+    if (auto && sig != null && sig === lastSig) {
+      /* Nothing the view draws has changed. Leave the DOM alone: repainting it
+         would flicker and would throw away scroll position for no gain. The
+         chrome still refreshes, since the clock and the live dot do move. */
+      refreshChrome();
+      return;
+    }
+    lastSig = sig;
+
     renderNav();
     const scrollTop = body.scrollTop;
+    /* The chat log is a separate scroll container inside the view, so the
+       body's scrollTop does not describe it. Captured here and restored by
+       viewCopilot, which also decides whether the user had been following the
+       bottom of the transcript. */
+    captureChatScroll();
     body.innerHTML = '';
     const v = state.view === 'dash' ? viewDashboard()
       : state.view === 'feed' ? viewFeed()
@@ -1542,6 +1618,17 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     body.appendChild(v);
     body.scrollTop = scrollTop;
     refreshChrome();
+  }
+
+  /* How far the transcript was scrolled, and whether the user was sitting at
+     the bottom of it. "Near" rather than "at" because a fractional scrollTop
+     on a zoomed display never lands exactly on scrollHeight. */
+  const STICK_SLACK_PX = 48;
+  function captureChatScroll() {
+    const log = body.querySelector('.chat-log');
+    if (!log) return;
+    state.chatScroll = log.scrollTop;
+    state.chatStick = log.scrollHeight - log.scrollTop - log.clientHeight <= STICK_SLACK_PX;
   }
 
   const toggleBtn = root.querySelector('#opToggle');
@@ -1568,7 +1655,7 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
       const busy = !modal.hidden || (body.contains(document.activeElement) && document.activeElement?.tagName === 'INPUT');
       // A render deferred while the user was busy flushes on the first tick
       // after they are done, so the page never sits on stale insights.
-      if (dirty && !busy) { dirty = false; render(); return; }
+      if (dirty && !busy) { dirty = false; render({ auto: true }); return; }
       if (!busy) {
         // The KPI numbers are the ones NorthDesk also shows, so they track the
         // tick; the cards behind them still wait for the engine pass.
@@ -1595,7 +1682,7 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
       // box (render() recreates the input, dropping its value and focus).
       const typing = body.contains(document.activeElement) && document.activeElement?.tagName === 'INPUT';
       if (!modal.hidden || typing) { dirty = true; refreshChrome(); return; }
-      render();
+      render({ auto: true });
     }
   });
 
