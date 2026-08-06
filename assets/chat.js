@@ -1,7 +1,7 @@
 /* ==========================================================================
-   RioAI — the OpsPulse product assistant
+   Rio — the OpsPulse product assistant
    --------------------------------------------------------------------------
-   RioAI is the product's own expert in a chat window: ask it anything about
+   Rio is the product's own expert in a chat window: ask it anything about
    OpsPulse and it answers with the same rigour the product applies to a
    renewal. It is a knowledgeable assistant, but it is deliberately NOT a
    cloud LLM, and that is a feature, not a limitation:
@@ -13,7 +13,7 @@
        improvises pricing or invents an integration is the same failure mode
        wearing a friendlier hat.
 
-   So RioAI runs a small, on-device natural-language layer instead: it
+   So Rio runs a small, on-device natural-language layer instead: it
    normalises and tokenises the question, strips filler words, tolerates
    typos, and scores it against a curated knowledge base — phrase intent
    first, then weighted keyword overlap, then a fuzzy fallback for near
@@ -31,7 +31,7 @@
 
   /* The assistant's name, written down once so the header, launcher, opening
      line and the public API alias all stay in step. */
-  var BOT_NAME = "RioAI";
+  var BOT_NAME = "Rio";
 
   /* ------------------------------------------------------------------
      The one place the contact address is written down. The form in
@@ -156,7 +156,7 @@
         "Deliberately narrow, and this is the core design decision of the product.\n\n" +
         "<strong>Detection, ranking and costing are arithmetic.</strong> No model is involved. A pattern is found because a recent window sits far enough outside a declared baseline, not because something predicted it.\n\n" +
         "<strong>Language only explains.</strong> The narrative layer describes findings that already exist as structured objects. It cannot introduce a number that is not already in the data.\n\n" +
-        "That split is enforced in code, not policy. A generated number is a fabricated number, including in this chat window, which is why I, RioAI, match your question against authored answers rather than improvising with a model.",
+        "That split is enforced in code, not policy. A generated number is a fabricated number, including in this chat window, which is why I, Rio, match your question against authored answers rather than improvising with a model.",
       chips: ["How accurate is it?", "What if it is wrong?", "How does it work?"]
     },
     {
@@ -235,9 +235,9 @@
     },
     {
       id: "identity",
-      keys: ["who are you", "what are you", "your name", "what is your name", "are you a bot", "are you human", "are you real", "are you a robot", "rioai", "rio ai", "what can you do", "how do you work", "are you an ai", "are you chatgpt", "what model are you"],
+      keys: ["who are you", "what are you", "your name", "what is your name", "are you a bot", "are you human", "are you real", "are you a robot", "rio", "rioai", "rio ai", "what can you do", "how do you work", "are you an ai", "are you chatgpt", "what model are you"],
       answer:
-        "I am <strong>RioAI</strong>, the OpsPulse product assistant. Think of me as the product's own expert on call.\n\n" +
+        "I am <strong>Rio</strong>, the OpsPulse product assistant. Think of me as the product's own expert on call.\n\n" +
         "Under the hood I run a small natural-language layer right here in your browser: I normalise your question, strip the filler words, forgive a typo or two, and match what you actually mean against a curated knowledge base of everything OpsPulse, then I answer from authored, verifiable copy.\n\n" +
         "I am not a cloud LLM, and that is deliberate: OpsPulse refuses to generate numbers it cannot trace, so its assistant refuses to generate answers it cannot stand behind. Ask me anything about the product.",
       chips: ["What is OpsPulse?", "How does it work?", "Does it use AI to make up numbers?"]
@@ -246,7 +246,7 @@
       id: "greeting",
       keys: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening", "yo", "howdy", "greetings", "hiya", "sup"],
       answer:
-        "Hi, I am <strong>RioAI</strong>, the OpsPulse product expert. Ask me anything: what it does, how the engine reaches a verdict, pricing, integrations, security, or the design partner programme.\n\n" +
+        "Hi, I am <strong>Rio</strong>, the OpsPulse product expert. Ask me anything: what it does, how the engine reaches a verdict, pricing, integrations, security, or the design partner programme.\n\n" +
         "I read your question with a small on-device language model rather than a cloud LLM, so every answer is authored and verifiable, and if I genuinely do not know something, I will say so and point you at a human instead of guessing.",
       chips: ["What is OpsPulse?", "How does it work?", "What does it cost?"]
     },
@@ -260,7 +260,7 @@
 
   var OPENING = {
     answer:
-      "Hi, I am <strong>RioAI</strong> 👋, the product expert for OpsPulse. I can walk you through what it does, how the decision engine reaches a verdict, pricing, integrations, security, and the design partner programme.\n\n" +
+      "Hi, I am <strong>Rio</strong> 👋, the product expert for OpsPulse. I can walk you through what it does, how the decision engine reaches a verdict, pricing, integrations, security, and the design partner programme.\n\n" +
       "Ask in your own words. I understand full questions, not just keywords. And because I run on the product's own honesty rule, I never invent an answer: if I do not know, I will say so and hand you to a human.",
     chips: ["What is OpsPulse?", "How is this different from a health score?", "What does it cost?", "What is the design partner programme?"]
   };
@@ -270,7 +270,7 @@
   /* ==================================================================
      The natural-language layer
      ------------------------------------------------------------------
-     This is what lets RioAI read a real question rather than demand an
+     This is what lets Rio read a real question rather than demand an
      exact keyword. It is intentionally small and explainable — no model,
      no network — but it does the things an NLP front end does: it lowers
      and strips punctuation, drops filler words that carry no intent,
@@ -285,7 +285,7 @@
                              still counted, at a discount, so a slip of the
                              finger does not drop the visitor to a dead end.
 
-     The acceptance bar stays deliberately high: below it RioAI says it
+     The acceptance bar stays deliberately high: below it Rio says it
      does not know rather than answer the wrong question confidently. That
      is the product's confidence floor, applied to its own chat window.
      ================================================================== */
@@ -402,7 +402,7 @@
 
     /* Confidence floor: answer only on a real phrase hit or on enough keyword
        weight (one distinctive exact word, or two softer signals). A lone
-       fuzzy guess is not enough — below the bar RioAI says it does not know
+       fuzzy guess is not enough — below the bar Rio says it does not know
        rather than answer the wrong question. */
     if (bestS && (bestS.phraseHit || bestS.tokenScore >= 2)) return best;
     return null;
@@ -412,7 +412,7 @@
      Markup — built in JS so a page only has to include the script.
      ------------------------------------------------------------------ */
   var root = document.createElement("div");
-  root.className = "cw";
+  root.className = "cw cw-new";
   /* A shield with an inner spark — a small "product superhero" mark that
      still reads as a single glyph at 20px. Reused in the launcher and the
      panel header so the two are visibly the same character. */
@@ -429,12 +429,16 @@
         '<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>' +
       '</span>' +
       '<span class="cw-launch-label">Ask ' + BOT_NAME + '</span>' +
+      /* Purely decorative attention dot, dropped for good the first time the
+         panel is opened — a badge that reappears would be a lie about unread
+         messages, since nothing arrives unprompted. */
+      '<span class="cw-ping" aria-hidden="true"></span>' +
     '</button>' +
     '<div class="cw-panel" id="cwPanel" role="dialog" aria-label="' + BOT_NAME + ', the OpsPulse product assistant" hidden>' +
       '<div class="cw-head">' +
         '<span class="cw-avatar" aria-hidden="true">' + RIO_MARK + '</span>' +
         '<div class="cw-head-txt">' +
-          '<strong>' + BOT_NAME + '<span class="cw-badge">AI</span></strong>' +
+          '<strong>' + BOT_NAME + '</strong>' +
           '<small><span class="cw-dot" aria-hidden="true"></span>OpsPulse product expert · always honest</small>' +
         '</div>' +
         '<button type="button" class="cw-close" id="cwClose" aria-label="Close ' + BOT_NAME + '">' +
@@ -471,7 +475,7 @@
   function bubble(who, html) {
     var row = document.createElement("div");
     row.className = "cw-msg cw-" + who;
-    /* RioAI's own turns carry the little shield mark, so a long thread still
+    /* Rio's own turns carry the little mark, so a long thread still
        reads at a glance as a conversation with a named assistant rather than
        an anonymous stack of grey boxes. The visitor's turns do not. */
     if (who === "bot") {
@@ -548,7 +552,7 @@
         setChips(intent.chips);
       } else {
         bubble("bot", render(
-          "That one is outside what I can answer with confidence, and I would rather tell you than guess. OpsPulse refuses to invent numbers, so RioAI refuses to invent answers.\n\n" +
+          "That one is outside what I can answer with confidence, and I would rather tell you than guess. OpsPulse refuses to invent numbers, so Rio refuses to invent answers.\n\n" +
           "Both founders reply personally, though. Use the <strong>Schedule a demo</strong> form on this page and your question reaches them directly."
         ));
         setChips(FALLBACK_CHIPS);
@@ -600,6 +604,7 @@
     panel.hidden = false;
     launch.setAttribute("aria-expanded", "true");
     root.classList.add("cw-open");
+    root.classList.remove("cw-new");
     if (!started) {
       started = true;
       bubble("bot", render(OPENING.answer));
@@ -638,7 +643,11 @@
     close: close,
     ask: function (q) { if (panel.hidden) open(); submit(q); }
   };
-  /* RioAI is the assistant's public name, so the rest of the page can open it
-     or ask it a question under that name too. Same object, friendlier alias. */
+  /* Rio is the assistant's public name, so the rest of the page can open it
+     or ask it a question under that name too. Same object, friendlier alias.
+     `RioAI` was the name before the rename and is kept pointing at the same
+     object, because a stale caller failing silently is worse than one extra
+     line here. */
+  window.Rio = window.OpsPulseChat;
   window.RioAI = window.OpsPulseChat;
 })();
