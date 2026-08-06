@@ -81,8 +81,8 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
   const top = el('div', 'lv-top');
   top.innerHTML = `
     <div class="lv-brand">
-      <span class="dot" style="background:var(--grad)">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2.2-6 3.4 12 2.6-8 1.6 4H22" stroke="#04120c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="dot" style="background:#0d1211;border:1px solid rgba(255,255,255,.09)">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4.7" width="19" height="2.6" rx="1.3" fill="#2e3b3a"/><rect x="2.5" y="8.7" width="13.8" height="2.6" rx="1.3" fill="#3d514d"/><rect x="2.5" y="12.7" width="8.9" height="2.6" rx="1.3" fill="#4f7a6b"/><rect x="2.5" y="16.7" width="4.4" height="2.6" rx="1.3" fill="#3fdd85"/></svg>
       </span>OpsPulse<span class="muted" style="font-weight:600"> AI</span>
     </div>
     <nav class="lv-nav" id="opNav"></nav>
