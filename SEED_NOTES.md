@@ -182,3 +182,120 @@ same screen.
 Recording a decision is a mutation, and the standing rule is that adding a
 mutating MCP tool is a decision to escalate rather than make. Ledger writes are
 therefore **UI-only**; all seven MCP tools remain read-only and unchanged.
+
+---
+
+## Commercial tiers and entitlements — *config, not data*
+
+`config/entitlements.js`. Three tiers priced on **two axes only: accounts under
+management, and sources connected. Never per seat.** There is deliberately no
+`max_seats` field in the table to be tempted by — a renewal risk only gets
+acted on if the CSM, the RevOps lead and the CRO can all open it, so charging
+per seat would price the product against its own mechanism of action.
+
+**The demo defaults to `enterprise`.** An unattended visitor landing on a wall
+of padlocks reads a thin product rather than a priced one, so the default shows
+everything and the header's **demo tier** switcher puts the downgrade under the
+presenter's control. Flipping to Essential locks contact centre, external
+signals, delegation and Impact while the top-3 and every KPI stay exactly where
+they were — which is the point worth demonstrating: *the engine is the same
+engine on every plan.* Essential customers are sold fewer surfaces, not worse
+detection.
+
+The tier rides on the **session** (`opspulse.session.v1`), not on
+`dataset.meta`. A tier is a fact about the contract, not about the operation,
+and putting it on meta would mean the reseed path silently reset the customer's
+plan every time someone pressed "New data".
+
+### Locked states are rendered, never removed
+
+A gated feature shows its own shape, names the tier that opens it, and states
+what it cannot tell you. Nothing disappears from the nav.
+
+**The honesty rule, which is the whole of the design:** on a tier that does not
+ingest the data, the locked copy says accounts **"may have"** external events —
+never a count. The seeded signals are sitting in the same dataset and counting
+them would be a one-line change; it would also be a lie about what that tier
+can see. `tools/uicheck.mjs` asserts both halves: that the panel renders, and
+that no count appears in it.
+
+Two features are locked on **every** tier including Enterprise, because they do
+not exist: **contact centre** (no telephony source in this build) and **SSO /
+audit / residency** (this prototype has no authentication of any kind and
+writes no audit log). Both panels say so rather than showing ticks.
+
+### Usage counters — *Generated → derived*
+
+Surfaced on the **Assurance** screen, which is new: `trust.html` had been
+directing readers to "the Assurance screen" for some time and it had never been
+built.
+
+`accountsUnderManagement()` in `engine/web/aggregate.js` is the single
+definition, read by both the counter tile and the cost model so the two cannot
+disagree. It is the **union** of accounts with a contract record and accounts
+seen in the ticket stream — not `ds.accounts.length`, which undercounts by the
+entire size of an uploaded book: `data/csv.js` gives an uploaded row a
+synthetic `UP:<identity>` account id and never creates a master record for it.
+
+**Soft limits.** Exceeding a ceiling flags for a conversation at renewal and
+never blocks anything. There is no `blocked` state in `usageOf()` for a surface
+to key off. A customer who hits the account ceiling has grown their book, which
+is the outcome this product exists to produce; charging for that result and
+then punishing it would be indefensible.
+
+### Cost metrics — *counters measured, dollars modelled*
+
+`engine/web/cost.js`. The split is load-bearing and is labelled on screen.
+
+**Measured**: `decisions_surfaced`, `accounts_processed`, `records_scanned`.
+Decisions are counted as ledger **episodes** over the span the ledger covers,
+not as `insights.length` — the engine re-raises the same open risks every ~9
+seconds, so counting passes would report thousands of decisions a day for an
+operation that produced three.
+
+**Structurally zero, and reported as such**: `inference_calls`,
+`inference_tokens_in`, `inference_tokens_out` — `engine/llm.js` is a deliberate
+stub that throws and the Copilot is templated NLG over insight objects, so this
+build has never made an inference call. `calls_transcribed` is zero until
+contact centre ships, which means **no figure anywhere in this product derives
+from call data.**
+
+**Modelled**: every dollar. Each rate is named `ASSUMED_*` so it cannot be
+quoted as a measurement by accident, including the per-tier
+`list_price_usd_month`, which is a modelling input and **not a committed
+price**. Gross margin is returned as a **range with its inputs printed**, under
+the same rule dollar impact obeys — inputs rounded to display precision
+*before* the range is computed, so the printed working re-multiplies by hand.
+Never a single-point margin.
+
+An earlier cut of this model counted only inference, compute and lookups and
+reported a **99% gross margin**. That was arithmetically correct and
+commercially worthless: the dominant cost of serving a customer here is a human
+reading their book with them, not a GPU. Customer success is now a line item,
+allocated per thousand accounts rather than as a share of revenue — CS effort
+tracks book size, and pricing it as a percentage of list price would make
+margin mathematically insensitive to volume and bury the architecture story.
+
+### What the seed data implies
+
+At the demo book of 2,400 accounts and ~3 decisions surfaced per month:
+
+| Tier | At the demo book (2,400) | At the tier's own ceiling |
+|---|---|---|
+| Essential ($1,000) | 22–51% | **84–90%** at 500 accounts |
+| Growth ($3,000) | **72–82%** | **71–81%** at 2,500 accounts |
+| Enterprise ($7,500) | 89–93% | **54–70%** at 10,000 accounts |
+
+**Growth clears the >70% target at both its demo book and its ceiling.**
+
+Two findings the model surfaces rather than hides. Essential looks poor at the
+demo book only because that book is 4.8× its 500-account ceiling — the usage
+counter flags exactly this, and at its own ceiling the tier is the healthiest of
+the three. And **Enterprise's flat price stops clearing 70% somewhere around
+7,000 accounts**: "unlimited accounts" at a single price is a real exposure on
+a large book, and it is a pricing decision rather than an engineering one.
+
+Inference is **under 1%** of modelled cost of goods at every tier. That is the
+architecture claim as a number: detection is statistical, so cost tracks
+decisions surfaced rather than data ingested, and a customer who triples their
+ticket volume barely moves the line.
