@@ -35,6 +35,11 @@ import { makeRng } from './rng.js';
 import { runEngine } from '../engine/web/index.js';
 import { parseCsv, resolveColumns, mapTickets, mapNps, mapQa, detectKind } from './csv.js';
 import { createSync } from './sync.js';
+/* The commercial tier. It rides on the SESSION rather than the dataset: a tier
+   is a fact about the contract, not about the operation, and putting it on
+   `dataset.meta` would mean the reseed path silently reset the customer's plan
+   every time someone pressed "New data". */
+import { entitlements, normalizeTier, DEFAULT_TIER } from '../config/entitlements.js';
 
 const LS_KEY = 'opspulse.session.v1';
 const TICK_MS = 3200;
@@ -56,6 +61,10 @@ function loadSession() {
     const s = JSON.parse(raw);
     // Persist the seed AND the as-of instant together: day0 is derived from
     // as_of, so a seed alone would rebuild a differently-aligned history.
+    // `tier` is deliberately NOT part of this test. It was added after the key
+    // was in the wild, and requiring it would invalidate every session written
+    // before this change — dropping people onto a freshly generated operation
+    // for no reason they could see. A session without one simply defaults.
     if (typeof s.seed === 'number' && typeof s.as_of === 'number') return s;
     return null;
   } catch { return null; }
@@ -70,6 +79,11 @@ export function createStore(opts = {}) {
   // A session older than 12 hours gets a new as-of so "today" stays today.
   const stale = persisted && Date.now() - persisted.as_of > 12 * 3600000;
   let asOf = opts.asOf ?? (stale ? Date.now() : persisted?.as_of ?? Date.now());
+  /* Survives a reload and a reseed, because neither of those is a change of
+     plan. `normalizeTier` means a hand-edited or stale localStorage value
+     degrades to the default rather than leaving surfaces holding `undefined`. */
+  let tier = normalizeTier(opts.tier ?? persisted?.tier ?? DEFAULT_TIER);
+  let ent = entitlements(tier);
 
   let dataset = generate(seed, asOf);
   let engine = runEngine(dataset);
@@ -80,7 +94,7 @@ export function createStore(opts = {}) {
   let tickTimer = null, engineTimer = null, running = false;
   let counters = { added: 0, resolved: 0, escalated: 0, nps: 0, qa: 0, uploaded: 0 };
 
-  saveSession({ seed, as_of: asOf });
+  saveSession({ seed, as_of: asOf, tier });
 
   const emit = (evt) => { for (const fn of listeners) { try { fn(evt); } catch (e) { console.error('[store] listener failed', e); } } };
 
@@ -124,7 +138,7 @@ export function createStore(opts = {}) {
   function snapshot() {
     const born = (r) => r.is_live || r.is_uploaded;
     return {
-      type: 'state', seed, asOf, running,
+      type: 'state', seed, asOf, running, tier,
       /* Distinct from `asOf`, which is when the DATASET was generated. This is
          the instant the receiver should score the engine against, so a joining
          tab's first frame lands on the same window boundary as its peers'
@@ -151,9 +165,14 @@ export function createStore(opts = {}) {
   /** Adopt a peer's world wholesale. Rebuilds from the seed first so applying a
       snapshot twice cannot double-count anything. */
   function applySnapshot(s) {
+    /* Adopt the peer's tier before the seed check, not inside it: a tab can
+       join a session running on the same seed but a different plan, and
+       nesting this would leave the two windows showing different padlocks
+       over identical data. */
+    if (s.tier != null) setTierLocal(normalizeTier(s.tier));
     if (s.seed !== seed || s.asOf !== asOf) {
       seed = s.seed; asOf = s.asOf;
-      saveSession({ seed, as_of: asOf });
+      saveSession({ seed, as_of: asOf, tier });
     }
     dataset = generate(seed, asOf);
     rng = makeRng(seed ^ 0x5f3759df);
@@ -174,6 +193,16 @@ export function createStore(opts = {}) {
     refreshTodaySeries();
     engine = runEngine(dataset, { asOf: s.engineAsOf ?? Date.now() });
     emit({ type: 'reset', seed, remote: true });
+  }
+
+  /** Change the plan in THIS tab only. Split out from `api.setTier` so that
+      applying a peer's tier cannot echo the message back and start a loop. */
+  function setTierLocal(next) {
+    if (next === tier) return false;
+    tier = next;
+    ent = entitlements(tier);
+    saveSession({ seed, as_of: asOf, tier });
+    return true;
   }
 
   /** Apply one tick's worth of the leader's work. */
@@ -250,6 +279,12 @@ export function createStore(opts = {}) {
            in front of them. The file exists nowhere else, so a follower is the
            sender and the LEADER is one of the receivers. */
         case 'upload':  applyUpload(m); break;
+        /* Unguarded for the same reason as `upload`, and it is the same trap:
+           the tier switcher sits in the header of whichever tab the user has
+           in front of them, which is very often a FOLLOWER. Guarding this on
+           `isLeader` would make the control work in one window and silently do
+           nothing in every other one. */
+        case 'tier':    if (setTierLocal(normalizeTier(m.tier))) emit({ type: 'tenant', tier, remote: true }); break;
         // Followers cannot write, so their toolbar buttons ask the leader to.
         case 'control': if (sync.isLeader) (m.running ? api.start() : api.stop()); break;
         case 'control-reseed': if (sync.isLeader) api.reseed(m.seed); break;
@@ -351,7 +386,7 @@ export function createStore(opts = {}) {
     lastRngState = rng.state();
     counters = { added: 0, resolved: 0, escalated: 0, nps: 0, qa: 0, uploaded: 0 };
     feed.length = 0;
-    saveSession({ seed, as_of: asOf });
+    saveSession({ seed, as_of: asOf, tier });
     // asOf IS the reseeding tab's clock, so every tab scores the new world
     // against the same instant.
     engine = runEngine(dataset, { asOf });
@@ -379,6 +414,11 @@ export function createStore(opts = {}) {
     get seed() { return seed; },
     get counters() { return counters; },
     get running() { return running; },
+    /** The current plan name, and the entitlements object every surface gates
+        on. Surfaces call `store.entitlements.can(feature)` — they never read
+        the tier name and branch on it themselves. */
+    get tier() { return tier; },
+    get entitlements() { return ent; },
     /** True when this tab owns the simulator. Followers mirror it. */
     get isLeader() { return sync.isLeader; },
     get synced() { return sync.active && !sync.solo; },
@@ -405,6 +445,25 @@ export function createStore(opts = {}) {
     },
     toggle() { running ? api.stop() : api.start(); },
     recompute,
+
+    /**
+     * Switch commercial tier. A demo control, not a billing operation — there
+     * is no upgrade flow behind it and nothing is charged.
+     *
+     * Note what this does NOT do: it does not touch the dataset, re-run the
+     * engine, or invalidate anything. The tier changes which surfaces the UI
+     * is allowed to open, and nothing else. Detection, ranking and costing are
+     * identical on every plan, because a customer on Essential is being sold
+     * fewer surfaces, not a worse engine.
+     */
+    setTier(name) {
+      const next = normalizeTier(name);
+      if (!setTierLocal(next)) return tier;
+      // Every tab, leader or not. See the 'tier' case in onMessage.
+      sync.post({ type: 'tier', tier: next });
+      emit({ type: 'tenant', tier: next });
+      return tier;
+    },
 
     /** New random world — the same four patterns, different everything else. */
     reseed(newSeed) {
