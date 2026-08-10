@@ -267,6 +267,108 @@ ok('no chart shows a one-item legend', vizzes.every((v) => v.querySelectorAll('.
 ok('every chart svg carries an accessible label', vizzes.every((v) => !v.querySelector('svg.viz-svg') || v.querySelector('svg.viz-svg').getAttribute('aria-label')));
 modal.querySelector('.drill-x').click();
 
+/* ── Entitlements ──────────────────────────────────────────────────────────
+   THE INVARIANT UNDER TEST: a feature the customer does not have RENDERS. The
+   failure mode this guards against is the easy one — gating by not appending
+   the panel — which looks fine in review and silently removes the only thing
+   that creates upgrade demand. Every check below asserts something is PRESENT
+   on the cheap tier, not absent.
+
+   The second invariant is honesty: on a tier that does not ingest external
+   signals, the locked panel must not print a count of what it is missing. The
+   seeded records are sitting in the same dataset, so counting them would be a
+   one-line change and a lie about what the tier can see. */
+console.log('\n— Entitlements & tiers —');
+
+const tierBtn = (label) => [...pulseEl.querySelectorAll('#opTierSeg button')].find((b) => b.textContent.trim() === label);
+ok('demo tier switcher offers all three tiers', pulseEl.querySelectorAll('#opTierSeg button').length === 3,
+  [...pulseEl.querySelectorAll('#opTierSeg button')].map((b) => b.textContent).join(' · '));
+ok('the demo defaults to Enterprise so nothing is hidden on open', store.tier === 'enterprise', store.tier);
+
+run('switching to Essential repaints without an engine pass', () => {
+  tierBtn('Essential').click();
+  if (store.tier !== 'essential') throw new Error(`tier is ${store.tier}`);
+  return 'tier = essential';
+});
+
+navTo('Dashboard');
+ok('Essential still renders the top-3 — the engine is the same on every plan',
+  pulseEl.querySelectorAll('.risk-card').length >= 1, `${pulseEl.querySelectorAll('.risk-card').length} cards`);
+ok('gated features render as locked panels rather than vanishing',
+  pulseEl.querySelectorAll('.panel.locked').length >= 2, `${pulseEl.querySelectorAll('.panel.locked').length} locked panels`);
+ok('a locked panel names the tier that opens it',
+  [...pulseEl.querySelectorAll('.panel.locked .ent-badge')].length >= 2);
+ok('the external signals lock lists the signal types it would show',
+  /Acquisition/.test(pulseEl.textContent) && /Stakeholder change/.test(pulseEl.textContent));
+ok('the locked copy says "may have" and never invents a count',
+  /may have external events/.test(pulseEl.textContent)
+  && !/\d+ of your (at-risk )?accounts have external/.test(pulseEl.textContent));
+
+ok('every nav item survives the downgrade — none is removed',
+  pulseEl.querySelectorAll('#opNav button').length === 7, `${pulseEl.querySelectorAll('#opNav button').length} nav items`);
+
+run('gated screens open a locked view instead of doing nothing', () => {
+  navTo('Executive Copilot');
+  if (!pulseEl.querySelector('.panel.locked')) throw new Error('copilot locked view missing');
+  if (pulseEl.querySelector('.chat-log')) throw new Error('copilot answered on a plan that does not include it');
+  navTo('Impact');
+  if (!pulseEl.querySelector('.panel.locked')) throw new Error('impact locked view missing');
+  return 'copilot + impact locked';
+});
+
+run('delegation locks the control but keeps its label', () => {
+  navTo('Decision Feed');
+  const assign = [...pulseEl.querySelectorAll('.act-row .lv-btn')].find((b) => /Assign to/.test(b.textContent));
+  if (!assign) throw new Error('the assign control disappeared instead of locking');
+  if (!assign.disabled) throw new Error('assign is still pressable on Essential');
+  return assign.textContent.trim().replace(/\s+/g, ' ');
+});
+
+console.log('\n— Assurance: usage counters and cost of goods —');
+navTo('Assurance');
+ok('Assurance renders both priced axes', pulseEl.querySelectorAll('.use-card').length === 2);
+ok('the 2,400-account book trips the Essential ceiling as a warning, not a block',
+  pulseEl.querySelectorAll('.use-card.over').length >= 1
+  && /not a cut-off/.test(pulseEl.textContent));
+ok('the feature list shows locked entries too, not just included ones',
+  /Executive Copilot/.test(pulseEl.textContent) && /Contact centre/.test(pulseEl.textContent));
+
+run('gross margin is a range with its arithmetic shown', () => {
+  const f = pulseEl.querySelector('.math .f')?.textContent || '';
+  const m = f.match(/gross margin (\d+)% – (\d+)%/);
+  if (!m) throw new Error(`no margin range rendered: ${f.slice(0, 80)}`);
+  if (Number(m[1]) > Number(m[2])) throw new Error('margin range is inverted');
+  if (!/÷ \$[\d,]+/.test(f)) throw new Error('the division is not shown');
+  return f.replace(/\s+/g, ' ').trim().slice(0, 72);
+});
+ok('inference and transcription counters are reported as the zeros they are',
+  /0 calls/.test(pulseEl.textContent) && /structurally zero/.test(pulseEl.textContent));
+ok('every dollar figure is labelled a model, not a measurement',
+  /modelled/.test(pulseEl.textContent) && /assumption/.test(pulseEl.textContent));
+
+run('switching up to Growth unlocks contact centre and external signals', () => {
+  tierBtn('Growth').click();
+  navTo('Dashboard');
+  const t = pulseEl.textContent;
+  if (!/External signals/.test(t)) throw new Error('external signals panel missing on Growth');
+  if (/may have external events/.test(t)) throw new Error('still showing the Essential lock copy');
+  navTo('Impact');
+  if (pulseEl.querySelector('.panel.locked')) throw new Error('impact still locked on Growth');
+  return `${pulseEl.querySelectorAll('.imp-card').length} impact cards`;
+});
+
+run('Enterprise opens the Copilot and leaves nothing locked but unbuilt features', () => {
+  tierBtn('Enterprise').click();
+  navTo('Executive Copilot');
+  if (!pulseEl.querySelector('.chat-log')) throw new Error('copilot did not open on Enterprise');
+  navTo('Dashboard');
+  /* Contact centre stays locked on every tier: it is entitled here and simply
+     not built, and the panel says exactly that rather than showing four ticks. */
+  const locked = [...pulseEl.querySelectorAll('.panel.locked .panel-hd h3')].map((h) => h.textContent);
+  if (!locked.includes('Contact centre')) throw new Error('contact centre should still declare itself unconnected');
+  return `locked on Enterprise: ${locked.join(', ') || 'none'}`;
+});
+
 console.log(`\n${fails === 0 && !errors.length ? g('ALL UI CHECKS PASSED') : r(`${fails} CHECK(S) FAILED`)}  (${checks - fails}/${checks})`);
 if (errors.length) { console.log('\nRuntime errors captured:'); errors.slice(0, 10).forEach((e) => console.log('  ! ' + e)); }
 process.exit(fails === 0 && errors.length === 0 ? 0 : 1);

@@ -599,3 +599,99 @@
 .imp-note strong { color: var(--text); }
 .imp-note em { color: var(--text-soft); font-style: italic; }
 .imp-note code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .72rem; color: var(--cyan); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ENTITLEMENTS — locked states
+   --------------------------------------------------------------------------
+   THE DESIGN RULE: a feature the customer does not have RENDERS. It shows its
+   own shape, names the tier that opens it, and says honestly what it cannot
+   tell them. It never disappears.
+
+   A feature you cannot see creates no demand, and a menu that silently loses
+   items between plans reads as a broken build rather than as a price list.
+   A feature you can see the shape of and cannot open creates upgrade pressure,
+   and it is the honest version too — we are telling them exactly what they are
+   missing rather than hiding it and hoping.
+
+   The visual grammar is deliberately quiet: dimmed, dashed, no colour of its
+   own. A locked panel must not out-shout a live risk card. Nothing on this
+   screen should ever compete with "here are your top 3 operational risks".
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.panel.locked { border-style: dashed; border-color: var(--line-strong); background: rgba(255,255,255,.012); }
+.panel.locked .panel-hd h3 { color: var(--text-soft); }
+
+/* The tier badge. Reads as a price tag, not as an error. */
+.ent-badge {
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  font-size: .66rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 20px;
+  background: rgba(139,92,246,.14); border: 1px solid rgba(139,92,246,.32); color: #c4b5fd;
+}
+.ent-badge svg { width: 10px; height: 10px; }
+.lv-nav .ent-badge { padding: 0 5px; font-size: .6rem; letter-spacing: 0; text-transform: none; }
+
+/* What the feature would tell them, listed as its real shape. Rendered at
+   reduced contrast so it reads as a promise rather than as data — nobody
+   should be able to mistake this for a number the product computed. */
+.ent-shape { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.ent-shape li {
+  display: flex; gap: 9px; align-items: baseline;
+  font-size: .78rem; color: var(--text-dim); line-height: 1.5;
+}
+.ent-shape li::before {
+  content: ''; flex: none; width: 6px; height: 6px; border-radius: 2px; margin-top: 5px;
+  border: 1px solid var(--line-strong); background: rgba(255,255,255,.03);
+}
+.ent-shape li b { color: var(--text-soft); font-weight: 700; }
+
+/* The upgrade line. This is the sentence that has to stay honest: it says what
+   we would be looking at, never how many we found, because on this tier we did
+   not look. */
+.ent-line {
+  margin: 13px 0 0; padding: 11px 13px;
+  border: 1px solid var(--line-strong); border-radius: 10px;
+  background: rgba(139,92,246,.05);
+  font-size: .77rem; line-height: 1.6; color: var(--text-soft);
+}
+.ent-line strong { color: var(--text); }
+.ent-line .ent-honest { display: block; margin-top: 6px; color: var(--text-dim); font-size: .73rem; }
+
+/* A locked control in an action row — the delegation button on Essential.
+   Still visible, still labelled with what it would do, simply not pressable. */
+.lv-btn.locked, .lv-btn.locked:hover {
+  opacity: .55; cursor: not-allowed; border-style: dashed;
+  background: transparent; color: var(--text-dim);
+}
+
+/* ── Usage counters ─────────────────────────────────────────────────────────
+   SOFT LIMITS. 'over' is a warning colour, never a blocking one, and there is
+   no state past it — growing the book is the outcome this product exists to
+   produce, so the interface must never punish it. */
+.use-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.use-card { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px 15px; background: rgba(255,255,255,.015); }
+.use-card .k { font-size: .74rem; color: var(--text-dim); font-weight: 600; }
+.use-card .v { font-size: 1.5rem; font-weight: 800; margin-top: 6px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.use-card .v small { font-size: .8rem; font-weight: 600; color: var(--text-dim); letter-spacing: 0; }
+.use-bar { height: 6px; border-radius: 4px; background: rgba(255,255,255,.06); margin-top: 10px; overflow: hidden; }
+.use-bar i { display: block; height: 100%; border-radius: 4px; background: var(--ok); transition: width .3s; }
+.use-card.warn .use-bar i { background: var(--warn); }
+.use-card.over .use-bar i { background: var(--danger); }
+.use-card .s { font-size: .73rem; color: var(--text-dim); margin-top: 8px; line-height: 1.5; }
+.use-card.warn .s { color: #ffd27a; }
+.use-card.over .s { color: #ff9c9c; }
+
+/* ── The demo tier switcher ─────────────────────────────────────────────────
+   Labelled as a demo control for the same reason the seed button is: nobody
+   should be able to mistake it for a billing action. */
+.ent-switch { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ent-switch .ent-switch-k {
+  font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 800; color: var(--text-dim);
+}
+.ent-seg { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.02); }
+.ent-seg button {
+  background: transparent; border: 0; color: var(--text-dim); font: inherit; font-size: .76rem; font-weight: 600;
+  padding: 4px 10px; border-radius: 7px; cursor: pointer; white-space: nowrap; transition: background .15s, color .15s;
+}
+.ent-seg button:hover { color: var(--text); background: rgba(255,255,255,.05); }
+.ent-seg button.on { background: rgba(139,92,246,.16); color: #c4b5fd; }
