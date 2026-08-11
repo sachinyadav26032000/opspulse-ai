@@ -1,0 +1,6 @@
+{
+  "name": "opspulse-config",
+  "private": true,
+  "type": "module",
+  "//": "Scope marker only, exactly like data/package.json and engine/web/package.json. It exists so Node treats these browser modules as ES modules; it is not a real package and there are no dependencies."
+}

@@ -21,8 +21,14 @@ import {
 } from './charts.js';
 import {
   countByDay, meanByDay, countBy, npsOf, csatOf, dayLabel,
-  rolling, openTickets, groupBy,
+  rolling, openTickets, groupBy, accountsUnderManagement, sourcesConnected,
 } from '../engine/web/aggregate.js';
+/* Entitlements. Surfaces below call `can(feature)` and nothing else — no view
+   in this file reads a tier name and branches on it, because the moment two
+   screens each hold their own opinion about which plan opens what, one of them
+   is wrong and nobody finds out until a customer does. */
+import { FEATURES, TIER_ORDER, TIERS } from '../config/entitlements.js';
+import { costMetrics, marginModel } from '../engine/web/cost.js';
 import { KAGGLE_COLUMNS } from '../data/generator.js';
 import { toCsv } from '../data/csv.js';
 /* The composable query layer. The Copilot tries this first for questions about
@@ -48,6 +54,8 @@ const IC = {
   dice: '<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/><circle cx="15" cy="9" r="1.3" fill="currentColor"/><circle cx="9" cy="15" r="1.3" fill="currentColor"/></svg>',
   search: '<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-3-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   file: '<svg viewBox="0 0 24 24" fill="none"><path d="M14 3v5h5M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8l-5-5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none"><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 10.5V7.8a3.5 3.5 0 0 1 7 0v2.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3.2 19 6v6c0 4.2-2.9 7.6-7 8.8-4.1-1.2-7-4.6-7-8.8V6l7-2.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9 12 2.2 2.2L15.4 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 
 const sevClass = (s) => (s >= 70 ? '' : s >= 50 ? 'sev-med' : 'sev-low');
@@ -93,6 +101,10 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     </div>
     <nav class="lv-nav" id="opNav"></nav>
     <div class="lv-spacer"></div>
+    <div class="ent-switch" id="opTier">
+      <span class="ent-switch-k" title="A demo control. No upgrade is purchased and nothing is charged.">demo tier</span>
+      <div class="ent-seg" id="opTierSeg"></div>
+    </div>
     <span class="lv-live"><span class="lv-dot" id="opDot"></span><span id="opLive">live</span></span>
     <button class="lv-btn" id="opToggle">${IC.pause}<span>Pause</span></button>
     <button class="lv-btn" id="opReseed" title="Generate a different random operation with the same four patterns">${IC.dice}<span>New data</span></button>`;
@@ -101,19 +113,30 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
   const body = el('div', 'lv-body');
   root.appendChild(body);
 
+  /* `feature`, where present, gates the SCREEN. A gated nav item is never
+     removed from the bar — it keeps its place and gains a tier badge, and
+     clicking it opens the locked view rather than doing nothing. A menu that
+     loses items between plans reads as a broken build; one that shows what it
+     would open reads as a price list. */
   const NAV = [
     { id: 'dash', label: 'Dashboard', icon: IC.home },
     { id: 'feed', label: 'Decision Feed', icon: IC.feed, badge: () => store.engine.insights.length },
     { id: 'radar', label: 'Risk Radar', icon: IC.radar },
-    { id: 'copilot', label: 'Executive Copilot', icon: IC.chat },
-    { id: 'impact', label: 'Impact', icon: IC.up },
+    { id: 'copilot', label: 'Executive Copilot', icon: IC.chat, feature: 'executive_copilot' },
+    { id: 'impact', label: 'Impact', icon: IC.up, feature: 'impact_verification' },
+    { id: 'assurance', label: 'Assurance', icon: IC.shield },
     { id: 'upload', label: 'Data Upload', icon: IC.up },
   ];
   const nav = root.querySelector('#opNav');
   function renderNav() {
     nav.innerHTML = '';
     for (const n of NAV) {
-      const b = el('button', state.view === n.id ? 'on' : '', `${n.icon}<span>${esc(n.label)}</span>${n.badge ? `<span class="badge">${n.badge()}</span>` : ''}`);
+      const locked = n.feature && !can(n.feature);
+      /* The insight badge is suppressed on a locked screen: it is a live count
+         off data this plan does not open, and a number next to a padlock is
+         exactly the thing someone screenshots and quotes back. */
+      const badge = locked ? entBadge(n.feature) : n.badge ? `<span class="badge">${n.badge()}</span>` : '';
+      const b = el('button', state.view === n.id ? 'on' : '', `${n.icon}<span>${esc(n.label)}</span>${badge}`);
       b.addEventListener('click', () => { state.view = n.id; render(); body.scrollTop = 0; });
       nav.appendChild(b);
     }
@@ -163,6 +186,57 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
   /* ── Shared data helpers ──────────────────────────────────────────────── */
   const ds = () => store.dataset;
   const eng = () => store.engine;
+
+  /* ── Entitlements ─────────────────────────────────────────────────────────
+     ONE HELPER, ONE SOURCE OF TRUTH. `can('external_signals')` is the entire
+     public surface of pricing inside this file. The tier table lives in
+     `config/entitlements.js` and nothing here duplicates it. */
+  const ent = () => store.entitlements;
+  const can = (feature) => store.entitlements.can(feature);
+
+  /* A tier badge, for a nav item or a panel header. Names the tier that opens
+     the feature rather than the tier the customer is on, because "Growth" next
+     to a padlock answers the question they are actually asking. */
+  const entBadge = (feature) => {
+    const up = ent().upgradeLabel(feature);
+    return up ? `<span class="ent-badge">${IC.lock}${esc(up)}</span>` : '';
+  };
+
+  /**
+   * The locked state, as one builder every gated surface goes through.
+   *
+   * THE RULE THIS ENFORCES: a locked panel shows the SHAPE of what it would
+   * tell you, and never a number. On a tier that does not ingest the data we
+   * genuinely do not know what is in it, so the copy says "may have" and not
+   * "two of your accounts have". Writing the count would be easy here — this
+   * is a prototype and the seeded records are sitting in the same dataset —
+   * and it would be a lie about what the tier can see. The point is to make
+   * the gap legible, not to bluff.
+   *
+   * `shape` is a list of the real components of the feature. `honest` is the
+   * one sentence that states, without a figure, what we are not showing them.
+   */
+  function lockedPanel({ feature, shape = [], honest }) {
+    const meta = FEATURES[feature] || { label: feature, blurb: '' };
+    const up = ent().upgradeLabel(feature);
+    const p = el('div', 'panel locked');
+    p.innerHTML = `<div class="panel-hd"><h3>${esc(meta.label)}</h3>${entBadge(feature)}</div>`;
+    const bd = el('div', 'panel-bd');
+    if (meta.blurb) {
+      const lede = el('p', 'muted');
+      lede.style.cssText = 'font-size:.78rem;margin:0 0 13px;line-height:1.55';
+      lede.textContent = meta.blurb;
+      bd.appendChild(lede);
+    }
+    if (shape.length) {
+      bd.appendChild(el('ul', 'ent-shape', shape.map((s) => `<li><span><b>${esc(s.k)}</b> — ${esc(s.v)}</span></li>`).join('')));
+    }
+    bd.appendChild(el('div', 'ent-line', `
+      <strong>${esc(meta.label)} — available on ${esc(up || 'a higher plan')}.</strong>
+      ${honest ? `<span class="ent-honest">${esc(honest)}</span>` : ''}`));
+    p.appendChild(bd);
+    return p;
+  }
 
   /* The KPI strip, as data.
      ------------------------------------------------------------------------
@@ -685,8 +759,26 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
       const acts = el('div', 'act-row');
       const open = el('button', 'lv-btn primary', 'Open BI drill-down');
       open.addEventListener('click', () => drillInsight(ins));
-      const assign = el('button', 'lv-btn', `Assign to ${ins.recommended_action.owner_role}`);
-      assign.addEventListener('click', () => toast('Assigned', `${m.title} → ${ins.recommended_action.owner_role}`));
+      /* Delegation. Locked on Essential, and locked VISIBLY: the button keeps
+         its label so it still says who this would go to, and gains a tier
+         badge instead of disappearing. Removing it would leave the row looking
+         complete and teach the customer nothing about what they are missing. */
+      const delegable = can('delegation');
+      const assign = el('button', `lv-btn${delegable ? '' : ' locked'}`,
+        `${delegable ? '' : IC.lock}<span>Assign to ${esc(ins.recommended_action.owner_role)}</span>`);
+      if (delegable) {
+        assign.addEventListener('click', () => {
+          /* Records against the ledger rather than only raising a toast, so
+             the Impact surface can later report what happened to a decision
+             somebody actually committed to. */
+          ledger.markActioned(ins.insight_id, `Assigned to ${ins.recommended_action.owner_role}`);
+          toast('Assigned', `${m.title} → ${ins.recommended_action.owner_role}`);
+        });
+      } else {
+        assign.disabled = true;
+        assign.title = `Delegation is available on ${ent().upgradeLabel('delegation')}`;
+        assign.setAttribute('aria-disabled', 'true');
+      }
       const json = el('button', 'lv-btn', 'View insight JSON');
       json.addEventListener('click', () => showJson(ins));
       acts.appendChild(open); acts.appendChild(assign); acts.appendChild(json);
@@ -809,11 +901,118 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     obd.appendChild(ol); opp.appendChild(obd);
     right.appendChild(opp);
 
+    right.appendChild(externalSignalsPanel());
+    right.appendChild(contactCentrePanel());
     right.appendChild(tickerPanel());
     cols.appendChild(right);
     wrap.appendChild(cols);
     return wrap;
   }
+
+  /* The four signal types the generator actually emits. Listed here so the
+     LOCKED state can name them: "market intelligence" as a phrase sells
+     nothing, whereas "acquisition, distress, stakeholder change, funding" is a
+     specific promise someone can decide they want. */
+  const EXTERNAL_SHAPE = [
+    { k: 'Acquisition', v: 'the account was bought, and your champion now reports to someone else' },
+    { k: 'Distress', v: 'layoffs, restructuring or a down round on a paying customer' },
+    { k: 'Stakeholder change', v: 'the person who signed the contract has left' },
+    { k: 'Funding', v: 'a raise, which runs the other way — seat expansion, not churn' },
+  ];
+
+  /* ── External signals ─────────────────────────────────────────────────────
+     Until now these had no surface of their own: a seeded acquisition was only
+     visible if a Copilot query happened to return that account. Giving the
+     feature a panel serves both states — it is where the data lands when the
+     plan includes it, and it is the shape of the gap when it does not. */
+  function externalSignalsPanel() {
+    if (!can('external_signals')) {
+      return lockedPanel({
+        feature: 'external_signals',
+        shape: EXTERNAL_SHAPE,
+        /* "May have", never a count. On this plan we do not run the lookups,
+           so we genuinely do not know how many there are — and inventing the
+           number to sharpen the upsell would make this the least defensible
+           sentence in the product. */
+        honest: 'Accounts in your book may have external events we are not looking for on this plan. We do not run the lookups, so we cannot tell you how many.',
+      });
+    }
+
+    const withSignals = ds().accounts
+      .filter((a) => Array.isArray(a.external_signals) && a.external_signals.length)
+      .map((a) => ({ acct: a, sig: a.external_signals[0] }))
+      .sort((x, y) => y.sig.detected_at - x.sig.detected_at);
+
+    const p = el('div', 'panel');
+    p.innerHTML = `<div class="panel-hd"><h3>External signals</h3><span class="hint">${fmt.int(withSignals.length)} accounts · most recent first</span></div>`;
+    const bd = el('div', 'panel-bd');
+    if (!withSignals.length) {
+      bd.appendChild(el('div', 'empty', 'No external events detected on the book in this window.'));
+    }
+    const list = el('div', 'opps');
+    /* Provenance is mandatory, exactly as it is in the Copilot's answer rows:
+       an unsourced claim that a customer was acquired is worse than no claim.
+       Seeded records carry a `sample` badge in place of a fabricated URL. */
+    for (const { acct, sig } of withSignals.slice(0, 5)) {
+      list.appendChild(el('div', 'opp', `
+        <div class="t">${esc(acct.company)}</div>
+        <div class="s">${esc(sig.headline)}</div>
+        <div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap">
+          <span class="chip ${sig.effect === 'opportunity' ? 'ok' : 'hi'}">${esc(sig.type.replace(/_/g, ' '))}</span>
+          <span class="chip">${esc(fmt.usdK(acct.arr_usd))}</span>
+          <span class="chip">renews in ${acct.renewal_in_days}d</span>
+          <span class="chip info">${sig.seeded ? 'sample · ' : ''}${esc(sig.source)}</span>
+        </div>`));
+    }
+    bd.appendChild(list);
+    if (withSignals.length > 5) {
+      bd.appendChild(el('div', 'qa-more', `Showing 5 of <strong>${fmt.int(withSignals.length)}</strong>, most recently detected first.`));
+    }
+    p.appendChild(bd);
+    return p;
+  }
+
+  /* ── Contact centre ───────────────────────────────────────────────────────
+     Locked on EVERY tier, including Enterprise, because it does not exist yet:
+     there is no call data in this build and `calls_transcribed` is structurally
+     zero on the cost surface. Rendering it as an empty panel that says so is
+     the honest option — the alternative is either hiding a feature we sell or
+     filling it with numbers we did not measure.
+
+     Note it does not claim to be coming. It states what it would read and
+     which plan carries it, and stops there. */
+  function contactCentrePanel() {
+    if (!can('contact_centre')) {
+      return lockedPanel({
+        feature: 'contact_centre',
+        shape: CONTACT_SHAPE,
+        honest: 'Calls your team is already taking are not being read on this plan. Nothing in the figures on this screen includes them.',
+      });
+    }
+    const p = el('div', 'panel locked');
+    p.innerHTML = `<div class="panel-hd"><h3>Contact centre</h3><span class="hint">included · no source connected</span></div>`;
+    const bd = el('div', 'panel-bd');
+    const lede = el('p', 'muted');
+    lede.style.cssText = 'font-size:.78rem;margin:0 0 13px;line-height:1.55';
+    lede.textContent = FEATURES.contact_centre.blurb;
+    bd.appendChild(lede);
+    bd.appendChild(el('ul', 'ent-shape', CONTACT_SHAPE.map((s) => `<li><span><b>${esc(s.k)}</b> — ${esc(s.v)}</span></li>`).join('')));
+    /* Deliberately NOT an ent-line: this plan is not missing an entitlement,
+       it is missing a connection. Saying "upgrade" here would be selling
+       something the customer has already bought. */
+    bd.appendChild(el('div', 'ent-line', `
+      <strong>Your plan includes contact centre. No telephony source is connected.</strong>
+      <span class="ent-honest">Zero calls have been transcribed, so no figure anywhere in this product is derived from call data.</span>`));
+    p.appendChild(bd);
+    return p;
+  }
+
+  const CONTACT_SHAPE = [
+    { k: 'Call transcripts', v: 'read as a signal alongside tickets, QA and NPS' },
+    { k: 'Cancellation intent', v: 'spoken on a call before it is ever raised as a ticket' },
+    { k: 'Repeat-contact detection', v: 'the same account calling three times in a week' },
+    { k: 'Sentiment on the call', v: 'not on the survey afterwards, which only detractors fill in' },
+  ];
 
   function tickerPanel() {
     const p = el('div', 'panel');
@@ -1122,6 +1321,18 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
   }
 
   function viewCopilot() {
+    if (!can('executive_copilot')) {
+      const wrap = el('div', 'lv-view');
+      wrap.appendChild(lockedPanel({
+        feature: 'executive_copilot',
+        /* The shape is drawn from the query layer's OWN supported types rather
+           than from a hand-written list, so this can never advertise a
+           question the engine cannot actually answer. */
+        shape: SUPPORTED.slice(0, 5).map((s) => ({ k: 'Ask', v: s })),
+        honest: 'Every figure the Copilot would quote is already computed on the other screens. What this plan does not include is asking for it in a sentence and narrowing the answer.',
+      }));
+      return wrap;
+    }
     const wrap = el('div', 'lv-view');
     const p = el('div', 'panel');
     p.innerHTML = `<div class="panel-hd"><h3>Executive Copilot</h3><span class="hint">grounded in ${fmt.int(eng().run.stats.records_in)} live records</span></div>`;
@@ -1355,6 +1566,20 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
      saved" would be a causal claim with no counterfactual behind it, and it is
      the exact claim a sceptical buyer probes when money is discussed. */
   function viewImpact() {
+    if (!can('impact_verification')) {
+      const wrap = el('div', 'lv-view');
+      wrap.appendChild(lockedPanel({
+        feature: 'impact_verification',
+        shape: [
+          { k: 'ARR retained on flagged accounts', v: 'what happened at renewal to the accounts you were warned about' },
+          { k: 'Decisions closed', v: 'including the ones that went badly — a ledger that only remembers its wins cannot forecast' },
+          { k: 'Time to first view', v: 'how long a raised risk sat before a human opened it' },
+          { k: 'Adoption recovered', v: 'accounts that came back above the adoption threshold after you acted' },
+        ],
+        honest: 'Decisions are still being raised and are still in the feed on this plan. What is not kept is the record of what you did about them and what happened next.',
+      }));
+      return wrap;
+    }
     const wrap = el('div', 'lv-view');
     const rows = resolveStack(ds(), []);
     const r = impactRollup(ledger, rows);
@@ -1384,7 +1609,8 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
           <li><span>Closed decisions that renewed</span><b>${f.retained_share == null ? 'n/a' : f.retained_share + '%'}</b></li>
         </ul>
       </div>
-      <div class="imp-card">
+      ${can('usage_history')
+        ? `<div class="imp-card">
         <span class="imp-k">Adoption</span>
         <div class="imp-n">${fmt.int(ad.below_threshold)}</div>
         <div class="imp-l">accounts below ${ad.threshold_pct}% adoption</div>
@@ -1392,7 +1618,20 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
           <li><span>Accounts with usage data</span><b>${fmt.int(ad.accounts_with_usage)}</b></li>
           <li><span>Recovered above ${ad.threshold_pct}%</span><b>${fmt.int(ad.recovered_above)}</b></li>
         </ul>
-      </div>
+      </div>`
+        /* The adoption card reads product usage history, so it carries that
+           feature's gate rather than Impact's. The two happen to unlock on the
+           same tier today; wiring the card to the entitlement it actually
+           depends on is what stops that coincidence from becoming a bug the
+           day the packaging changes. */
+        : `<div class="imp-card" style="border-style:dashed">
+        <span class="imp-k">Adoption</span>
+        <div class="imp-l" style="margin-top:9px">Weekly active seats against contracted seats, per account.</div>
+        <div class="ent-line" style="margin-top:11px">
+          <strong>Product usage history — available on ${esc(ent().upgradeLabel('usage_history') || 'a higher plan')}.</strong>
+          <span class="ent-honest">Seat activity is not ingested on this plan, so no adoption figure here is withheld — none has been computed.</span>
+        </div>
+      </div>`}
       <div class="imp-card">
         <span class="imp-k">Operational</span>
         <div class="imp-n">${fmt.int(op.surfaced_unprompted)}</div>
@@ -1427,11 +1666,14 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     if (recent.length) {
       wrap.appendChild(table(
         [
-          { k: 'title', label: 'Decision' },
-          { k: 'when', label: 'Surfaced' },
-          { k: 'arr', label: 'ARR at risk' },
-          { k: 'action', label: 'Action taken' },
-          { k: 'outcome', label: 'Outcome' },
+          /* `key`, not `k`. table() reads `c.key`, so these five columns had
+             been rendering their headers and then five empty cells for every
+             row — the decision ledger has never actually shown a decision. */
+          { key: 'title', label: 'Decision' },
+          { key: 'when', label: 'Surfaced' },
+          { key: 'arr', label: 'ARR at risk' },
+          { key: 'action', label: 'Action taken' },
+          { key: 'outcome', label: 'Outcome' },
         ],
         recent.map((d) => ({
           title: d.title + (d.simulated ? ' ·seeded' : ''),
@@ -1443,6 +1685,207 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
         { title: 'Decision ledger', hint: 'most recent first · outcomes include the ones that went badly' },
       ));
     }
+    return wrap;
+  }
+
+  /* ── Assurance ────────────────────────────────────────────────────────────
+     `trust.html` has been telling readers to "check it on the Assurance
+     screen" for some time, and there was no Assurance screen. The contract
+     validation result and detector coverage lived on the Decision Feed's
+     Engine run panel, and the record counts lived on Data Upload. This screen
+     gathers what was already computed — nothing here is a new claim — and adds
+     the two things a commercial conversation needs: what the customer is
+     consuming against their plan, and what it costs us to serve them.
+
+     Everything on this screen reads through the same aggregate functions the
+     cards do. `accountsUnderManagement()` is called once and passed down, so
+     the counter tile and the cost model are incapable of reporting different
+     account totals. */
+  function viewAssurance() {
+    const d = ds(), e = eng(), en = ent();
+    const wrap = el('div', 'lv-view');
+
+    const accounts = accountsUnderManagement(d);
+    const sources = sourcesConnected(d);
+    const connected = sources.filter((s) => s.connected);
+    const acctUse = en.accountUsage(accounts);
+    const srcUse = en.sourceUsage(connected.length);
+
+    /* ── Plan and usage ─────────────────────────────────────────────────── */
+    const plan = el('div', 'panel');
+    plan.innerHTML = `<div class="panel-hd"><h3>Plan &amp; usage</h3><span class="hint">${esc(en.label)} · priced on accounts and sources, never per seat</span></div>`;
+    const pbd = el('div', 'panel-bd');
+
+    const useCard = (k, u, unit, unlimitedNote) => {
+      const cls = u.state === 'over' ? ' over' : u.state === 'warn' ? ' warn' : '';
+      const bar = u.ceiling == null ? ''
+        : `<div class="use-bar"><i style="width:${Math.min(100, u.pct ?? 0)}%"></i></div>`;
+      const sub = u.ceiling == null
+        ? unlimitedNote
+        : u.state === 'over'
+          /* SOFT LIMIT. The copy says "at renewal" and never "upgrade to
+             continue", because the product does not stop and must not read as
+             though it might. */
+          ? `${fmt.int(u.used - u.ceiling)} ${unit} over your plan ceiling. Nothing is blocked — this is a conversation at renewal, not a cut-off.`
+          : u.state === 'warn'
+            ? `${u.pct}% of your ${fmt.int(u.ceiling)} ${unit} ceiling. Room for ${fmt.int(u.headroom)} more.`
+            : `${u.pct}% of your ${fmt.int(u.ceiling)} ${unit} ceiling.`;
+      return `<div class="use-card${cls}">
+        <div class="k">${esc(k)}</div>
+        <div class="v">${fmt.int(u.used)}${u.ceiling == null ? ' <small>of unlimited</small>' : ` <small>of ${fmt.int(u.ceiling)}</small>`}</div>
+        ${bar}
+        <div class="s">${esc(sub)}</div>
+      </div>`;
+    };
+
+    pbd.appendChild(el('div', 'use-grid',
+      useCard('Accounts under management', acctUse, 'accounts', 'Unlimited on Enterprise. The count is still measured and still reported.')
+      + useCard('Sources connected', srcUse, 'sources', 'Unlimited on Enterprise.')));
+
+    /* How the account count is derived, on the surface rather than in a
+       comment nobody reading the invoice will see. This is the number the
+       price depends on, so how it is counted belongs next to it. */
+    pbd.appendChild(el('div', 'imp-note', `
+      <strong>How accounts under management is counted.</strong>
+      Every account with a contract record, plus every account we have seen traffic from, deduplicated by
+      <code>account_id</code>. Uploaded rows without a matching account id are counted from the identity in the
+      file, so a book you ingest by CSV is counted at its real size rather than at zero.
+      Dormant accounts are deliberately included: we are still storing, scoring and reporting on them.`));
+
+    const srcTable = table(
+      [{ key: 'src', label: 'Source' }, { key: 'state', label: 'State' }, { key: 'records', label: 'Records', num: true }],
+      sources.map((s) => ({ src: s.label, state: s.connected ? 'connected' : 'not connected', records: s.connected ? fmt.int(s.records) : '—' })),
+      { title: 'Sources', hint: `${connected.length} of ${sources.length} streams carrying records` },
+    );
+    plan.appendChild(pbd);
+    wrap.appendChild(plan);
+    wrap.appendChild(srcTable);
+
+    /* ── What the plan includes ─────────────────────────────────────────── */
+    const feat = el('div', 'panel');
+    feat.innerHTML = `<div class="panel-hd"><h3>What ${esc(en.label)} includes</h3><span class="hint">every feature, including the ones you do not have</span></div>`;
+    const fbd = el('div', 'panel-bd');
+    const flist = el('div', 'drv');
+    /* The full list on every tier, locked entries included. A customer should
+       be able to read their own plan without a sales call, and the ones they
+       do not have are the half of this list that is worth showing. */
+    for (const [key, meta] of Object.entries(FEATURES)) {
+      const has = can(key);
+      const row = el('div', 'drv-row', `
+        <span class="n" title="${esc(meta.blurb)}">${esc(meta.label)}</span>
+        <span class="v" style="color:${has ? STATUS.good : 'var(--text-dim)'}">${has ? 'included' : esc(en.upgradeLabel(key) || '—')}</span>`);
+      row.style.gridTemplateColumns = '1fr auto';
+      flist.appendChild(row);
+    }
+    fbd.appendChild(flist);
+    feat.appendChild(fbd);
+    wrap.appendChild(feat);
+
+    /* ── Cost of goods ──────────────────────────────────────────────────── */
+    const metrics = costMetrics(d, e.run, ledger.all(), { entitled: en });
+    const model = marginModel(metrics, TIERS[en.tier]);
+
+    const cost = el('div', 'panel');
+    cost.innerHTML = `<div class="panel-hd"><h3>Cost of goods</h3><span class="hint">measured counters · modelled cost</span></div>`;
+    const cbd = el('div', 'panel-bd');
+
+    cbd.appendChild(el('div', 'drill-kpis', `
+      <div><div class="k">Decisions surfaced</div><div class="v">${fmt.int(metrics.decisions_surfaced)}</div><div class="s">per month</div></div>
+      <div><div class="k">Accounts processed</div><div class="v">${fmt.int(metrics.accounts_processed)}</div><div class="s">every engine pass</div></div>
+      <div><div class="k">Records scanned</div><div class="v">${fmt.int(metrics.records_scanned)}</div><div class="s">per pass, statistically</div></div>
+      <div><div class="k">Inference calls</div><div class="v">${fmt.int(metrics.inference_calls)}</div><div class="s">detection is arithmetic</div></div>`));
+
+    /* The margin, as a range. Never a point — see engine/web/cost.js. */
+    const marg = el('div', 'math');
+    marg.style.cssText = 'margin-top:16px';
+    /* Costs ascending, margins descending, and the pairing stated — the higher
+       cost is the one that produces the lower margin, and a reader
+       re-multiplying this by hand has to know which end goes with which. */
+    marg.innerHTML = `
+      <div class="f">gross margin ${model.margin_low_pct}% – ${model.margin_high_pct}%
+        &nbsp;=&nbsp; ($${fmt.int(model.price_usd_month)} − $${fmt.int(model.cogs_low_usd)}…$${fmt.int(model.cogs_high_usd)}) ÷ $${fmt.int(model.price_usd_month)}</div>
+      <p class="caveat">Cost of goods $${fmt.int(model.cogs_low_usd)} – $${fmt.int(model.cogs_high_usd)} per month; the higher cost gives the lower margin. The price is an assumed list price for this model, not a committed one, and every rate below is an assumption. Only the counters above are measured.</p>`;
+    cbd.appendChild(marg);
+
+    cbd.appendChild(table(
+      [{ key: 'item', label: 'Line item' }, { key: 'cost', label: 'Per month', num: true }, { key: 'basis', label: 'Working' }, { key: 'kind', label: 'Measured?' }],
+      model.line_items.map((li) => ({
+        item: li.k,
+        cost: li.low === li.high ? `$${li.low}` : `$${li.low} – $${li.high}`,
+        basis: li.basis,
+        kind: li.measured ? 'measured' : 'modelled',
+      })),
+      { title: 'Cost lines', hint: 'every input printed, so the range re-multiplies by hand' },
+    ));
+
+    /* A share under 1% rounds to "0%", which reads as a broken tile rather
+       than as the finding it is. Say "under 1%" instead — it is the stronger
+       statement anyway, and it is the whole architectural claim in one figure. */
+    const share = model.decision_scaled_share_pct;
+    cbd.appendChild(el('div', 'imp-note', `
+      <strong>Why this scales the way it does.</strong>
+      Inference is ${share < 1 ? '<strong>under 1%</strong> of' : `${share}% of`} modelled cost of goods, because it tracks
+      <em>decisions surfaced</em> rather than data ingested: the nine detectors run over
+      ${fmt.int(metrics.records_scanned)} records statistically, without sending any of them to a model. A customer who
+      triples their ticket volume roughly triples the arithmetic and barely moves this line at all.
+      What does scale with the book is customer success, which is why both priced axes are the ones they are.
+      <br><br>
+      <strong>What is measured and what is not.</strong>
+      Decisions, accounts and records are counted off the live dataset and the decision ledger.
+      Inference calls and tokens are <strong>structurally zero</strong> in this build —
+      <code>engine/llm.js</code> is a deliberate stub and the Copilot is templated narration over insight objects,
+      so there is no token spend to report. <code>calls_transcribed</code> is zero until contact centre ships.
+      Every dollar figure on this panel is therefore a <strong>model</strong> applied to measured counters, and it is
+      labelled that way rather than presented as a result.`));
+
+    cost.appendChild(cbd);
+    wrap.appendChild(cost);
+
+    /* ── Engine integrity ───────────────────────────────────────────────── */
+    const r = e.run;
+    const integ = el('div', 'panel');
+    integ.innerHTML = `<div class="panel-hd"><h3>Engine integrity</h3><span class="hint">last pass · ${Object.values(r.timings_ms).reduce((a, x) => a + x, 0)} ms</span></div>
+      <div class="panel-bd">
+        <div class="drv">
+          ${[
+            ['Contract valid', r.contract_valid ? 'yes' : 'NO'],
+            ['Records analysed', fmt.int(r.stats.records_in)],
+            ['Anomalies flagged', r.stats.anomalies_flagged],
+            ['Insights built', r.stats.insights_built],
+            ['Held below the 60% confidence cutoff', r.stats.held_for_review],
+          ].map(([k, v]) => `<div class="drv-row" style="grid-template-columns:1fr auto"><span class="n">${esc(k)}</span><span class="v">${esc(String(v))}</span></div>`).join('')}
+        </div>
+        <p class="muted" style="font-size:.74rem;margin:12px 0 0;line-height:1.55">Anything under 60% confidence is held for review and never auto-actioned. If insight validation fails, this panel reports <code style="color:var(--cyan)">contract_valid: NO</code> rather than hiding it.</p>
+        <div class="drv" style="margin-top:10px">${r.detectors_run.map((x) => `<div class="drv-row" style="grid-template-columns:1fr auto"><span class="n">${esc(x.detector.replace(/_/g, ' '))}</span><span class="v" style="color:${x.found ? STATUS.warning : 'var(--text-dim)'}">${x.found}</span></div>`).join('')}</div>
+      </div>`;
+    wrap.appendChild(integ);
+
+    /* ── Governance ─────────────────────────────────────────────────────── */
+    if (!can('sso_audit')) {
+      wrap.appendChild(lockedPanel({
+        feature: 'sso_audit',
+        shape: [
+          { k: 'SAML / OIDC', v: 'sign-in through your identity provider, with provisioning and de-provisioning' },
+          { k: 'Audit trail', v: 'who opened which decision, and when, kept immutably' },
+          { k: 'Data residency', v: 'a choice of region for stored records' },
+        ],
+        honest: 'Access on this plan is not tied to your identity provider, and views are not written to an audit log. Nothing about the engine or its numbers changes.',
+      }));
+    } else {
+      const gov = el('div', 'panel');
+      gov.innerHTML = `<div class="panel-hd"><h3>Governance</h3><span class="hint">included on ${esc(en.label)}</span></div>
+        <div class="panel-bd">
+          <ul class="ent-shape">
+            <li><span><b>SAML / OIDC</b> — configured per tenant at onboarding</span></li>
+            <li><span><b>Audit trail</b> — decision views and actions, written on access</span></li>
+            <li><span><b>Data residency</b> — region selected at provisioning</span></li>
+          </ul>
+          <div class="ent-line"><strong>Not implemented in this prototype.</strong>
+          <span class="ent-honest">This build has no authentication of any kind and writes no audit log. The entitlement is modelled so the packaging can be reviewed; the capability is not built, and this panel says so rather than showing three ticks.</span></div>
+        </div>`;
+      wrap.appendChild(gov);
+    }
+
     return wrap;
   }
 
@@ -1575,6 +2018,11 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
       .join('|');
     return [
       state.view,
+      /* The tier changes which surfaces render, so it has to be in the
+         signature. Without it a tier flip arriving from another tab would be
+         classed as "nothing the view draws has changed" and the padlocks would
+         not move until the next unrelated engine change. */
+      store.tier,
       state.selected ?? '',
       state.filter,
       state.chat.length,
@@ -1614,6 +2062,7 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
       : state.view === 'radar' ? viewRadar()
       : state.view === 'impact' ? viewImpact()
       : state.view === 'copilot' ? viewCopilot()
+      : state.view === 'assurance' ? viewAssurance()
       : viewUpload();
     body.appendChild(v);
     body.scrollTop = scrollTop;
@@ -1640,7 +2089,35 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     render();
   });
 
+  /* ── The demo tier switcher ───────────────────────────────────────────────
+     Labelled "demo tier" for the same reason the reseed button says "New
+     data": nobody should be able to mistake it for a billing action, and in a
+     live pitch the honest framing is what makes the demonstration land.
+
+     Flipping down to Essential and watching contact centre, external signals,
+     delegation and Impact lock in place — while the top-3 and the dashboard
+     stay exactly as they were — is the clearest available statement of what
+     each tier buys, and of what it does not take away. The engine is the same
+     engine on every plan. */
+  const tierSeg = root.querySelector('#opTierSeg');
+  function renderTierSwitch() {
+    tierSeg.innerHTML = '';
+    for (const t of TIER_ORDER) {
+      const b = el('button', store.tier === t ? 'on' : '', esc(TIERS[t].label));
+      b.title = `Switch the demo to ${TIERS[t].label}`;
+      b.addEventListener('click', () => {
+        if (store.tier === t) return;
+        store.setTier(t);
+        /* No re-render here. `setTier` emits a `tenant` event and the store
+           subscription below renders once for it, so a local flip and one
+           arriving from another tab take the identical path. */
+      });
+      tierSeg.appendChild(b);
+    }
+  }
+
   function refreshChrome() {
+    renderTierSwitch();
     const c = store.counters;
     root.querySelector('#opLive').textContent = store.running ? `live · ${c.added} in · ${c.escalated} esc` : 'paused';
     root.querySelector('#opDot').className = 'lv-dot' + (store.running ? '' : ' off');
@@ -1648,6 +2125,16 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
   }
 
   const unsub = store.subscribe((evt) => {
+    /* A tier change repaints unconditionally, including over an open drill-down
+       or a half-typed question. Every other deferred render exists to avoid
+       yanking the page from under someone mid-read; this one is the page
+       answering a control they just pressed, and leaving a padlock stale
+       because a modal was open would read as the switcher being broken. */
+    if (evt.type === 'tenant') {
+      if (!modal.hidden) closeDrill();
+      render();
+      return;
+    }
     // Cheap ticks only refresh the ticker + chrome; a full re-render waits for
     // the engine pass, so the top-3 cannot flicker while someone is reading it.
     if (evt.type === 'tick') {

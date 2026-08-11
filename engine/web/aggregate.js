@@ -216,5 +216,65 @@ export function adoptionOf(acct, ds) {
   };
 }
 
+/**
+ * Accounts under management — one of the two axes the product is priced on, so
+ * it gets one definition and every consumer reads it from here.
+ *
+ * The obvious implementation is `ds.accounts.length`, and it is wrong in a way
+ * that only shows up on the exact customers we would be billing hardest.
+ * `data/csv.js` gives an uploaded ticket a synthetic `account_id` of
+ * `UP:<email|company|name>` whenever the row carries no id matching the master
+ * list, and it never creates an account master record to go with it. So a
+ * customer who uploads a book of 800 accounts adds 800 distinct account ids to
+ * the ticket stream and ZERO to `ds.accounts`. Counting the master list would
+ * read 2,400 and be wrong on precisely the number the invoice depends on.
+ *
+ * The union is therefore the honest count: every account we hold a contract
+ * record for, plus every account we have seen traffic from. Note that it is
+ * NOT filtered to accounts with recent activity — a dormant account is still
+ * one we are storing, scoring and reporting on, and quietly dropping it would
+ * be marking our own homework in our own favour.
+ */
+export function accountIdsUnderManagement(ds) {
+  const ids = new Set();
+  for (const a of ds.accounts) ids.add(a.account_id);
+  for (const t of ds.tickets) if (t.account_id) ids.add(t.account_id);
+  return ids;
+}
+
+export function accountsUnderManagement(ds) {
+  return accountIdsUnderManagement(ds).size;
+}
+
+/**
+ * Sources connected — the other priced axis.
+ *
+ * Counted as streams that actually carry records rather than as a static list
+ * of six, so a customer who has connected tickets and nothing else is billed
+ * for one source and not for the shape of our schema. Uploaded CSV counts as
+ * its own source: it is a real ingest path with real rows behind it, and
+ * pretending otherwise would let someone run the whole product through the
+ * drop zone on the cheapest plan.
+ */
+export function sourcesConnected(ds) {
+  const has = (rows) => Array.isArray(rows) && rows.length > 0;
+  const uploaded = (rows) => Array.isArray(rows) && rows.some((r) => r.is_uploaded);
+  return [
+    { key: 'tickets',     label: 'Support tickets',  connected: has(ds.tickets),     records: ds.tickets.length },
+    { key: 'escalations', label: 'Escalations',      connected: has(ds.escalations), records: ds.escalations.length },
+    { key: 'nps',         label: 'NPS responses',    connected: has(ds.nps),         records: ds.nps.length },
+    { key: 'qa',          label: 'QA reviews',       connected: has(ds.qa),          records: ds.qa.length },
+    { key: 'accounts',    label: 'Account master',   connected: has(ds.accounts),    records: ds.accounts.length },
+    {
+      key: 'upload',
+      label: 'CSV upload',
+      connected: uploaded(ds.tickets) || uploaded(ds.nps) || uploaded(ds.qa),
+      records: ds.tickets.filter((t) => t.is_uploaded).length
+        + ds.nps.filter((n) => n.is_uploaded).length
+        + ds.qa.filter((q) => q.is_uploaded).length,
+    },
+  ];
+}
+
 /** Median helper re-exported so drill-downs don't import two modules. */
 export { median, mean };
