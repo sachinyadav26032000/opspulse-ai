@@ -333,18 +333,67 @@ ok('the 2,400-account book trips the Essential ceiling as a warning, not a block
 ok('the feature list shows locked entries too, not just included ones',
   /Executive Copilot/.test(pulseEl.textContent) && /Contact centre/.test(pulseEl.textContent));
 
+/* PRICING IS NOT PUBLIC, and this repo deploys to a live domain. The default
+   render must therefore carry the usage counters and NO money at all. This is
+   the check that stops a proposed, unvalidated price from being indexed. */
+ok('no dollar figure renders on a public session',
+  !/\$\s?[\d,]/.test(pulseEl.textContent), (pulseEl.textContent.match(/\$\s?[\d,]+/g) || []).slice(0, 3).join(' '));
+ok('and it says the costing is withheld rather than looking unbuilt',
+  /not shown here/i.test(pulseEl.textContent) && /internal sessions only/i.test(pulseEl.textContent));
+ok('the measured counters still render for the customer',
+  /Decisions surfaced/.test(pulseEl.textContent) && /Accounts processed/.test(pulseEl.textContent));
+
+/* The internal view. Same screen, same tier, money switched on. */
+run('an internal session opens the unit economics', () => {
+  localStorage.setItem('opspulse.internal', '1');
+  navTo('Dashboard'); navTo('Assurance');
+  if (!pulseEl.querySelector('.math .f')) throw new Error('cost model did not render for an internal session');
+  return 'internal view on';
+});
+
 run('gross margin is a range with its arithmetic shown', () => {
   const f = pulseEl.querySelector('.math .f')?.textContent || '';
-  const m = f.match(/gross margin (\d+)% – (\d+)%/);
+  const m = f.match(/gross margin (-?\d+)% – (-?\d+)%/);
   if (!m) throw new Error(`no margin range rendered: ${f.slice(0, 80)}`);
   if (Number(m[1]) > Number(m[2])) throw new Error('margin range is inverted');
   if (!/÷ \$[\d,]+/.test(f)) throw new Error('the division is not shown');
   return f.replace(/\s+/g, ' ').trim().slice(0, 72);
 });
+ok('the list price is labelled proposed, never committed',
+  /proposed/.test(pulseEl.textContent) && /design partners/.test(pulseEl.textContent));
+ok('the 70% target is judged, not left to the reader',
+  /70% target/.test(pulseEl.textContent) || /clear 70%/.test(pulseEl.textContent));
+ok('the gated features are shown as the real marginal costs',
+  /Licensed feeds/.test(pulseEl.textContent) && /Copilot inference/.test(pulseEl.textContent));
 ok('inference and transcription counters are reported as the zeros they are',
   /0 calls/.test(pulseEl.textContent) && /structurally zero/.test(pulseEl.textContent));
 ok('every dollar figure is labelled a model, not a measurement',
   /modelled/.test(pulseEl.textContent) && /assumption/.test(pulseEl.textContent));
+ok('open question 1 is answered on the surface',
+  /is Essential viable/i.test(pulseEl.textContent));
+
+run('sources are enforced at connection time, accounts reviewed annually', () => {
+  const t = pulseEl.textContent;
+  if (!/annually/.test(t)) throw new Error('the annual-review rule is not stated');
+  if (!/when a new one is connected/.test(t)) throw new Error('connection-time enforcement is not stated');
+  /* A FRESH store, because the main one already connected `upload` earlier in
+     this file — and the gate is on ADDING a source, never on using one that
+     is already connected. Essential allows 3 and the seeded registry carries
+     5, so the new connection must be refused. */
+  const probe = createStore({ autoStart: false, fresh: true, tier: 'essential' });
+  const refused = probe.ingestCsv('Ticket ID,Customer Name\nT1,Acme\n');
+  if (!refused.source_limit) throw new Error('a new source was admitted over the ceiling');
+
+  /* And the other half of the rule: an already-connected source keeps working
+     after a downgrade. Nothing is ever cut off mid-flight. */
+  const ent = createStore({ autoStart: false, fresh: true, tier: 'enterprise' });
+  if (!ent.ingestCsv(toCsv(sample, KAGGLE_COLUMNS)).ok) throw new Error('enterprise upload was refused');
+  ent.setTier('essential');
+  if (!ent.ingestCsv(toCsv(sample, KAGGLE_COLUMNS)).ok) throw new Error('a connected source was cut off by a downgrade');
+  probe.close(); ent.close();
+  return refused.error.slice(0, 58);
+});
+localStorage.removeItem('opspulse.internal');
 
 run('switching up to Growth unlocks contact centre and external signals', () => {
   tierBtn('Growth').click();

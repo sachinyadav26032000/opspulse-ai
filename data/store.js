@@ -39,7 +39,8 @@ import { createSync } from './sync.js';
    is a fact about the contract, not about the operation, and putting it on
    `dataset.meta` would mean the reseed path silently reset the customer's plan
    every time someone pressed "New data". */
-import { entitlements, normalizeTier, DEFAULT_TIER } from '../config/entitlements.js';
+import { entitlements, normalizeTier, DEFAULT_TIER, canConnectSource } from '../config/entitlements.js';
+import { sourcesConnected } from '../engine/web/aggregate.js';
 
 const LS_KEY = 'opspulse.session.v1';
 const TICK_MS = 3200;
@@ -194,6 +195,20 @@ export function createStore(opts = {}) {
     engine = runEngine(dataset, { asOf: s.engineAsOf ?? Date.now() });
     emit({ type: 'reset', seed, remote: true });
   }
+
+  /* ── The source registry ────────────────────────────────────────────────
+     Sources are the second priced axis, and unlike accounts they are enforced
+     AT CONNECTION TIME rather than reviewed at renewal. The asymmetry is
+     deliberate: an account arrives because the customer's business grew, while
+     a source is connected by a deliberate act with a person present to be
+     told — and a licensed feed starts costing $25–50K a year the moment it is
+     attached, so admitting it first and reconciling later is how margin
+     quietly disappears.
+
+     Seeded from the streams that actually carry records, so a demo opens with
+     an honest registry rather than an empty one. Nothing already connected is
+     ever revoked by a downgrade; the gate applies to the NEXT connection. */
+  const connectedSources = new Set(sourcesConnected(dataset).filter((s) => s.connected).map((s) => s.key));
 
   /** Change the plan in THIS tab only. Split out from `api.setTier` so that
       applying a peer's tier cannot echo the message back and start a loop. */
@@ -419,6 +434,14 @@ export function createStore(opts = {}) {
         the tier name and branch on it themselves. */
     get tier() { return tier; },
     get entitlements() { return ent; },
+    /** The per-customer source registry, and the connection-time gate over it. */
+    get sources() {
+      return {
+        connected: [...connectedSources],
+        count: connectedSources.size,
+        canConnect: () => canConnectSource(tier, connectedSources.size),
+      };
+    },
     /** True when this tab owns the simulator. Followers mirror it. */
     get isLeader() { return sync.isLeader; },
     get synced() { return sync.active && !sync.solo; },
@@ -480,6 +503,19 @@ export function createStore(opts = {}) {
      * function of the file you actually dropped.
      */
     ingestCsv(text, kindHint) {
+      /* Connection-time enforcement, and this is the connection: CSV upload is
+         a real ingest path with real rows behind it, so it counts as a source.
+         Checked BEFORE parsing — refusing after doing the work would still
+         have done the work, and the refusal has to be the cheap path.
+
+         Note what is NOT blocked: a second upload once `upload` is already in
+         the registry. The gate is on adding a source, never on using one. */
+      if (!connectedSources.has('upload')) {
+        const gate = canConnectSource(tier, connectedSources.size);
+        if (!gate.allowed) {
+          return { ok: false, error: gate.reason, source_limit: true, tier };
+        }
+      }
       const { headers, rows } = parseCsv(text);
       if (!headers.length) return { ok: false, error: 'File is empty or not valid CSV.' };
       const kind = kindHint && kindHint !== 'auto' ? kindHint : detectKind(headers);
@@ -492,6 +528,7 @@ export function createStore(opts = {}) {
       // Tagged so a tab joining later can tell an uploaded row from the
       // generated history and ship it in the snapshot.
       for (const r of mapped) r.is_uploaded = true;
+      connectedSources.add('upload');
       const target = kind === 'nps' ? dataset.nps : kind === 'qa' ? dataset.qa : dataset.tickets;
       target.push(...mapped);
       counters.uploaded += mapped.length;

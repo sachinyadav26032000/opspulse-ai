@@ -22,6 +22,44 @@
    There is deliberately no `max_seats` field here to be tempted by.
    ========================================================================== */
 
+/* ── Pricing status ───────────────────────────────────────────────────────
+   PRICING IS PROPOSED AND NOT PUBLIC. It goes on the site once two design
+   partners have reacted to it; until then the public answer is "talk to us"
+   and design-partner pricing.
+
+   This repository deploys to www.opspulseai.com, so that constraint is not a
+   note — it is an access control. Every dollar figure in this product renders
+   only behind `internalView()` below, which is off by default. The tier
+   CEILINGS (500 / 2,500 / unlimited) stay visible because they are product
+   limits a customer must be able to see; the PRICES do not.
+
+   `INR_PER_USD` is the rate the proposal itself quotes ($1,500 ≈ ₹1.3L,
+   $4,000 ≈ ₹3.5L, $10,000 ≈ ₹8.75L). We price in USD because the US and UK
+   are the target market; the rupee figure exists because Indian customers
+   will ask, and it should reconcile with the proposal rather than with
+   today's spot rate. */
+export const PRICING_STATUS = 'proposed — to be validated with design partners before it goes public';
+export const PRICING_IS_PUBLIC = false;
+export const INR_PER_USD = 87.5;
+
+/**
+ * Whether this session may see money. Off unless explicitly asked for, and
+ * asked for in a way a search engine cannot stumble into: `?internal=1`, or a
+ * key set by hand in localStorage.
+ *
+ * Deliberately NOT tied to the tier. An Enterprise demo is still a demo on a
+ * public domain, and "the customer is on our most expensive plan" is not a
+ * reason to publish our cost of goods.
+ */
+export function internalView(loc, storage) {
+  try {
+    const l = loc ?? (typeof location !== 'undefined' ? location : null);
+    if (l && new URLSearchParams(l.search).get('internal') === '1') return true;
+    const s = storage ?? (typeof localStorage !== 'undefined' ? localStorage : null);
+    return s?.getItem('opspulse.internal') === '1';
+  } catch { return false; }
+}
+
 /* Feature metadata, kept next to the tier table rather than in the surfaces
    that render it. A locked panel has to be able to say WHICH tier opens it and
    WHAT it would tell you, and neither of those is something a view should be
@@ -53,11 +91,15 @@ export const TIERS = {
     /* The ceilings are the price. Both are SOFT — see `usageOf()` below. */
     max_accounts: 500,
     max_sources: 3,
-    /* An assumed list price, used only by the cost model in
-       `engine/web/cost.js` to express a margin. It is a modelling input, not a
-       committed price, and every surface that consumes it prints it as an
-       input rather than burying it. */
-    list_price_usd_month: 1000,
+    /* Proposed, not committed. Consumed only by the cost model in
+       `engine/web/cost.js`, and rendered only behind `internalView()`.
+       ------------------------------------------------------------------------
+       OPEN QUESTION 1 FROM THE PROPOSAL LIVES ON THIS LINE: is $1,500 viable at
+       all? If we support an Essential customer as heavily as a Growth one the
+       tier loses money, and dropping it to start at Growth may be better. The
+       cost model answers this rather than assuming it — see
+       `essentialViability()` in engine/web/cost.js. */
+    list_price_usd_month: 1500,
     features: {
       decision_brief: true,
       renewal_cohort: true,
@@ -78,7 +120,10 @@ export const TIERS = {
     label: 'Growth',
     max_accounts: 2500,
     max_sources: 6,
-    list_price_usd_month: 3000,
+    /* THE TIER WE ACTIVELY SELL. ~$48K/year, and ten of these is the
+       seed-round milestone the proposal is built around, so this is the one
+       number the 70% gross-margin target is actually about. */
+    list_price_usd_month: 4000,
     features: {
       decision_brief: true,
       renewal_cohort: true,
@@ -104,7 +149,11 @@ export const TIERS = {
        uncapped rather than as zero. */
     max_accounts: null,
     max_sources: null,
-    list_price_usd_month: 7500,
+    /* "From $10,000" — Enterprise is a floor with custom terms above it, not a
+       list price. The cost model uses the floor, which is the conservative
+       direction: it reports the WORST margin Enterprise can produce. */
+    list_price_usd_month: 10000,
+    price_is_floor: true,
     features: {
       decision_brief: true,
       renewal_cohort: true,
@@ -166,6 +215,32 @@ export function requiredTier(feature) {
    tops out at 'over', and there is deliberately no `blocked` state for a
    surface to key off. */
 export const WARN_AT = 0.8;
+
+/* ── The two axes are enforced DIFFERENTLY, and on purpose ────────────────
+   Accounts: soft, reviewed ANNUALLY rather than metered monthly. A customer
+   whose book grew mid-quarter must never receive a surprise invoice for the
+   outcome we exist to produce.
+
+   Sources: enforced AT CONNECTION TIME. The asymmetry is not inconsistency —
+   an account arrives because the customer's business grew, whereas a source is
+   connected by a deliberate act, at a moment when there is a person present to
+   be told. And a source carries real recurring marginal cost the moment it is
+   attached (a licensed feed is $25–50K a year whether one customer uses it or
+   a hundred do), so admitting it first and reconciling later is how margin
+   quietly disappears.
+
+   Nothing already connected is ever cut off — this gates the NEW connection
+   only. */
+export function canConnectSource(tierName, connectedCount) {
+  const t = TIERS[normalizeTier(tierName)];
+  if (t.max_sources == null) return { allowed: true, reason: null };
+  if (connectedCount < t.max_sources) return { allowed: true, reason: null };
+  return {
+    allowed: false,
+    reason: `${t.label} includes ${t.max_sources} connected sources and ${connectedCount} are already connected. `
+      + `Existing sources keep running — this only blocks adding another.`,
+  };
+}
 
 export function usageOf(used, ceiling) {
   if (ceiling == null) return { used, ceiling: null, pct: null, state: 'unlimited', headroom: null };

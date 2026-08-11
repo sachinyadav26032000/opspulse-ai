@@ -6,9 +6,9 @@
    Detection in this product is statistical, not generative. `engine/web/detect.js`
    runs nine detectors over the whole dataset with no model in the loop, and
    the language layer only ever narrates objects the arithmetic already
-   produced. So inference cost scales with DECISIONS SURFACED, not with DATA
-   INGESTED — a customer can triple their ticket volume and our unit cost
-   barely moves, because we did not send those tickets anywhere.
+   produced. Models explain and summarise; they do not scan. So inference cost
+   scales with DECISIONS SURFACED, not with DATA INGESTED — a customer can
+   triple their ticket volume and our unit cost barely moves.
 
    That is the margin story, and it is only worth telling if the numbers behind
    it are honest. Which forces a split this file takes seriously:
@@ -26,9 +26,16 @@
    So margin comes back as a RANGE with its inputs attached, under the same
    rule dollar impact already obeys (`CLAUDE.md` §3.1): inputs are rounded to
    display precision BEFORE the range is computed, so the printed inputs
-   genuinely multiply out to the printed range. `tools/verify.mjs` re-multiplies
-   dollar impact; the surface that renders this prints every input beside the
-   result so the same check can be done by eye.
+   genuinely multiply out to the printed range.
+
+   THE FOUR COST DRIVERS ARE THE ONES THE PRICING PROPOSAL NAMES, not a set
+   invented here. Three of them are exactly why the gated features are gated:
+     · Contact centre    → ASR cost per call transcribed
+     · External signals  → licensed feeds, $25–50K per source per YEAR
+     · Executive Copilot → inference per query, unbounded by user behaviour
+   Giving those away at the Essential price would destroy margin at precisely
+   the tier with the least budget. The gating is a margin decision first and a
+   packaging decision second.
    ========================================================================== */
 
 import { accountsUnderManagement } from './aggregate.js';
@@ -39,43 +46,65 @@ const MONTH_DAYS = 30;
 /* ── The modelling assumptions, in one place and printed on the surface ────
    Named `ASSUMED_` without exception. Nothing in this object was measured, and
    the naming is the guardrail: a variable called `inferenceRate` gets quoted
-   in a board deck, one called `ASSUMED_OUTPUT_RATE_USD_PER_MTOK` does not.
-
-   Token counts are per decision surfaced, low and high, covering the three
-   call sites `engine/llm.js` documents — root cause, recommendation, executive
-   summary. They are ranges because prompt and output length genuinely vary
-   with how much evidence a decision carries, not to manufacture a spread. */
+   in a board deck, one called `ASSUMED_OUTPUT_RATE_USD_PER_MTOK` does not. */
 export const ASSUMPTIONS = {
+  /* Per decision surfaced, covering the three call sites `engine/llm.js`
+     documents — root cause, recommendation, executive summary. Ranged because
+     prompt and output length genuinely vary with how much evidence a decision
+     carries, not to manufacture a spread. */
   ASSUMED_CALLS_PER_DECISION: 3,
   ASSUMED_TOKENS_IN_PER_DECISION: [2000, 3500],
   ASSUMED_TOKENS_OUT_PER_DECISION: [700, 1100],
   ASSUMED_INPUT_RATE_USD_PER_MTOK: 3,
   ASSUMED_OUTPUT_RATE_USD_PER_MTOK: 15,
-  /* Detection is arithmetic over a dataset that fits in memory; this is the
-     hosting and storage cost of keeping an account scored, not model spend. */
+
+  /* Copilot inference is a SEPARATE line from decision inference, because it
+     has a different risk shape: decisions are bounded by what the engine
+     raises, whereas queries are unbounded by user behaviour. One curious
+     director on a Friday afternoon is the tail this line exists to expose. */
+  ASSUMED_COPILOT_QUERIES_PER_MONTH: [40, 160],
+  ASSUMED_TOKENS_PER_COPILOT_QUERY: [1500, 4000],
+
+  /* Detection is arithmetic over a dataset that fits in memory: hosting and
+     storage for a scored book, not model spend. */
   ASSUMED_COMPUTE_USD_PER_1K_ACCOUNTS_MONTH: 4,
-  /* A licensed third-party lookup — Crunchbase, Tracxn, ZoomInfo class. This
-     is the one line item that scales with accounts rather than decisions, and
-     it is the reason external signals sit on a paid tier at all. */
-  ASSUMED_EXTERNAL_LOOKUP_USD: 0.02,
-  /* Customer success and support, allocated to cost of goods.
+
+  /* THE LINE THAT DOMINATES EVERYTHING ELSE.
+     A licensed market-intelligence feed — Crunchbase, Tracxn, ZoomInfo class —
+     is $25–50K per source per year, recurring, and it does NOT scale down for
+     small customers. It is a fixed cost of carrying the capability at all,
+     which is why it is amortised across the paying base below rather than
+     charged per lookup. Modelling it per-lookup was the first mistake this
+     file made: it made a $50K/year commitment look like two cents. */
+  ASSUMED_FEED_USD_PER_SOURCE_YEAR: [25000, 50000],
+  ASSUMED_FEED_SOURCES: 2,
+  /* Ten Growth customers is the seed-round milestone the proposal is built
+     around, so it is the base the fixed feed cost is spread over. Change this
+     and the whole external-signals economic case moves — which is the point of
+     surfacing it as an input rather than burying it in a constant. */
+  ASSUMED_PAYING_CUSTOMERS: 10,
+
+  /* Automatic speech recognition, per call transcribed. Zero in this build.
+     The architecture that keeps it survivable is worth stating: ingest 100% of
+     CDR metadata, which is cheap, and transcribe SELECTIVELY on a detection
+     trigger rather than transcribing everything. */
+  ASSUMED_ASR_USD_PER_CALL: 0.06,
+  ASSUMED_CALLS_PER_ACCOUNT_MONTH: 1.2,
+  ASSUMED_TRANSCRIBE_SHARE: 0.15,
+
+  /* Support and customer success, allocated to cost of goods.
      ------------------------------------------------------------------------
-     THIS LINE IS WHY THE MARGIN NUMBER IS WORTH PRINTING AT ALL. An earlier
-     version of this model counted only inference, compute and lookups and
-     reported a 99% gross margin. That figure was arithmetically correct and
-     commercially worthless: no CFO believes a 99% SaaS gross margin, and the
-     reason they are right is that the dominant cost of serving a customer here
-     is a human reading their book with them, not a GPU.
+     Not in the proposal's list of cost drivers, and included anyway, because
+     it is the whole substance of the proposal's OPEN QUESTION 1: "if we
+     support those customers as heavily as Growth ones, the tier loses money."
+     That question cannot be answered by a model that does not carry a support
+     line, and an earlier cut of this file reported a 99% gross margin
+     precisely because it did not have one.
 
-     Allocated per thousand accounts under management rather than as a share of
-     revenue, for two reasons. CS effort genuinely tracks book size — that is
-     what a CSM's day is spent on — and pricing it as a percentage of the list
-     price would make margin mathematically insensitive to volume, which would
-     bury the architecture story this whole file exists to evidence.
-
-     It is a range because staffing ratios are the least settled assumption
-     here, not to manufacture a spread. */
-  ASSUMED_CS_USD_PER_1K_ACCOUNTS_MONTH: [200, 320],
+     Allocated per thousand accounts rather than as a share of revenue — CS
+     effort tracks book size, and a percentage-of-price line would make margin
+     mathematically insensitive to volume and bury the architecture story. */
+  ASSUMED_SUPPORT_USD_PER_1K_ACCOUNTS_MONTH: [200, 320],
 };
 
 /**
@@ -87,7 +116,7 @@ export const ASSUMPTIONS = {
  * cover rather than assumed, so a session open for ten minutes does not report
  * ten minutes of decisions as a monthly total.
  */
-export function costMetrics(ds, engineRun, ledgerRows = [], { entitled, asOf = Date.now() } = {}) {
+export function costMetrics(ds, engineRun, ledgerRows = [], { entitled, asOf = Date.now(), copilotQueries = 0 } = {}) {
   const accounts = accountsUnderManagement(ds);
 
   /* Decisions surfaced per month.
@@ -118,6 +147,8 @@ export function costMetrics(ds, engineRun, ledgerRows = [], { entitled, asOf = D
     decisions_surfaced_trailing_30d: trailing30,
     accounts_processed: accounts,
     records_scanned: engineRun?.stats?.records_in ?? 0,
+    /* Real: every question actually asked of the Copilot in this session. */
+    copilot_queries: copilotQueries,
 
     /* Zero, and structurally so. `engine/llm.js` throws by design and the
        Copilot is templated NLG over insight objects, so this build has never
@@ -132,10 +163,9 @@ export function costMetrics(ds, engineRun, ledgerRows = [], { entitled, asOf = D
        build, so no figure anywhere in the product derives from call data. */
     calls_transcribed: 0,
 
-    /* One refresh per account per month, and only where the plan entitles it —
-       an unentitled tier does not run the lookups, which is exactly why it
-       cannot report how many external events it missed. */
-    external_lookups: entitled?.can('external_signals') ? accounts : 0,
+    /* Licensed feeds are a FIXED annual commitment, not a per-account meter,
+       so what is reported here is whether the capability is carried at all. */
+    external_feed_sources: entitled?.can('external_signals') ? ASSUMPTIONS.ASSUMED_FEED_SOURCES : 0,
   };
 }
 
@@ -150,75 +180,176 @@ const money = (v) => (Math.abs(v) < 100 ? Math.round(v * 100) / 100 : Math.round
  *
  * The ordering rule from CLAUDE.md §3.1 is obeyed literally: each input is
  * rounded to the precision it will be DISPLAYED at, and the range is computed
- * from those rounded values. Rounding afterwards would let a printed input
- * multiply out to something a few cents off the printed total, which is the
- * single easiest way to lose a room.
+ * from those rounded values.
  */
-export function marginModel(metrics, tier, a = ASSUMPTIONS) {
+export function marginModel(metrics, tier, entitled, a = ASSUMPTIONS) {
   const price = tier.list_price_usd_month;
 
   /* Inputs, at display precision, before anything is multiplied. */
   const decisions = Math.round(metrics.decisions_surfaced);
   const accounts = Math.round(metrics.accounts_processed);
-  const lookups = Math.round(metrics.external_lookups);
 
-  const tokensIn = a.ASSUMED_TOKENS_IN_PER_DECISION;
-  const tokensOut = a.ASSUMED_TOKENS_OUT_PER_DECISION;
+  const can = (f) => (entitled ? entitled.can(f) : true);
 
-  /* Inference, low and high. Low uses the low end of BOTH token ranges and
-     high uses the high end of both: the two move together, because a decision
-     carrying more evidence has both a longer prompt and a longer narration.
-     Pairing low-in with high-out would produce a wider band than the model
-     supports and read as hedging. */
-  const inference = (tIn, tOut) => money(
-    (decisions * tIn / 1e6) * a.ASSUMED_INPUT_RATE_USD_PER_MTOK
-    + (decisions * tOut / 1e6) * a.ASSUMED_OUTPUT_RATE_USD_PER_MTOK,
+  /* ── Decision inference ────────────────────────────────────────────────
+     Low uses the low end of BOTH token ranges and high uses the high end of
+     both: the two move together, because a decision carrying more evidence has
+     both a longer prompt and a longer narration. Pairing low-in with high-out
+     would produce a wider band than the model supports and read as hedging. */
+  const tIn = a.ASSUMED_TOKENS_IN_PER_DECISION;
+  const tOut = a.ASSUMED_TOKENS_OUT_PER_DECISION;
+  const inferenceAt = (i, o) => money(
+    (decisions * i / 1e6) * a.ASSUMED_INPUT_RATE_USD_PER_MTOK
+    + (decisions * o / 1e6) * a.ASSUMED_OUTPUT_RATE_USD_PER_MTOK,
   );
-  const inferenceLow = inference(tokensIn[0], tokensOut[0]);
-  const inferenceHigh = inference(tokensIn[1], tokensOut[1]);
+  const inferenceLow = inferenceAt(tIn[0], tOut[0]);
+  const inferenceHigh = inferenceAt(tIn[1], tOut[1]);
 
-  /* Fixed against the counters rather than ranged: these are measured volumes
-     against a single assumed rate, so a spread would be invented. */
+  /* ── Copilot inference — Enterprise only, and unbounded by us ──────────── */
+  const q = a.ASSUMED_COPILOT_QUERIES_PER_MONTH;
+  const qTok = a.ASSUMED_TOKENS_PER_COPILOT_QUERY;
+  const copilotAt = (n, t) => money((n * t / 1e6) * a.ASSUMED_OUTPUT_RATE_USD_PER_MTOK);
+  const copilotLow = can('executive_copilot') ? copilotAt(q[0], qTok[0]) : 0;
+  const copilotHigh = can('executive_copilot') ? copilotAt(q[1], qTok[1]) : 0;
+
+  /* ── Compute & storage ─────────────────────────────────────────────────── */
   const compute = money((accounts / 1000) * a.ASSUMED_COMPUTE_USD_PER_1K_ACCOUNTS_MONTH);
-  const external = money(lookups * a.ASSUMED_EXTERNAL_LOOKUP_USD);
 
-  const cs = (rate) => money((accounts / 1000) * rate);
-  const csLow = cs(a.ASSUMED_CS_USD_PER_1K_ACCOUNTS_MONTH[0]);
-  const csHigh = cs(a.ASSUMED_CS_USD_PER_1K_ACCOUNTS_MONTH[1]);
+  /* ── Licensed feeds — fixed, annual, amortised ──────────────────────────
+     Per month per customer = (sources × $/source/year) ÷ 12 ÷ paying base.
+     The division by the customer base is the entire economics of this line:
+     at one customer it is larger than the Growth price, and at ten it is a
+     rounding error. That is why external signals cannot sit on Essential. */
+  const feedMonthly = (rate) => (a.ASSUMED_FEED_SOURCES * rate) / 12 / a.ASSUMED_PAYING_CUSTOMERS;
+  const feedLow = can('external_signals') ? money(feedMonthly(a.ASSUMED_FEED_USD_PER_SOURCE_YEAR[0])) : 0;
+  const feedHigh = can('external_signals') ? money(feedMonthly(a.ASSUMED_FEED_USD_PER_SOURCE_YEAR[1])) : 0;
+
+  /* ── ASR — zero, because contact centre does not ship ──────────────────── */
+  const asrModelled = money(accounts * a.ASSUMED_CALLS_PER_ACCOUNT_MONTH * a.ASSUMED_TRANSCRIBE_SHARE * a.ASSUMED_ASR_USD_PER_CALL);
+  const asr = metrics.calls_transcribed > 0 ? money(metrics.calls_transcribed * a.ASSUMED_ASR_USD_PER_CALL) : 0;
+
+  /* ── Support ───────────────────────────────────────────────────────────── */
+  const sup = a.ASSUMED_SUPPORT_USD_PER_1K_ACCOUNTS_MONTH;
+  const supportLow = money((accounts / 1000) * sup[0]);
+  const supportHigh = money((accounts / 1000) * sup[1]);
 
   /* Note which way round these go: the HIGH cost produces the LOW margin. */
-  const cogsLow = money(inferenceLow + compute + external + csLow);
-  const cogsHigh = money(inferenceHigh + compute + external + csHigh);
+  const cogsLow = money(inferenceLow + copilotLow + compute + feedLow + asr + supportLow);
+  const cogsHigh = money(inferenceHigh + copilotHigh + compute + feedHigh + asr + supportHigh);
 
   const pct = (cogs) => (price > 0 ? Math.round(((price - cogs) / price) * 100) : null);
 
   return {
     price_usd_month: price,
+    price_is_floor: !!tier.price_is_floor,
     line_items: [
-      { k: 'Inference', low: inferenceLow, high: inferenceHigh,
-        basis: `${decisions} decisions × ${tokensIn[0]}–${tokensIn[1]} in / ${tokensOut[0]}–${tokensOut[1]} out tokens @ $${a.ASSUMED_INPUT_RATE_USD_PER_MTOK}/$${a.ASSUMED_OUTPUT_RATE_USD_PER_MTOK} per Mtok`,
+      { k: 'Decision inference', low: inferenceLow, high: inferenceHigh,
+        basis: `${decisions} decisions × ${tIn[0]}–${tIn[1]} in / ${tOut[0]}–${tOut[1]} out tokens @ $${a.ASSUMED_INPUT_RATE_USD_PER_MTOK}/$${a.ASSUMED_OUTPUT_RATE_USD_PER_MTOK} per Mtok`,
+        measured: false },
+      { k: 'Copilot inference', low: copilotLow, high: copilotHigh,
+        basis: can('executive_copilot')
+          ? `${q[0]}–${q[1]} queries × ${qTok[0]}–${qTok[1]} tokens — unbounded by user behaviour`
+          : 'not entitled on this plan',
+        measured: false },
+      { k: 'Licensed feeds', low: feedLow, high: feedHigh,
+        basis: can('external_signals')
+          ? `${a.ASSUMED_FEED_SOURCES} sources × $${(a.ASSUMED_FEED_USD_PER_SOURCE_YEAR[0] / 1000)}–${(a.ASSUMED_FEED_USD_PER_SOURCE_YEAR[1] / 1000)}K per year ÷ 12 ÷ ${a.ASSUMED_PAYING_CUSTOMERS} customers`
+          : 'not entitled on this plan — the feed is not carried',
         measured: false },
       { k: 'Compute & storage', low: compute, high: compute,
         basis: `${accounts.toLocaleString()} accounts @ $${a.ASSUMED_COMPUTE_USD_PER_1K_ACCOUNTS_MONTH} per 1,000 / month`,
         measured: false },
-      { k: 'External lookups', low: external, high: external,
-        basis: lookups ? `${lookups.toLocaleString()} lookups @ $${a.ASSUMED_EXTERNAL_LOOKUP_USD} each` : 'not entitled on this plan — no lookups run',
+      { k: 'Support & CS', low: supportLow, high: supportHigh,
+        basis: `${accounts.toLocaleString()} accounts @ $${sup[0]}–$${sup[1]} per 1,000 / month`,
         measured: false },
-      { k: 'Customer success', low: csLow, high: csHigh,
-        basis: `${accounts.toLocaleString()} accounts @ $${a.ASSUMED_CS_USD_PER_1K_ACCOUNTS_MONTH[0]}–$${a.ASSUMED_CS_USD_PER_1K_ACCOUNTS_MONTH[1]} per 1,000 / month`,
-        measured: false },
-      { k: 'Call transcription', low: 0, high: 0,
-        basis: '0 calls — no telephony source connected', measured: true },
+      { k: 'Call transcription (ASR)', low: asr, high: asr,
+        basis: `0 calls — no telephony source connected. At ${a.ASSUMED_CALLS_PER_ACCOUNT_MONTH} calls/account/month with ${Math.round(a.ASSUMED_TRANSCRIBE_SHARE * 100)}% selectively transcribed this would be about $${asrModelled}`,
+        measured: true },
     ],
     cogs_low_usd: cogsLow,
     cogs_high_usd: cogsHigh,
     margin_low_pct: pct(cogsHigh),
     margin_high_pct: pct(cogsLow),
-    /* The one number in this object that is not a model: how much of the
-       modelled cost scales with decisions rather than with volume ingested.
-       This is the architecture claim, stated as a proportion so it survives
-       whatever the rates turn out to be. */
+    meets_target: pct(cogsHigh) != null && pct(cogsHigh) >= 70,
+    /* How much of modelled cost tracks decisions rather than volume ingested.
+       The architecture claim, stated as a proportion so it survives whatever
+       the rates turn out to be. */
     decision_scaled_share_pct: cogsHigh > 0 ? Math.round((inferenceHigh / cogsHigh) * 100) : 0,
     assumptions: a,
+  };
+}
+
+/**
+ * "Target gross margin above 70% at Growth tier. If we cannot hit that, the
+ * tier is priced wrong, not the architecture."
+ *
+ * So: how many paying customers does the licensed feed have to be spread
+ * across before Growth clears 70% at its own ceiling? Solved rather than
+ * guessed, because the feed is the only cost line with a lever on it that is
+ * neither a price rise nor a support cut.
+ *
+ * Returns null if the tier clears the target with the feed cost ignored
+ * entirely — in that case the feed is not what is binding and the answer lies
+ * in the support line instead.
+ */
+export function feedBreakEven(tier, entitled, targetPct = 70, a = ASSUMPTIONS) {
+  const accounts = tier.max_accounts;
+  if (accounts == null) return null;
+  const price = tier.list_price_usd_month;
+  const budget = price * (1 - targetPct / 100);
+
+  const atCeiling = { decisions_surfaced: 3, accounts_processed: accounts, records_scanned: 0, calls_transcribed: 0, external_feed_sources: 0, copilot_queries: 0 };
+  /* Everything except the feed, at the pessimistic end — that is the case the
+     target has to survive. */
+  const noFeed = marginModel(atCeiling, tier, entitled, { ...a, ASSUMED_FEED_USD_PER_SOURCE_YEAR: [0, 0] });
+  const headroom = budget - noFeed.cogs_high_usd;
+  if (headroom <= 0) {
+    return { reachable: false, customers_needed: null, headroom_usd: Math.round(headroom), target_pct: targetPct };
+  }
+  const annual = a.ASSUMED_FEED_SOURCES * a.ASSUMED_FEED_USD_PER_SOURCE_YEAR[1];
+  return {
+    reachable: true,
+    customers_needed: Math.ceil(annual / 12 / headroom),
+    headroom_usd: Math.round(headroom),
+    target_pct: targetPct,
+    at_current_base: a.ASSUMED_PAYING_CUSTOMERS,
+  };
+}
+
+/**
+ * OPEN QUESTION 1, answered rather than assumed: is $1,500 Essential viable?
+ *
+ * The proposal's own framing is the test — "if we support those customers as
+ * heavily as Growth ones, the tier loses money" — so this runs the Essential
+ * price against a book at the Essential CEILING, and then again against the
+ * support load a Growth customer generates. If the second case fails the
+ * margin target, the answer is that the tier only works with a lighter
+ * support model, which is a commercial decision and not an engineering one.
+ */
+export function essentialViability(tiers, entitledFor, a = ASSUMPTIONS) {
+  const t = tiers.essential;
+  const atCeiling = { decisions_surfaced: 3, accounts_processed: t.max_accounts, records_scanned: 0, calls_transcribed: 0, external_feed_sources: 0, copilot_queries: 0 };
+  const light = marginModel(atCeiling, t, entitledFor('essential'), a);
+
+  /* Same price, same 500-account book, but supported like a Growth account —
+     the proposal's stated failure mode, modelled as triple the support load
+     rather than as a different rate card. */
+  const heavyRates = {
+    ...a,
+    ASSUMED_SUPPORT_USD_PER_1K_ACCOUNTS_MONTH: [
+      a.ASSUMED_SUPPORT_USD_PER_1K_ACCOUNTS_MONTH[0] * 3,
+      a.ASSUMED_SUPPORT_USD_PER_1K_ACCOUNTS_MONTH[1] * 3,
+    ],
+  };
+  const heavy = marginModel(atCeiling, t, entitledFor('essential'), heavyRates);
+
+  return {
+    light_support: light,
+    heavy_support: heavy,
+    verdict: heavy.meets_target
+      ? 'Viable even under Growth-level support load.'
+      : light.meets_target
+        ? 'Viable only with a lighter support model — self-serve onboarding and pooled support, not a named CSM.'
+        : 'Does not clear the margin target at its own ceiling. Starting at Growth is the safer call.',
   };
 }

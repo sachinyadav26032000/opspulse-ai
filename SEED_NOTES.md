@@ -187,115 +187,162 @@ therefore **UI-only**; all seven MCP tools remain read-only and unchanged.
 
 ## Commercial tiers and entitlements — *config, not data*
 
-`config/entitlements.js`. Three tiers priced on **two axes only: accounts under
-management, and sources connected. Never per seat.** There is deliberately no
-`max_seats` field in the table to be tempted by — a renewal risk only gets
-acted on if the CSM, the RevOps lead and the CRO can all open it, so charging
-per seat would price the product against its own mechanism of action.
+`config/entitlements.js` implements the proposed pricing. Three tiers, priced
+on **accounts under management and sources connected. Never per seat** — a
+decision layer is read by a handful of leaders, so per-seat pricing would cap
+revenue at the number of VPs in the building and, worse, discourage the
+customer from giving access to the CSMs who own the accounts. There is
+deliberately no `max_seats` field in the table to be tempted by.
 
-**The demo defaults to `enterprise`.** An unattended visitor landing on a wall
-of padlocks reads a thin product rather than a priced one, so the default shows
-everything and the header's **demo tier** switcher puts the downgrade under the
-presenter's control. Flipping to Essential locks contact centre, external
-signals, delegation and Impact while the top-3 and every KPI stay exactly where
-they were — which is the point worth demonstrating: *the engine is the same
-engine on every plan.* Essential customers are sold fewer surfaces, not worse
-detection.
+| Tier | Price | Accounts | Sources | The unlock |
+|---|---|---|---|---|
+| Essential | $1,500/mo | 500 | 3 | Decision brief, renewal cohort, drill-down |
+| Growth | $4,000/mo | 2,500 | 6 | Contact centre + external signals |
+| Enterprise | from $10,000/mo | unlimited | unlimited | Executive Copilot, SSO/audit/residency |
 
-The tier rides on the **session** (`opspulse.session.v1`), not on
-`dataset.meta`. A tier is a fact about the contract, not about the operation,
-and putting it on meta would mean the reseed path silently reset the customer's
-plan every time someone pressed "New data".
+**Growth is the tier we actively sell**, so it is the one the 70% gross-margin
+target is about. Enterprise is a **floor**, not a list price, so the cost model
+uses $10,000 and therefore reports the worst margin that tier can produce.
+
+### Pricing is proposed and NOT public
+
+**This is enforced in code, not in a note.** This repository deploys to
+`www.opspulseai.com`, so a proposed price that no design partner has yet
+reacted to would be a public price. Every dollar figure — list price, cost of
+goods, gross margin, the outcome-based variant — renders only behind
+`internalView()` (`?internal=1`, or `opspulse.internal` in localStorage), which
+is **off by default**.
+
+The tier **ceilings stay visible** because they are product limits a customer
+must be able to see. Only the money is withheld. `tools/uicheck.mjs` asserts
+that a default session renders no `$` at all, and separately that the internal
+session renders the full model.
+
+### The demo defaults to `enterprise`
+
+An unattended visitor landing on a wall of padlocks reads a thin product rather
+than a priced one, so the default shows everything and the header's **demo
+tier** switcher puts the downgrade under the presenter's control. Flipping to
+Essential locks contact centre, external signals, delegation and Impact while
+the top-3 and every KPI stay exactly where they were — which is the point worth
+demonstrating: *the engine is the same engine on every plan.* Essential
+customers are sold fewer surfaces, not worse detection.
+
+The tier rides on the **session**, not on `dataset.meta`, so pressing "New
+data" cannot silently reset the customer's plan.
 
 ### Locked states are rendered, never removed
 
 A gated feature shows its own shape, names the tier that opens it, and states
 what it cannot tell you. Nothing disappears from the nav.
 
-**The honesty rule, which is the whole of the design:** on a tier that does not
-ingest the data, the locked copy says accounts **"may have"** external events —
-never a count. The seeded signals are sitting in the same dataset and counting
-them would be a one-line change; it would also be a lie about what that tier
-can see. `tools/uicheck.mjs` asserts both halves: that the panel renders, and
-that no count appears in it.
+**The honesty rule:** on a tier that does not ingest the data, the locked copy
+says accounts **"may have"** external events — never a count. The seeded
+signals are sitting in the same dataset and counting them would be a one-line
+change; it would also be a lie about what that tier can see.
 
 Two features are locked on **every** tier including Enterprise, because they do
 not exist: **contact centre** (no telephony source in this build) and **SSO /
-audit / residency** (this prototype has no authentication of any kind and
-writes no audit log). Both panels say so rather than showing ticks.
+audit / residency** (no authentication of any kind, no audit log). Both panels
+say so rather than showing ticks.
 
-### Usage counters — *Generated → derived*
+### The two axes are enforced differently, on purpose
 
-Surfaced on the **Assurance** screen, which is new: `trust.html` had been
-directing readers to "the Assurance screen" for some time and it had never been
-built.
+- **Accounts — soft, reviewed annually.** Crossing a band flags for a
+  conversation at renewal and never blocks or auto-charges. There is no
+  `blocked` state in `usageOf()` for a surface to key off. A customer who hits
+  the ceiling has grown their book, which is the outcome this product exists to
+  produce.
+- **Sources — enforced at connection time.** `canConnectSource()` gates the
+  *new* connection only; nothing already connected is ever revoked, including
+  after a downgrade. A source is attached by a deliberate act with someone
+  present to be told, and a licensed feed starts costing $25–50K a year the
+  moment it is attached.
 
 `accountsUnderManagement()` in `engine/web/aggregate.js` is the single
 definition, read by both the counter tile and the cost model so the two cannot
 disagree. It is the **union** of accounts with a contract record and accounts
 seen in the ticket stream — not `ds.accounts.length`, which undercounts by the
-entire size of an uploaded book: `data/csv.js` gives an uploaded row a
-synthetic `UP:<identity>` account id and never creates a master record for it.
+entire size of an uploaded book, since `data/csv.js` gives an uploaded row a
+synthetic `UP:<identity>` account id and never creates a master record.
 
-**Soft limits.** Exceeding a ceiling flags for a conversation at renewal and
-never blocks anything. There is no `blocked` state in `usageOf()` for a surface
-to key off. A customer who hits the account ceiling has grown their book, which
-is the outcome this product exists to produce; charging for that result and
-then punishing it would be indefensible.
+*(Open question still outstanding: where the count comes from when a customer's
+CRM and billing system disagree. This resolves it within one dataset only.)*
 
 ### Cost metrics — *counters measured, dollars modelled*
 
-`engine/web/cost.js`. The split is load-bearing and is labelled on screen.
+`engine/web/cost.js`. The split is load-bearing and labelled on screen.
 
-**Measured**: `decisions_surfaced`, `accounts_processed`, `records_scanned`.
-Decisions are counted as ledger **episodes** over the span the ledger covers,
-not as `insights.length` — the engine re-raises the same open risks every ~9
-seconds, so counting passes would report thousands of decisions a day for an
-operation that produced three.
+**Measured**: `decisions_surfaced`, `accounts_processed`, `records_scanned`,
+`copilot_queries`. Decisions are counted as ledger **episodes** over the span
+the ledger covers, not as `insights.length` — the engine re-raises the same open
+risks every ~9 seconds, so counting passes would report thousands of decisions
+a day for an operation that produced three.
 
 **Structurally zero, and reported as such**: `inference_calls`,
-`inference_tokens_in`, `inference_tokens_out` — `engine/llm.js` is a deliberate
-stub that throws and the Copilot is templated NLG over insight objects, so this
-build has never made an inference call. `calls_transcribed` is zero until
-contact centre ships, which means **no figure anywhere in this product derives
-from call data.**
+`inference_tokens_in/out` — `engine/llm.js` is a deliberate stub that throws and
+the Copilot is templated NLG, so this build has never made an inference call.
+`calls_transcribed` is zero until contact centre ships, which means **no figure
+anywhere in this product derives from call data.**
 
 **Modelled**: every dollar. Each rate is named `ASSUMED_*` so it cannot be
-quoted as a measurement by accident, including the per-tier
-`list_price_usd_month`, which is a modelling input and **not a committed
-price**. Gross margin is returned as a **range with its inputs printed**, under
-the same rule dollar impact obeys — inputs rounded to display precision
-*before* the range is computed, so the printed working re-multiplies by hand.
-Never a single-point margin.
+quoted as a measurement by accident. Margin is a **range with its inputs
+printed**, under the same rule dollar impact obeys — inputs rounded to display
+precision *before* the range is computed. Never a single-point margin.
 
-An earlier cut of this model counted only inference, compute and lookups and
-reported a **99% gross margin**. That was arithmetically correct and
-commercially worthless: the dominant cost of serving a customer here is a human
-reading their book with them, not a GPU. Customer success is now a line item,
-allocated per thousand accounts rather than as a share of revenue — CS effort
-tracks book size, and pricing it as a percentage of list price would make
-margin mathematically insensitive to volume and bury the architecture story.
+The cost drivers are the ones the proposal names, and three of them are exactly
+why the gated features are gated:
+
+| Driver | Shape | Why it gates |
+|---|---|---|
+| Licensed feeds | **$25–50K per source per year**, fixed | Recurring, does not scale down for small customers |
+| ASR | per call transcribed | Mitigated by ingesting 100% of CDR metadata cheaply and transcribing **selectively on a detection trigger** |
+| Copilot inference | per query | **Unbounded by user behaviour** — the tail risk no other line has |
+| Compute & storage | per 1,000 accounts | Scales with the book |
+| Support & CS | per 1,000 accounts | Not in the proposal's list; included because it is the substance of open question 1 |
+
+Modelling the licensed feed **per lookup** was this file's first mistake: it
+made a $50K/year commitment look like two cents. It is fixed cost, amortised
+across `ASSUMED_PAYING_CUSTOMERS`, which is why the number of customers is an
+input rather than a buried constant.
 
 ### What the seed data implies
 
 At the demo book of 2,400 accounts and ~3 decisions surfaced per month:
 
-| Tier | At the demo book (2,400) | At the tier's own ceiling |
-|---|---|---|
-| Essential ($1,000) | 22–51% | **84–90%** at 500 accounts |
-| Growth ($3,000) | **72–82%** | **71–81%** at 2,500 accounts |
-| Enterprise ($7,500) | 89–93% | **54–70%** at 10,000 accounts |
+| Tier | At the demo book | At the tier's own ceiling | Clears 70%? |
+|---|---|---|---|
+| Essential ($1,500) | 48–67% | 89–93% at 500 accounts | at its ceiling, yes |
+| Growth ($4,000) | 60–77% | 59–77% at 2,500 accounts | **only at the optimistic end** |
+| Enterprise (from $10,000) | 84–91% | 59–75% at 10,000 accounts | not at the floor price |
 
-**Growth clears the >70% target at both its demo book and its ceiling.**
+**Growth does not clear 70% across the whole range**, and by the proposal's own
+rule — "if we cannot hit that, the tier is priced wrong, not the architecture" —
+that is a finding rather than something to tune away. `feedBreakEven()` solves
+for the lever: the licensed feed is the binding line, and Growth clears 70% at
+the pessimistic end once the feed is spread across **22 paying customers**
+against the 10 currently modelled. Sooner on a lighter support model or a
+renegotiated feed.
 
-Two findings the model surfaces rather than hides. Essential looks poor at the
-demo book only because that book is 4.8× its 500-account ceiling — the usage
-counter flags exactly this, and at its own ceiling the tier is the healthiest of
-the three. And **Enterprise's flat price stops clearing 70% somewhere around
-7,000 accounts**: "unlimited accounts" at a single price is a real exposure on
-a large book, and it is a pricing decision rather than an engineering one.
+**Open question 1, answered by `essentialViability()`:** at its own 500-account
+ceiling Essential runs at 89–93% on a light support model and falls to 68–80%
+if supported as heavily as a Growth account. So the tier is viable *only* with
+self-serve onboarding and pooled support, never a named CSM — which is a
+commercial decision, not an engineering one.
 
-Inference is **under 1%** of modelled cost of goods at every tier. That is the
-architecture claim as a number: detection is statistical, so cost tracks
-decisions surfaced rather than data ingested, and a customer who triples their
-ticket volume barely moves the line.
+Decision inference is **under 1%** of modelled cost of goods at every tier.
+That is the architecture claim as a number: models explain and summarise here,
+they do not scan.
+
+### Outcome-based pricing — an option, not a tier
+
+Rendered on Assurance (internal view only) as a variant on Growth and
+Enterprise: a reduced platform fee plus a share of ARR retained on flagged
+accounts. **Not the default** — no revenue predictability, cash arriving twelve
+months after the work, and an argument about counterfactuals on every invoice.
+
+It is shown because it is the one commercial model that depends entirely on
+engineering: it is billable only if decision-lifecycle tracking is real, so the
+panel reads the same ledger rollup the Impact screen does. The metric is
+**"ARR retained on flagged accounts"** and never *ARR saved* — we can prove the
+first and cannot prove the second, and a sceptical buyer will make us try.

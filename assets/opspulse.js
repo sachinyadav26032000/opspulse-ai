@@ -27,8 +27,11 @@ import {
    in this file reads a tier name and branches on it, because the moment two
    screens each hold their own opinion about which plan opens what, one of them
    is wrong and nobody finds out until a customer does. */
-import { FEATURES, TIER_ORDER, TIERS } from '../config/entitlements.js';
-import { costMetrics, marginModel } from '../engine/web/cost.js';
+import {
+  FEATURES, TIER_ORDER, TIERS, entitlements,
+  internalView, PRICING_STATUS, INR_PER_USD,
+} from '../config/entitlements.js';
+import { costMetrics, marginModel, feedBreakEven, essentialViability } from '../engine/web/cost.js';
 import { KAGGLE_COLUMNS } from '../data/generator.js';
 import { toCsv } from '../data/csv.js';
 /* The composable query layer. The Copilot tries this first for questions about
@@ -83,6 +86,10 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
        sitting at the bottom of it. Kept on state so it survives the teardown
        and rebuild that render() performs. */
     chatScroll: null, chatStick: true,
+    /* Copilot inference is the one cost line driven by user behaviour rather
+       than by what the engine raised, so it is counted for real rather than
+       assumed. Every question asked in this session increments it. */
+    copilotQueries: 0,
   };
 
   /* One ledger per mounted app. Seeded history is added once so the Impact
@@ -1455,6 +1462,7 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     we say so and name what is supported rather than guessing.
   */
   function ask(q) {
+    state.copilotQueries++;
     state.chat.push({ who: 'You', html: esc(q), chips: [] });
 
     const res = runQuery(ds(), state.filters, q);
@@ -1705,11 +1713,17 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     const d = ds(), e = eng(), en = ent();
     const wrap = el('div', 'lv-view');
 
+    const internal = internalView();
+
     const accounts = accountsUnderManagement(d);
-    const sources = sourcesConnected(d);
-    const connected = sources.filter((s) => s.connected);
+    /* The registry is the authority on what is connected, not the dataset:
+       sources are gated at connection time, so what matters commercially is
+       what was admitted, not what happens to be carrying rows this second. */
+    const registry = new Set(store.sources.connected);
+    const sources = sourcesConnected(d).map((s) => ({ ...s, connected: registry.has(s.key) }));
     const acctUse = en.accountUsage(accounts);
-    const srcUse = en.sourceUsage(connected.length);
+    const srcUse = en.sourceUsage(registry.size);
+    const gate = store.sources.canConnect();
 
     /* ── Plan and usage ─────────────────────────────────────────────────── */
     const plan = el('div', 'panel');
@@ -1750,12 +1764,24 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
       Every account with a contract record, plus every account we have seen traffic from, deduplicated by
       <code>account_id</code>. Uploaded rows without a matching account id are counted from the identity in the
       file, so a book you ingest by CSV is counted at its real size rather than at zero.
-      Dormant accounts are deliberately included: we are still storing, scoring and reporting on them.`));
+      Dormant accounts are deliberately included: we are still storing, scoring and reporting on them.
+      <br><br>
+      <strong>The two axes are enforced differently, on purpose.</strong>
+      Accounts are reviewed <strong>annually</strong>, never metered monthly — your book growing mid-quarter must not
+      produce a surprise invoice, and crossing a band is a conversation at renewal rather than an automatic charge.
+      Sources are checked <strong>when a new one is connected</strong>, because that is a deliberate act with someone
+      present to be told, and a licensed feed starts costing us the moment it is attached.
+      ${gate.allowed ? '' : `<br><br><strong>At the ${esc(en.label)} source ceiling.</strong> ${esc(gate.reason)}`}`));
 
     const srcTable = table(
       [{ key: 'src', label: 'Source' }, { key: 'state', label: 'State' }, { key: 'records', label: 'Records', num: true }],
       sources.map((s) => ({ src: s.label, state: s.connected ? 'connected' : 'not connected', records: s.connected ? fmt.int(s.records) : '—' })),
-      { title: 'Sources', hint: `${connected.length} of ${sources.length} streams carrying records` },
+      {
+        title: 'Source registry',
+        hint: gate.allowed
+          ? `${registry.size} connected · room for more on ${en.label}`
+          : `${registry.size} connected · at the ${en.label} ceiling`,
+      },
     );
     plan.appendChild(pbd);
     wrap.appendChild(plan);
@@ -1781,12 +1807,19 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     feat.appendChild(fbd);
     wrap.appendChild(feat);
 
-    /* ── Cost of goods ──────────────────────────────────────────────────── */
-    const metrics = costMetrics(d, e.run, ledger.all(), { entitled: en });
-    const model = marginModel(metrics, TIERS[en.tier]);
+    /* ── Cost of goods ────────────────────────────────────────────────────
+       PRICING IS NOT PUBLIC YET, and this repository deploys to a live domain.
+       So the COUNTERS render for everyone — they are facts about the customer's
+       own usage and they belong to them — while every DOLLAR figure, including
+       list price, cost of goods and margin, renders only behind
+       `internalView()`. That flag is off unless someone asks for it by hand.
+
+       The alternative, "it's only a demo", is how a proposed price that has not
+       been validated with a single design partner ends up indexed. */
+    const metrics = costMetrics(d, e.run, ledger.all(), { entitled: en, copilotQueries: state.copilotQueries });
 
     const cost = el('div', 'panel');
-    cost.innerHTML = `<div class="panel-hd"><h3>Cost of goods</h3><span class="hint">measured counters · modelled cost</span></div>`;
+    cost.innerHTML = `<div class="panel-hd"><h3>Cost of goods</h3><span class="hint">measured counters${internal ? ' · modelled cost' : ''}</span></div>`;
     const cbd = el('div', 'panel-bd');
 
     cbd.appendChild(el('div', 'drill-kpis', `
@@ -1795,51 +1828,128 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
       <div><div class="k">Records scanned</div><div class="v">${fmt.int(metrics.records_scanned)}</div><div class="s">per pass, statistically</div></div>
       <div><div class="k">Inference calls</div><div class="v">${fmt.int(metrics.inference_calls)}</div><div class="s">detection is arithmetic</div></div>`));
 
-    /* The margin, as a range. Never a point — see engine/web/cost.js. */
-    const marg = el('div', 'math');
-    marg.style.cssText = 'margin-top:16px';
-    /* Costs ascending, margins descending, and the pairing stated — the higher
-       cost is the one that produces the lower margin, and a reader
-       re-multiplying this by hand has to know which end goes with which. */
-    marg.innerHTML = `
-      <div class="f">gross margin ${model.margin_low_pct}% – ${model.margin_high_pct}%
-        &nbsp;=&nbsp; ($${fmt.int(model.price_usd_month)} − $${fmt.int(model.cogs_low_usd)}…$${fmt.int(model.cogs_high_usd)}) ÷ $${fmt.int(model.price_usd_month)}</div>
-      <p class="caveat">Cost of goods $${fmt.int(model.cogs_low_usd)} – $${fmt.int(model.cogs_high_usd)} per month; the higher cost gives the lower margin. The price is an assumed list price for this model, not a committed one, and every rate below is an assumption. Only the counters above are measured.</p>`;
-    cbd.appendChild(marg);
-
-    cbd.appendChild(table(
-      [{ key: 'item', label: 'Line item' }, { key: 'cost', label: 'Per month', num: true }, { key: 'basis', label: 'Working' }, { key: 'kind', label: 'Measured?' }],
-      model.line_items.map((li) => ({
-        item: li.k,
-        cost: li.low === li.high ? `$${li.low}` : `$${li.low} – $${li.high}`,
-        basis: li.basis,
-        kind: li.measured ? 'measured' : 'modelled',
-      })),
-      { title: 'Cost lines', hint: 'every input printed, so the range re-multiplies by hand' },
-    ));
-
-    /* A share under 1% rounds to "0%", which reads as a broken tile rather
-       than as the finding it is. Say "under 1%" instead — it is the stronger
-       statement anyway, and it is the whole architectural claim in one figure. */
-    const share = model.decision_scaled_share_pct;
     cbd.appendChild(el('div', 'imp-note', `
-      <strong>Why this scales the way it does.</strong>
-      Inference is ${share < 1 ? '<strong>under 1%</strong> of' : `${share}% of`} modelled cost of goods, because it tracks
-      <em>decisions surfaced</em> rather than data ingested: the nine detectors run over
-      ${fmt.int(metrics.records_scanned)} records statistically, without sending any of them to a model. A customer who
-      triples their ticket volume roughly triples the arithmetic and barely moves this line at all.
-      What does scale with the book is customer success, which is why both priced axes are the ones they are.
-      <br><br>
       <strong>What is measured and what is not.</strong>
       Decisions, accounts and records are counted off the live dataset and the decision ledger.
       Inference calls and tokens are <strong>structurally zero</strong> in this build —
       <code>engine/llm.js</code> is a deliberate stub and the Copilot is templated narration over insight objects,
-      so there is no token spend to report. <code>calls_transcribed</code> is zero until contact centre ships.
-      Every dollar figure on this panel is therefore a <strong>model</strong> applied to measured counters, and it is
-      labelled that way rather than presented as a result.`));
+      so there is no token spend to report. <code>calls_transcribed</code> is zero until contact centre ships,
+      which means no figure anywhere in this product derives from call data.`));
+
+    if (!internal) {
+      /* Say that the costing exists and is withheld, rather than rendering a
+         screen that looks like it was never built. */
+      cbd.appendChild(el('div', 'ent-line', `
+        <strong>Unit economics are not shown here.</strong>
+        <span class="ent-honest">Pricing is ${esc(PRICING_STATUS)}, and this build is served from a public domain. Cost of goods, list price and gross margin render for internal sessions only.</span>`));
+    } else {
+      const model = marginModel(metrics, TIERS[en.tier], en);
+      const inr = (usd) => '₹' + (usd * INR_PER_USD / 100000).toFixed(2) + 'L';
+
+      /* The margin, as a range. Never a point — see engine/web/cost.js.
+         Costs ascending, margins descending, and the pairing stated: the higher
+         cost is the one that produces the lower margin, and a reader
+         re-multiplying this by hand has to know which end goes with which. */
+      const marg = el('div', 'math');
+      marg.style.cssText = 'margin-top:16px';
+      marg.innerHTML = `
+        <div class="f">gross margin ${model.margin_low_pct}% – ${model.margin_high_pct}%
+          &nbsp;=&nbsp; ($${fmt.int(model.price_usd_month)} − $${fmt.int(model.cogs_low_usd)}…$${fmt.int(model.cogs_high_usd)}) ÷ $${fmt.int(model.price_usd_month)}</div>
+        <p class="caveat">
+          ${model.price_is_floor ? 'Price is a <strong>floor</strong> — Enterprise starts here and is custom above it, so this is the worst margin the tier can produce. ' : ''}
+          List price $${fmt.int(model.price_usd_month)}/mo (${esc(inr(model.price_usd_month))}) is <strong>${esc(PRICING_STATUS)}</strong>.
+          Cost of goods $${fmt.int(model.cogs_low_usd)} – $${fmt.int(model.cogs_high_usd)} per month; the higher cost gives the lower margin.
+          Only the counters above are measured — every rate below is an assumption.</p>`;
+      cbd.appendChild(marg);
+
+      /* The 70% target, judged rather than left for the reader to judge. */
+      const target = el('div', 'ent-line');
+      const be = feedBreakEven(TIERS[en.tier], en);
+      target.innerHTML = model.meets_target
+        ? `<strong>Clears the 70% target at both ends of the range.</strong>`
+        : `<strong>Does not clear 70% at the pessimistic end (${model.margin_low_pct}%–${model.margin_high_pct}%).</strong>
+           <span class="ent-honest">The proposal's own rule applies: if we cannot hit 70% the tier is priced wrong, not the architecture.
+           ${be && be.reachable
+             ? `The binding line is the licensed feed. It clears at <strong>${be.customers_needed} paying customers</strong> against the ${be.at_current_base} currently modelled — or sooner on a lighter support model or a renegotiated feed.`
+             : 'Support load is the binding line here, not the feed.'}</span>`;
+      cbd.appendChild(target);
+
+      cbd.appendChild(table(
+        [{ key: 'item', label: 'Line item' }, { key: 'cost', label: 'Per month', num: true }, { key: 'basis', label: 'Working' }, { key: 'kind', label: 'Measured?' }],
+        model.line_items.map((li) => ({
+          item: li.k,
+          cost: li.low === li.high ? `$${li.low}` : `$${li.low} – $${li.high}`,
+          basis: li.basis,
+          kind: li.measured ? 'measured' : 'modelled',
+        })),
+        { title: 'Cost lines', hint: 'every input printed, so the range re-multiplies by hand' },
+      ));
+
+      /* A share under 1% rounds to "0%", which reads as a broken tile rather
+         than as the finding it is. Say "under 1%" instead — it is the stronger
+         statement anyway, and it is the whole architectural claim in one figure. */
+      const share = model.decision_scaled_share_pct;
+      cbd.appendChild(el('div', 'imp-note', `
+        <strong>Why this scales the way it does.</strong>
+        Decision inference is ${share < 1 ? '<strong>under 1%</strong> of' : `${share}% of`} modelled cost of goods, because it tracks
+        <em>decisions surfaced</em> rather than data ingested: the nine detectors run over
+        ${fmt.int(metrics.records_scanned)} records statistically, without sending any of them to a model. Models explain
+        and summarise here; they do not scan. A customer who triples their ticket volume barely moves this line.
+        <br><br>
+        <strong>What actually costs money is the gated features</strong> — licensed feeds at $25–50K per source per year
+        that do not scale down for small customers, ASR per call transcribed, and Copilot inference that is unbounded by
+        user behaviour. That is the reason for the gating, before it is a packaging decision: giving these away at the
+        Essential price would destroy margin at exactly the tier with the least budget.`));
+
+      /* OPEN QUESTION 1 from the proposal, answered on the surface. */
+      const v = essentialViability(TIERS, entitlements);
+      cbd.appendChild(el('div', 'imp-note', `
+        <strong>Open question: is Essential viable at its price?</strong>
+        At its own 500-account ceiling with a light support model it runs at
+        <strong>${v.light_support.margin_low_pct}–${v.light_support.margin_high_pct}%</strong>.
+        Supported as heavily as a Growth customer it falls to
+        <strong>${v.heavy_support.margin_low_pct}–${v.heavy_support.margin_high_pct}%</strong>.
+        <br><br>${esc(v.verdict)}`));
+    }
 
     cost.appendChild(cbd);
     wrap.appendChild(cost);
+
+    /* ── Outcome-based pricing — an option, not a tier ──────────────────────
+       A share of retained ARR instead of most of the subscription. Offered as
+       a variant on Growth and Enterprise, never as the default: it means no
+       revenue predictability, cash arriving twelve months after the work, and
+       arguing about counterfactuals with the customer. Investors discount
+       success fees heavily.
+
+       It is shown here because it is the one commercial model that depends
+       entirely on engineering: it only works if decision lifecycle tracking is
+       real. This panel is therefore also the honest test of whether it is —
+       it reads the same ledger rollup the Impact screen does, and if the
+       ledger could not answer, neither could an invoice. */
+    if (internal && can('impact_verification')) {
+      const roll = impactRollup(ledger, resolveStack(d, []));
+      const retained = roll.financial.arr_on_flagged_retained;
+      const SHARE = 0.03;
+      const REDUCED = 0.4;
+      const base = TIERS[en.tier].list_price_usd_month;
+      const ob = el('div', 'panel');
+      ob.innerHTML = `<div class="panel-hd"><h3>Outcome-based variant</h3><span class="hint">an option, not a tier</span></div>`;
+      const obd = el('div', 'panel-bd');
+      obd.appendChild(el('div', 'math', `
+        <div class="f">${fmt.pct0(REDUCED)} platform fee $${fmt.int(Math.round(base * REDUCED))}/mo
+          &nbsp;+&nbsp; ${fmt.pct0(SHARE)} of ${retained == null ? 'ARR retained on flagged accounts' : `$${fmt.int(retained)}`}
+          ${retained == null ? '' : `&nbsp;=&nbsp; $${fmt.int(Math.round(retained * SHARE))} on this ledger`}</div>
+        <p class="caveat">Illustrative percentages. The metric is <strong>ARR retained on flagged accounts</strong> and never <em>ARR saved</em>: we know we flagged the account and we know it renewed, but nobody ran the account without the intervention, so no counterfactual exists. A success fee billed on a causal claim we cannot prove is an argument with the customer twelve months after the work.</p>`));
+      obd.appendChild(el('div', 'imp-note', `
+        <strong>Why this is not the default.</strong>
+        No revenue predictability, cash arriving a year after the work, and a negotiation about attribution on every
+        invoice. It is viable only because the decision ledger already records what was flagged, what was actioned and
+        what happened at renewal — <strong>${fmt.int(roll.total_rows)} rows, ${fmt.int(roll.financial.decisions_closed)} closed</strong>.
+        Without that tracking this model cannot be billed at all.`));
+      ob.appendChild(obd);
+      wrap.appendChild(ob);
+    }
 
     /* ── Engine integrity ───────────────────────────────────────────────── */
     const r = e.run;
@@ -1988,6 +2098,9 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
       state.view = 'upload';
       render();
       if (res.ok) toast(`Ingested ${res.added} rows`, `${file.name} → ${res.kind} data · engine re-ran`);
+      /* A source-limit refusal is a commercial answer, not a parse failure, so
+         it says which plan and how many rather than "could not ingest". */
+      else if (res.source_limit) toast('Source limit reached', res.error);
       else toast('Could not ingest that file', res.error);
     };
     reader.readAsText(file);
