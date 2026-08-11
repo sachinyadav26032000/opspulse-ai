@@ -83,7 +83,20 @@ export const FEATURES = {
   impact_verification:  { label: 'Impact verification',   blurb: 'What was flagged, what you did, and what actually happened at renewal.' },
   executive_copilot:    { label: 'Executive Copilot',     blurb: 'Ask the book a question and get a composable, grounded answer.' },
   sso_audit:            { label: 'SSO, audit trail & residency', blurb: 'SAML/OIDC sign-in, an immutable access log, and a choice of data region.' },
+  /* SOC 2 sits in the proposal's Enterprise unlock column, and page 2 of the
+     same document says plainly that buyers "ask for SOC 2 we do not have".
+     Both are true: it is committed at Enterprise and it is not certified
+     today. So it carries `not_built: true` and every surface renders it as a
+     commitment rather than a tick. Showing a compliance certification we do
+     not hold as "included" is the one entry on this list that could put a
+     signature on a contract we cannot honour. */
+  soc2:                 { label: 'SOC 2 Type II', blurb: 'Independent audit of security controls, renewed annually.', not_built: true },
 };
+
+/* Features that are entitled but do not exist yet. Kept as data so a surface
+   cannot forget one: anything listed here renders as a commitment with its
+   status stated, never as a delivered capability. */
+export const NOT_BUILT = Object.entries(FEATURES).filter(([, m]) => m.not_built).map(([k]) => k);
 
 export const TIERS = {
   essential: {
@@ -100,6 +113,10 @@ export const TIERS = {
        cost model answers this rather than assuming it — see
        `essentialViability()` in engine/web/cost.js. */
     list_price_usd_month: 1500,
+    /* The "unlock" column from the proposal, verbatim. Held here rather than
+       written into a view so the product and the pricing document cannot
+       drift into describing different tiers. */
+    unlock: 'Decision brief, renewal cohort, drill-down',
     features: {
       decision_brief: true,
       renewal_cohort: true,
@@ -114,6 +131,7 @@ export const TIERS = {
       impact_verification: false,
       executive_copilot: false,
       sso_audit: false,
+      soc2: false,
     },
   },
   growth: {
@@ -124,6 +142,7 @@ export const TIERS = {
        seed-round milestone the proposal is built around, so this is the one
        number the 70% gross-margin target is actually about. */
     list_price_usd_month: 4000,
+    unlock: 'Contact centre + external signals',
     features: {
       decision_brief: true,
       renewal_cohort: true,
@@ -138,6 +157,7 @@ export const TIERS = {
       impact_verification: true,
       executive_copilot: false,
       sso_audit: false,
+      soc2: false,
     },
   },
   enterprise: {
@@ -154,6 +174,7 @@ export const TIERS = {
        direction: it reports the WORST margin Enterprise can produce. */
     list_price_usd_month: 10000,
     price_is_floor: true,
+    unlock: 'Executive Copilot, SOC 2, custom',
     features: {
       decision_brief: true,
       renewal_cohort: true,
@@ -168,6 +189,7 @@ export const TIERS = {
       impact_verification: true,
       executive_copilot: true,
       sso_audit: true,
+      soc2: true,
     },
   },
 };

@@ -695,3 +695,23 @@
 }
 .ent-seg button:hover { color: var(--text); background: rgba(255,255,255,.05); }
 .ent-seg button.on { background: rgba(139,92,246,.16); color: #c4b5fd; }
+
+/* ── The plan comparison ────────────────────────────────────────────────────
+   The pricing proposal's own table, rendered from config so the product and
+   the document cannot describe different tiers. Scale and unlock are visible
+   to everyone; the price column waits for an internal session. */
+.tier-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.tier-card { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 15px 16px; background: rgba(255,255,255,.015); }
+.tier-card.on { border-color: rgba(52,211,153,.34); background: rgba(52,211,153,.05); }
+.tier-k { font-size: .68rem; text-transform: uppercase; letter-spacing: .11em; font-weight: 800; color: var(--text-dim); display: flex; align-items: center; gap: 7px; }
+.tier-card.on .tier-k { color: var(--emerald); }
+.tier-now { font-size: .58rem; letter-spacing: .04em; padding: 2px 6px; border-radius: 20px; background: rgba(52,211,153,.16); color: var(--emerald); }
+.tier-p { font-size: 1.55rem; font-weight: 800; letter-spacing: -.03em; margin-top: 9px; font-variant-numeric: tabular-nums; }
+.tier-p small { font-size: .8rem; font-weight: 600; color: var(--text-dim); letter-spacing: 0; }
+.tier-p em { font-size: .8rem; font-weight: 600; font-style: normal; color: var(--text-dim); }
+.tier-p-hidden { font-size: 1.05rem; color: var(--text-soft); letter-spacing: -.01em; }
+.tier-inr { font-size: .72rem; color: var(--text-dim); margin-top: 3px; }
+.tier-scale { font-size: .78rem; color: var(--text-soft); margin-top: 11px; padding-top: 11px; border-top: 1px dashed var(--line-strong); line-height: 1.5; }
+.tier-unlock { font-size: .77rem; color: var(--text-soft); margin-top: 10px; line-height: 1.5; }
+.tier-unlock span { display: block; font-size: .6rem; text-transform: uppercase; letter-spacing: .11em; font-weight: 800; color: var(--text-dim); margin-bottom: 3px; }
+.tier-foot { font-size: .76rem; margin: 14px 0 0; line-height: 1.6; color: var(--text-dim); }

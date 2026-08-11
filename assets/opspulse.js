@@ -28,7 +28,7 @@ import {
    screens each hold their own opinion about which plan opens what, one of them
    is wrong and nobody finds out until a customer does. */
 import {
-  FEATURES, TIER_ORDER, TIERS, entitlements,
+  FEATURES, NOT_BUILT, TIER_ORDER, TIERS, entitlements,
   internalView, PRICING_STATUS, INR_PER_USD,
 } from '../config/entitlements.js';
 import { costMetrics, marginModel, feedBreakEven, essentialViability } from '../engine/web/cost.js';
@@ -1787,6 +1787,37 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     wrap.appendChild(plan);
     wrap.appendChild(srcTable);
 
+    /* ── The three tiers, side by side ──────────────────────────────────────
+       The proposal's own table, rendered from `config/entitlements.js` so the
+       product and the pricing document cannot drift into describing different
+       tiers. Scale and unlock are visible to everyone — they are what a
+       customer needs in order to know which plan they are on. Price is the
+       only column that waits for an internal session. */
+    const cmp = el('div', 'panel');
+    cmp.innerHTML = `<div class="panel-hd"><h3>Plans</h3><span class="hint">${
+      internal ? esc(PRICING_STATUS) : 'accounts and sources · never per seat'}</span></div>`;
+    const cbd2 = el('div', 'panel-bd');
+    const grid = el('div', 'tier-grid');
+    for (const t of TIER_ORDER) {
+      const T = TIERS[t];
+      const here = en.tier === t;
+      const inrL = (T.list_price_usd_month * INR_PER_USD / 100000).toFixed(2);
+      grid.appendChild(el('div', `tier-card${here ? ' on' : ''}`, `
+        <div class="tier-k">${esc(T.label)}${here ? '<span class="tier-now">current</span>' : ''}</div>
+        ${internal
+          ? `<div class="tier-p">${T.price_is_floor ? '<em>from</em> ' : ''}$${fmt.int(T.list_price_usd_month)}<small>/mo</small></div>
+             <div class="tier-inr">≈ ₹${esc(inrL)}L / month</div>`
+          : '<div class="tier-p tier-p-hidden">Talk to us</div><div class="tier-inr">design-partner pricing</div>'}
+        <div class="tier-scale">${T.max_accounts == null ? 'Unlimited accounts' : `${fmt.int(T.max_accounts)} accounts`}
+          · ${T.max_sources == null ? 'unlimited sources' : `${T.max_sources} sources`}</div>
+        <div class="tier-unlock"><span>The unlock</span>${esc(T.unlock)}</div>`));
+    }
+    cbd2.appendChild(grid);
+    cbd2.appendChild(el('p', 'muted tier-foot',
+      'Priced on accounts under management and sources connected. Never per seat — a decision only gets acted on if the CSM, the RevOps lead and the CRO can all open it, so every plan includes unlimited read-only viewers.'));
+    cmp.appendChild(cbd2);
+    wrap.appendChild(cmp);
+
     /* ── What the plan includes ─────────────────────────────────────────── */
     const feat = el('div', 'panel');
     feat.innerHTML = `<div class="panel-hd"><h3>What ${esc(en.label)} includes</h3><span class="hint">every feature, including the ones you do not have</span></div>`;
@@ -1797,11 +1828,25 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
        do not have are the half of this list that is worth showing. */
     for (const [key, meta] of Object.entries(FEATURES)) {
       const has = can(key);
+      /* An entitled-but-unbuilt feature reads "committed", never "included".
+         SOC 2 is the one that matters: the proposal lists it in the Enterprise
+         column and also records that buyers ask for a SOC 2 we do not have.
+         Both are true, and a green tick would resolve that contradiction in
+         the one direction we cannot stand behind. */
+      const pending = has && meta.not_built;
+      const label = pending ? 'committed' : has ? 'included' : (en.upgradeLabel(key) || '—');
+      const colour = pending ? STATUS.warning : has ? STATUS.good : 'var(--text-dim)';
       const row = el('div', 'drv-row', `
         <span class="n" title="${esc(meta.blurb)}">${esc(meta.label)}</span>
-        <span class="v" style="color:${has ? STATUS.good : 'var(--text-dim)'}">${has ? 'included' : esc(en.upgradeLabel(key) || '—')}</span>`);
+        <span class="v" style="color:${colour}">${esc(label)}</span>`);
       row.style.gridTemplateColumns = '1fr auto';
       flist.appendChild(row);
+    }
+    if (NOT_BUILT.some((k) => can(k))) {
+      fbd.appendChild(el('p', 'muted', `<strong style="color:var(--text)">“Committed” is not “included”.</strong> ${
+        NOT_BUILT.filter((k) => can(k)).map((k) => esc(FEATURES[k].label)).join(', ')
+      } ${NOT_BUILT.filter((k) => can(k)).length === 1 ? 'is' : 'are'} part of this plan and not yet delivered. This build holds no certification and writes no audit log; saying otherwise is the one line on this screen that could put a signature on something we cannot honour.`));
+      fbd.lastChild.style.cssText = 'font-size:.76rem;margin:12px 0 0;line-height:1.55';
     }
     fbd.appendChild(flist);
     feat.appendChild(fbd);

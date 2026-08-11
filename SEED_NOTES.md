@@ -196,9 +196,32 @@ deliberately no `max_seats` field in the table to be tempted by.
 
 | Tier | Price | Accounts | Sources | The unlock |
 |---|---|---|---|---|
-| Essential | $1,500/mo | 500 | 3 | Decision brief, renewal cohort, drill-down |
-| Growth | $4,000/mo | 2,500 | 6 | Contact centre + external signals |
-| Enterprise | from $10,000/mo | unlimited | unlimited | Executive Copilot, SSO/audit/residency |
+| Essential | $1,500/mo (≈₹1.31L) | 500 | 3 | Decision brief, renewal cohort, drill-down |
+| Growth | $4,000/mo (≈₹3.50L) | 2,500 | 6 | Contact centre + external signals |
+| Enterprise | from $10,000/mo (≈₹8.75L) | unlimited | unlimited | Executive Copilot, SOC 2, custom |
+
+The **Plans** panel on Assurance renders this table from `config/entitlements.js`,
+so the product and the pricing document cannot drift into describing different
+tiers. The `unlock` strings are held in config verbatim. Scale and unlock are
+visible to everyone; only the price column waits for an internal session, where
+a public session reads "Talk to us — design-partner pricing".
+
+We price in **USD** because the US and UK are the target market. The rupee
+figure is shown alongside because Indian customers will ask, computed at the
+proposal's own implied rate (`INR_PER_USD = 87.5`) so it reconciles with the
+document rather than with today's spot rate.
+
+### "Committed" is not "included"
+
+SOC 2 sits in the proposal's Enterprise unlock column, and page 2 of the same
+document records that buyers "ask for SOC 2 we do not have". Both are true. So
+`soc2` carries `not_built: true` and renders as **committed**, in the warning
+colour, never as a green *included* — alongside a note naming what is promised
+and not yet delivered. A compliance certification shown as included is the one
+row on that screen that could put a signature on something we cannot honour.
+`NOT_BUILT` is exported as data so no surface can forget an entry, and
+`tools/uicheck.mjs` asserts the SOC 2 row reads `committed` on the very tier
+that sells it.
 
 **Growth is the tier we actively sell**, so it is the one the 70% gross-margin
 target is about. Enterprise is a **floor**, not a list price, so the cost model

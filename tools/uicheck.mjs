@@ -333,6 +333,25 @@ ok('the 2,400-account book trips the Essential ceiling as a warning, not a block
 ok('the feature list shows locked entries too, not just included ones',
   /Executive Copilot/.test(pulseEl.textContent) && /Contact centre/.test(pulseEl.textContent));
 
+/* The proposal's tier table, rendered from config. Scale and unlock are what a
+   customer needs to know which plan they are on, so they render publicly; only
+   the price waits for an internal session. */
+run('all three tiers render with their scale and unlock', () => {
+  const cards = [...pulseEl.querySelectorAll('.tier-card')];
+  if (cards.length !== 3) throw new Error(`${cards.length} tier cards`);
+  const t = pulseEl.textContent;
+  for (const s of ['500 accounts', '2,500 accounts', 'Unlimited accounts']) {
+    if (!t.includes(s)) throw new Error(`missing scale: ${s}`);
+  }
+  for (const u of ['Decision brief, renewal cohort, drill-down', 'Contact centre + external signals', 'Executive Copilot, SOC 2, custom']) {
+    if (!t.includes(u)) throw new Error(`missing unlock: ${u}`);
+  }
+  if (!/Talk to us/.test(t)) throw new Error('price is not withheld on a public session');
+  return cards.map((c) => c.querySelector('.tier-k').textContent.replace('current', '').trim()).join(' · ');
+});
+ok('the current plan is marked on the comparison',
+  pulseEl.querySelectorAll('.tier-card.on').length === 1);
+
 /* PRICING IS NOT PUBLIC, and this repo deploys to a live domain. The default
    render must therefore carry the usage counters and NO money at all. This is
    the check that stops a proposed, unvalidated price from being indexed. */
@@ -404,6 +423,21 @@ run('switching up to Growth unlocks contact centre and external signals', () => 
   navTo('Impact');
   if (pulseEl.querySelector('.panel.locked')) throw new Error('impact still locked on Growth');
   return `${pulseEl.querySelectorAll('.imp-card').length} impact cards`;
+});
+
+/* SOC 2 is in the proposal's Enterprise column AND page 2 records that buyers
+   ask for a SOC 2 we do not have. A green "included" tick would resolve that
+   contradiction in the one direction we cannot stand behind. */
+run('SOC 2 reads as committed on Enterprise, never as included', () => {
+  tierBtn('Enterprise').click();
+  navTo('Dashboard'); navTo('Assurance');
+  const rows = [...pulseEl.querySelectorAll('.drv-row')]
+    .map((r) => [r.querySelector('.n')?.textContent.trim(), r.querySelector('.v')?.textContent.trim()]);
+  const soc = rows.find(([n]) => /SOC 2/.test(n || ''));
+  if (!soc) throw new Error('SOC 2 is not listed at all');
+  if (soc[1] !== 'committed') throw new Error(`SOC 2 reads "${soc[1]}" on the tier that sells it`);
+  if (!/not yet delivered/.test(pulseEl.textContent)) throw new Error('the committed-vs-included note is missing');
+  return `${soc[0]} → ${soc[1]}`;
 });
 
 run('Enterprise opens the Copilot and leaves nothing locked but unbuilt features', () => {
