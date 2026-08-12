@@ -75,7 +75,7 @@ over insight objects, not an LLM. If an LLM is ever added it belongs in the expl
 
 ## 5. Verification is the acceptance test
 
-**After any change to `data/`, `engine/`, `assets/`, or `mcp/`, run all six.** Not a sample.
+**After any change to `data/`, `engine/`, `assets/`, or `mcp/`, run all seven.** Not a sample.
 
 ```bash
 node tools/verify.mjs        # 67 — engine finds the patterns, 5 seeds × 4 calendar positions
@@ -85,14 +85,21 @@ node tools/synccheck.mjs     # 36 — three stores, one real BroadcastChannel
 node tools/appcheck.mjs      # 34 — app.html reads the store, not a mock
 node tools/browsercheck.mjs  # 29 — the real navigator.locks path, both directions
 node tools/mcpcheck.mjs      # 79 — MCP over a real pipe and over HTTP
+node tools/chatcheck.mjs     # 44 — Rio routes 126 real phrasings to the right topic
 ```
 
-Roughly **325 checks**. Five totals are fixed; **`uicheck` floats by a few from day to day**
+Roughly **370 checks**. Six totals are fixed; **`uicheck` floats by a few from day to day**
 because it drills into every insight the engine produced and how many clear the thresholds
 depends on where `Date.now()` falls in the window. A changed `uicheck` total is *not* by itself
 a regression — **a failure is.** Do not "fix" a count mismatch by editing the harness.
 
 `mcpcheck` binds port **5599**, so it runs fine alongside a server already on 5500.
+
+`chatcheck` is the one to run after *any* edit to `assets/chat.js`, including a pure copy edit.
+Its routing corpus is the only thing standing between a new topic and the questions it silently
+steals from an existing one — adding a key like `"cost"` to a topic that is not pricing is a
+one-word change that quietly misroutes every "what does it cost". If a corpus line fails,
+**fix the keys, not the expectation.**
 
 ---
 
@@ -127,6 +134,30 @@ and those are the fast ones. Daily NPS off 6–18 responses swings ±70, so NPS 
 trailing window.
 
 **MCP tools are read-only.** All seven. Do not add a mutating tool without asking.
+
+**Rio (`assets/chat.js`) is the honesty rule applied to the marketing surface.** It is a
+knowledge base plus a matcher, not a model, and that is the whole point: a sales bot that
+improvises a price, an integration or a certification is the failure mode this product is sold
+against. Four things must not be weakened.
+
+- **No model, no network, no key.** There is no backend on a static site, so an LLM call would
+  ship a credential to the browser. If a real model is ever added it belongs behind a server,
+  and it still may not invent a number. **Adding one is a decision to escalate, not to make.**
+- **Every answer is authored and true against the site.** Prices come from the pricing section
+  of `index.html`, thresholds and the confidence weights from `trust.html`. If you change a
+  claim on a page, change it in Rio in the same commit or the two will disagree in front of a
+  prospect. Note the in-app tier names (`config/entitlements.js`) are **not** the published
+  plans — Rio says so explicitly rather than reconciling them silently.
+- **The guardrails decline on purpose.** Source, infrastructure, credentials and customer data
+  are refused; the published thresholds, the confidence formula and the refusal list stay open,
+  because publishing those *is* the pitch. Guardrails are matched on whole phrases only —
+  a wrong decline accuses the visitor of something, which is worse than a wrong answer.
+- **Suggested questions appear exactly once**, with the opening line. Re-offering them after
+  every answer turns a conversation into a menu and eats two rows of panel height on a phone.
+
+Below the acceptance bar Rio names the nearest topics instead of guessing, and below *that* it
+says it does not know and hands off to a human. **Do not lower the bar to reduce fallbacks** —
+that trade is exactly the one the confidence floor in the engine refuses to make.
 
 ---
 

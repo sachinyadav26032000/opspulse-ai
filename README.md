@@ -178,9 +178,10 @@ node tools/synccheck.mjs              # 36 checks — every tab shows the same o
 node tools/appcheck.mjs               # 34 checks — app.html reads the store, not a mock
 node tools/browsercheck.mjs           # 29 checks — the real navigator.locks path, both directions
 node tools/mcpcheck.mjs               # 79 checks — the MCP server, over a real pipe
+node tools/chatcheck.mjs              # 44 checks — Rio answers the right question
 ```
 
-**Around 325 checks.** Five of the six totals are fixed; `uicheck` drills into *every* insight
+**Around 370 checks.** Six of the seven totals are fixed; `uicheck` drills into *every* insight
 the engine produced, and how many clear the thresholds depends on where `Date.now()` falls in
 the window — so its total floats by a few from day to day. A changed uicheck total is
 therefore not by itself a regression; a **failure** is.
@@ -221,6 +222,18 @@ requirement literally — **the numbers on the two screens match, and an action 
 screen reaches the other**: pause from the OpsPulse toolbar stops NorthDesk (and NorthDesk's
 own button flips to "Resume"), a CSV dropped on OpsPulse appears in NorthDesk's queue, and
 "New data" on either rebuilds both.
+
+`chatcheck.mjs` covers the one surface where a stranger types free text: the Rio widget. A
+rendering bug there is obvious, but a question that quietly lands on the *pricing* answer
+instead of the *security* answer is not, and clicking around will never find it. So it drives
+**126 real-world phrasings** through the matcher and asserts the topic each one reaches, walks
+the eight-lesson course, checks that follow-ups like "why?" attach to the previous answer, and
+asserts the guardrails decline source code and prompt probes. It also walks every answer the
+corpus produces looking for claims the product is not allowed to make about itself — an
+unearned certification, a guarantee of accuracy, a dollar figure attached to compliance — because
+a chatbot that promises SOC 2 undoes the Trust page above it. It caught a dozen real
+misroutings, including `"what does it cost"` landing on the *uncosted-compliance* answer,
+because the key `"not costed"` stems to the same token as `"cost"`.
 
 `mcpcheck.mjs` does not call the tool functions — the failure mode a hand-rolled protocol
 invites is passing your own tests and failing a real client. It **spawns `mcp/server.js` as a
@@ -394,6 +407,7 @@ tools/
   appcheck.mjs          app.html data-provenance test (needs jsdom)
   browsercheck.mjs      Real navigator.locks path, both directions (needs jsdom)
   mcpcheck.mjs          MCP over a real pipe + both transports (needs jsdom)
+  chatcheck.mjs         Rio's routing corpus + guardrails (needs jsdom)
 ```
 
 ---
