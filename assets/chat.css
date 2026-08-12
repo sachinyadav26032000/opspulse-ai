@@ -421,6 +421,12 @@
   gap: 7px;
   padding: 10px 14px 12px;
 }
+/* The rail is offered once, with Rio's opening line, and emptied for good as
+   soon as the visitor asks anything. `:empty` is what actually removes it from
+   the column — without this it would keep claiming its 22px of padding on a
+   phone for the rest of the conversation, which is the height the answer
+   itself needs. */
+.cw-chips:empty { display: none; }
 .cw-chip {
   position: relative;
   overflow: hidden;               /* clips the hover shine to the pill */
@@ -435,8 +441,8 @@
   line-height: 1.2;
   cursor: pointer;
   transition: color 0.18s, background 0.18s, border-color 0.18s, transform 0.18s var(--ease), box-shadow 0.18s;
-  /* Chips are rebuilt on every reply, so they arrive with the answer rather
-     than appearing to have been there all along. Staggered by position. */
+  /* The chips arrive with the opening line rather than appearing to have been
+     there all along. Staggered by position. */
   animation: cw-chip-in 0.26s var(--ease) both;
 }
 .cw-chip:nth-child(2) { animation-delay: 0.05s; }
