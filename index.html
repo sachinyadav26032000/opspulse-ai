@@ -12,6 +12,48 @@
 <link rel="stylesheet" href="assets/site.css" />
 <link rel="stylesheet" href="assets/chat.css" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230d1211'/><rect x='3.5' y='6.2' width='25' height='3.4' rx='1.7' fill='%232e3b3a'/><rect x='3.5' y='11.5' width='18.2' height='3.4' rx='1.7' fill='%233d514d'/><rect x='3.5' y='16.8' width='11.7' height='3.4' rx='1.7' fill='%234f7a6b'/><rect x='3.5' y='22.1' width='5.8' height='3.4' rx='1.7' fill='%233fdd85'/></svg>" />
+<style>
+  /* Page-local only — the feature matrix under #pricing. Everything else comes
+     from the shared design system. Mirrors the .rule-table idiom in trust.html
+     rather than inventing a second table style. */
+  .table-scroll { overflow-x: auto; }
+  .matrix { width: 100%; border-collapse: collapse; font-size: .86rem; min-width: 660px; }
+  .matrix th {
+    text-align: left; font-size: .68rem; text-transform: uppercase; letter-spacing: .11em;
+    color: var(--text-dim); font-weight: 700; padding: 0 14px 10px; border-bottom: 1px solid var(--line-strong);
+  }
+  .matrix th.col { text-align: center; width: 17%; }
+  .matrix th.col b { display: block; color: var(--text-soft); font-size: .78rem; letter-spacing: .02em; text-transform: none; }
+  .matrix td { padding: 10px 14px; border-bottom: 1px solid var(--line); color: var(--text-soft); line-height: 1.5; }
+  .matrix td:first-child { color: var(--text); font-weight: 600; }
+  .matrix td:first-child small { display: block; font-weight: 400; color: var(--text-dim); font-size: .78rem; margin-top: 2px; }
+  .matrix td.val { text-align: center; color: var(--text-soft); font-size: .82rem; }
+
+  /* A group header is a row, not a separate table, so the four columns stay in
+     one grid and never drift out of alignment as rows are added. */
+  .matrix tr.grp td {
+    padding: 22px 14px 8px; border-bottom: 1px solid var(--line-strong);
+    font-size: .68rem; text-transform: uppercase; letter-spacing: .11em; font-weight: 700; color: var(--emerald);
+  }
+  .matrix tr.grp td span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text-dim); }
+
+  .yes { color: var(--emerald); font-weight: 700; }
+  .no  { color: var(--text-dim); }
+  /* Amber marks a capability that is specified and sequenced but not in the
+     prototype yet. Publishing the distinction is cheaper than being caught by
+     it in a demo — same reason SOC 2 is not claimed before it is real. */
+  .soon { color: var(--amber); }
+  .up   { color: var(--amber); font-weight: 600; }
+
+  .axes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-top: 26px; }
+  @media (max-width: 900px) { .axes { grid-template-columns: repeat(2, 1fr); } }
+  .axes div {
+    border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 15px 16px;
+    background: rgba(255,255,255,.02);
+  }
+  .axes h4 { font-size: .8rem; margin: 0 0 6px; color: var(--text); }
+  .axes p { font-size: .8rem; color: var(--text-dim); margin: 0; line-height: 1.5; }
+</style>
 </head>
 <body>
 
@@ -528,49 +570,173 @@
   <div class="wrap">
     <div class="section-head center reveal">
       <span class="eyebrow">Business Model</span>
-      <h2>Priced on the renewal book, <span class="grad-text">never on the seats.</span></h2>
-      <p class="lead">Every plan includes unlimited read-only access. A renewal risk only gets acted on if the people who need to see it (the CSM, the RevOps lead, the CRO) can open it without someone buying them a licence first.</p>
+      <h2>Every tier detects everything. <span class="grad-text">You pay for reach, not for answers.</span></h2>
+      <p class="lead">One rule sits underneath all three plans: never gate the insight. All nine detectors, root cause, confidence scoring, the playbooks and the dollar-impact arithmetic are in the cheapest plan. A Pulse customer sees the same card an Enterprise customer sees. Cripple detection at the entry tier and the entry tier stops being a way in — it becomes a worse product that people leave in month two.</p>
     </div>
     <div class="price-grid">
       <div class="price reveal">
-        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Retain</span></div>
-        <div class="amt">$1,800<small> / month</small></div>
-        <p class="desc">For one renewal book, getting its risks on the record for the first time.</p>
+        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Pulse</span></div>
+        <div class="amt">$490<small> / month</small></div>
+        <p class="desc">For the first team putting its operational risk on the record.</p>
         <ul>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>3 signal sources · unlimited viewers</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>All 9 detectors · full renewal risk feed</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Decision ledger · 12-month retention</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Provenance &amp; contract validation</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>All 9 detectors, root cause and confidence scoring</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Dollar impact as a range, with its arithmetic shown</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Dashboard, 7/30/90-day presets, CSV export everywhere</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Copilot: 5 lookup intents, 20 questions/day</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>20,000 tickets/mo · CSV upload · daily refresh</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>90-day history · unlimited viewer seats</li>
         </ul>
         <a class="btn btn-ghost" href="#contact">Start a pilot</a>
       </div>
       <div class="price featured reveal">
-        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Forecast</span><span class="badge">Most popular</span></div>
-        <div class="amt">$4,500<small> / month</small></div>
-        <p class="desc">For teams whose renewal forecast gets challenged by someone outside CS.</p>
+        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Command</span><span class="badge">Most popular</span></div>
+        <div class="amt">$2,400<small> / month</small></div>
+        <p class="desc">For when you stop wanting to look and start wanting to be told.</p>
         <ul>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Retain</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Unlimited sources · predictive renewal scoring</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>3-year ledger retention · board-ready export</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>SSO · RBAC · configurable confidence floor</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Pulse</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Scheduled brief to Slack or email · push alerts</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Full Copilot: all 13 intents, unlimited, drill-through</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Up to 3 live connectors · 100,000 tickets/mo · hourly</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Insight lifecycle and did-it-work tracking</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Tunable thresholds · SSO · audit log · 13-month history</li>
         </ul>
         <a class="btn btn-primary" href="demo.html">Launch the live demo →</a>
       </div>
       <div class="price reveal">
         <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Enterprise</span></div>
-        <div class="amt">Custom</div>
-        <p class="desc">For regulated operations with their own residency, model-review and retention rules.</p>
+        <div class="amt">from $75k<small> / year</small></div>
+        <p class="desc">For multi-brand operations that have to answer to a security review.</p>
         <ul>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Forecast</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Data residency · private deployment</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Custom detectors &amp; thresholds under review</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Indefinite ledger retention · legal hold</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Command</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Multi-brand, region and BU roll-up with per-BU permissions</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Warehouse sync · unlimited volume · continuous refresh</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Custom detectors, KPIs and a configurable confidence floor</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Insight API, board pack, embedded views</li>
+          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>SOC 2 Type 2 · VPC or on-prem · residency · dedicated CSM</li>
         </ul>
         <a class="btn btn-ghost" href="#contact">Talk to us</a>
       </div>
     </div>
+
+    <!--
+      The five axes are the honest answer to "why is one plan more than another".
+      Naming them out loud is a commitment: if a future feature does not fall
+      into one of these five, it does not belong behind a paywall either.
+    -->
+    <div class="axes reveal">
+      <div><h4>Freshness</h4><p>Daily, hourly or continuous. Finding out on Tuesday what happened on Monday is a real reason to pay more.</p></div>
+      <div><h4>Reach</h4><p>Whether the insight stays in the app, or arrives in Slack, an inbox, a board pack, your API.</p></div>
+      <div><h4>Breadth</h4><p>One CSV, three live connectors, or the whole warehouse across every business unit.</p></div>
+      <div><h4>Control</h4><p>Default thresholds, versus tuning them, versus detectors written for your operation.</p></div>
+      <div><h4>Assurance</h4><p>SSO, audit log, SOC 2, VPC, an SLA, and a named human who answers.</p></div>
+    </div>
+
+    <div class="section-head center reveal" style="margin-top:60px">
+      <h3 style="font-size:1.35rem">What each plan actually includes</h3>
+      <p class="dim" style="font-size:.86rem;max-width:74ch;margin:10px auto 0">
+        <span class="up">Amber</span> marks what is new at that tier — the upgrade trigger. A <span class="soon">✓</span> in amber is a capability that is specified and sequenced but <strong style="color:var(--text-soft)">not in the prototype yet</strong>; you are looking at a working engine, not a finished platform, and we would rather you read that here than find it in a demo.
+      </p>
+    </div>
+
+    <div class="table-scroll reveal">
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th class="col">Pulse<b>$490/mo</b></th>
+            <th class="col">Command<b>$2,400/mo</b></th>
+            <th class="col">Enterprise<b>from $75k/yr</b></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="grp"><td colspan="4">Detection &amp; insight <span>— identical everywhere. This is the product, not the upsell.</span></td></tr>
+          <tr><td>Statistical detectors<small>z-test, Welch's t, OLS slope, onset</small></td><td class="val">All 9</td><td class="val">All 9</td><td class="val"><span class="up">All 9 + custom</span></td></tr>
+          <tr><td>Root cause by decomposition</td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>Confidence score<small>45% statistical / 30% explained / 25% corroboration</small></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>Hold-for-review threshold</td><td class="val">Fixed at 60%</td><td class="val">Fixed at 60%</td><td class="val"><span class="up">Configurable</span></td></tr>
+          <tr><td>Recommendation playbooks</td><td class="val">Standard library</td><td class="val">Standard library</td><td class="val"><span class="up">Written to your ops</span></td></tr>
+          <tr><td>Dollar impact range + shown arithmetic</td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>Diversity-aware top 3</td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>Health score + 4 risk dimensions</td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+
+          <tr class="grp"><td colspan="4">Analytics &amp; exploration</td></tr>
+          <tr><td>Dashboard, KPI strip, charts</td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>7 / 30 / 90-day presets</td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>BI drill-downs from any card</td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>Data table + CSV export on every chart</td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>Custom date window</td><td class="val"><span class="no">—</span></td><td class="val"><span class="up">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>Segment / cohort slicing<small>by team, tier, region, product</small></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>Period-over-period comparison</td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td><td class="val"><span class="soon">✓</span></td></tr>
+
+          <tr class="grp"><td colspan="4">Executive Copilot</td></tr>
+          <tr><td>Copilot access</td><td class="val">5 lookup intents<br/>20 questions/day</td><td class="val"><span class="up">All 13 intents</span><br/><span class="up">Unlimited</span></td><td class="val"><span class="up">All 13 + custom</span></td></tr>
+          <tr><td>Follow-up questions in context</td><td class="val"><span class="no">—</span></td><td class="val"><span class="up">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>Answers link into drill-downs</td><td class="val"><span class="no">—</span></td><td class="val"><span class="up">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>Grounded refusal when no answer exists</td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>Your vocabulary and metric names</td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>Cross-business-unit questions</td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td></tr>
+
+          <tr class="grp"><td colspan="4">Delivery &amp; alerting <span>— where most of the perceived value sits</span></td></tr>
+          <tr><td>In-app Decision Feed</td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>Scheduled Executive Brief<small>Slack or email, daily or weekly</small></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>Push alert on new high-confidence insight</td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>Threshold-crossing alerts</td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>Insight API + webhooks</td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>Embedded / white-label views</td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>Scheduled board pack (PDF)</td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td></tr>
+
+          <tr class="grp"><td colspan="4">Data &amp; connectors</td></tr>
+          <tr><td>Volume included</td><td class="val">20,000 tickets/mo</td><td class="val"><span class="up">100,000 tickets/mo</span></td><td class="val"><span class="up">Unlimited</span></td></tr>
+          <tr><td>CSV upload + scheduled export</td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td><td class="val"><span class="yes">✓</span></td></tr>
+          <tr><td>Live connectors<small>Zendesk, Freshdesk, Intercom, Salesforce</small></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">Up to 3 sources</span></td><td class="val"><span class="soon">Unlimited</span></td></tr>
+          <tr><td>Warehouse sync<small>Snowflake, BigQuery</small></td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>Refresh frequency</td><td class="val">Daily + on-demand</td><td class="val"><span class="soon">Hourly</span></td><td class="val"><span class="soon">Continuous</span></td></tr>
+          <tr><td>History retained</td><td class="val">90 days</td><td class="val"><span class="up">13 months</span></td><td class="val"><span class="up">Unlimited + backfill</span></td></tr>
+          <tr><td>Multi-brand / region / BU roll-up</td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td></tr>
+
+          <tr class="grp"><td colspan="4">Configuration &amp; control</td></tr>
+          <tr><td>Detector thresholds</td><td class="val">Defaults only</td><td class="val"><span class="up">Tunable per category</span></td><td class="val"><span class="up">Fully configurable</span></td></tr>
+          <tr><td>Release &amp; event calendar<small>so root cause correlates to your real deploys</small></td><td class="val">Manual entry</td><td class="val"><span class="soon">Import + API</span></td><td class="val"><span class="soon">Auto-sync from CI/CD</span></td></tr>
+          <tr><td>Insight lifecycle<small>assign, snooze, mark actioned</small></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>Did-it-work tracking<small>metric movement after an action</small></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>Custom KPI definitions</td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td></tr>
+
+          <tr class="grp"><td colspan="4">Governance &amp; security</td></tr>
+          <tr><td>Viewer seats</td><td class="val">Unlimited</td><td class="val">Unlimited</td><td class="val">Unlimited</td></tr>
+          <tr><td>Role-based permissions</td><td class="val">Admin / viewer</td><td class="val"><span class="up">Admin / editor / viewer</span></td><td class="val"><span class="up">Granular, per BU</span></td></tr>
+          <tr><td>SSO (SAML / OIDC)</td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>SCIM provisioning</td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>Audit log</td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>DPA</td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>SOC 2 Type 2 report</td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>VPC or on-prem deployment</td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td></tr>
+          <tr><td>Custom data retention / residency</td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="soon">✓</span></td></tr>
+
+          <tr class="grp"><td colspan="4">Service</td></tr>
+          <tr><td>Support</td><td class="val">Email, 2 business days</td><td class="val"><span class="up">Named contact, 1 business day</span></td><td class="val"><span class="up">Dedicated CSM, SLA</span></td></tr>
+          <tr><td>Onboarding</td><td class="val">Self-serve + docs</td><td class="val"><span class="up">Guided call + connector setup</span></td><td class="val"><span class="up">Full implementation</span></td></tr>
+          <tr><td>Quarterly business review</td><td class="val"><span class="no">—</span></td><td class="val"><span class="no">—</span></td><td class="val"><span class="yes">✓</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!--
+      Four things that stay free on every tier, published deliberately. Each one
+      is a decision we would lose money on in the short term and win on renewal,
+      and a prospect can hold us to all four because they are written down.
+    -->
+    <div class="honest-band reveal" style="margin-top:34px;border:1px dashed var(--line-strong);border-radius:var(--radius);padding:24px 26px;background:rgba(52,211,153,.03)">
+      <h3 style="font-size:1.05rem;margin-bottom:12px;color:var(--emerald)">What we will never put behind a plan</h3>
+      <ul style="list-style:none;padding:0;margin:0;display:grid;gap:11px;font-size:.89rem;color:var(--text-soft);line-height:1.6">
+        <li><strong style="color:var(--text)">Viewer seats.</strong> On every tier, forever. The VP of Product who reads a forwarded brief is the next champion — charging for that seat is charging to be recommended.</li>
+        <li><strong style="color:var(--text)">The arithmetic behind a number.</strong> Every impact range shows its inputs at every tier. The moment a $490 customer sees a dollar figure they cannot verify, this is just another dashboard making claims.</li>
+        <li><strong style="color:var(--text)">Data export.</strong> Take your data out on any plan. Lock-in through switching pain is a renewal you win once; lock-in through the brief being genuinely useful is one you win every year.</li>
+        <li><strong style="color:var(--text)">The all-clear.</strong> A quiet week still gets a health score and a "here is what we checked" summary. A confident all-clear is a feature; silence reads as a broken product.</li>
+      </ul>
+    </div>
+
     <p class="dim center" style="margin-top:22px;font-size:.82rem;max-width:76ch;margin-left:auto;margin-right:auto">
-      A signal source is one connected system: a ticketing platform, a telephony feed, a QA tool, a product-analytics stream, a billing system. Pricing scales with what the engine has to reason over and how long the decision record must survive, because those are the two things that actually cost money to run. <a href="#partners" style="color:var(--emerald)">Design partners pay none of it</a> for the duration of the partnership.
+      Volume is counted in tickets processed per month, because that is what the engine actually has to reason over and the only input that genuinely costs money to run. Seats are not an axis, and never will be. <a href="#partners" style="color:var(--emerald)">Design partners pay none of it</a> for the duration of the partnership — including the tiers above the one they would otherwise buy.
     </p>
   </div>
 </section>

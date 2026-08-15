@@ -84,7 +84,7 @@ ok('the answer to the clicked opener rendered', bubbles().length === 3);
 
 await ask('what does it cost');
 ok('no chips after a typed question either', chips().length === 0);
-ok('pricing answer is the published one', /\$1,800/.test(last()) && /\$4,500/.test(last()));
+ok('pricing answer is the published one', /\$490/.test(last()) && /\$2,400/.test(last()));
 
 click('cwClose'); click('cwLaunch');
 ok('reopening does not re-offer the openers', chips().length === 0);
@@ -178,7 +178,8 @@ const CORPUS = [
   ['whats the pricing like', 'pricing'],
   ['is it expensive', 'pricing'],
   ['do you charge per seat', 'pricing'],
-  ['what is the retain plan', 'pricing'],
+  ['what is the pulse plan', 'pricing'],
+  ['what is the command plan', 'pricing'],
   ['is there a contract', 'contract'],
   ['can i cancel', 'contract'],
   ['what is the design partner programme', 'partner'],
@@ -289,7 +290,7 @@ head('Follow-ups');
 
 await ask('how much does it cost');
 const deeper = await ask('why?');
-ok('"why?" deepens the previous topic', /signal sources/i.test(deeper) && /seats/i.test(deeper));
+ok('"why?" deepens the previous topic', /freshness/i.test(deeper) && /seats/i.test(deeper));
 await ask('what are the nine detectors');
 ok('"tell me more" deepens too', /40 recent records/i.test(await ask('tell me more')));
 await ask('what is the health score');

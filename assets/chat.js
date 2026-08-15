@@ -238,7 +238,7 @@
       more:
         "The floor is the part people underestimate.\n\n" +
         "Any system that surfaces findings will produce some that are weak. The question is what it does with them. Auto-actioning a 48%-confidence hypothesis is how a tool gets a reputation for crying wolf; hiding it entirely is how it misses the early one. Holding it for review does neither: it is on screen, it is labelled, and no play fires off the back of it.\n\n" +
-        "On the Forecast plan the floor is configurable, because a team drowning in renewals may reasonably want a higher bar than 60%."
+        "On Enterprise the floor is configurable, because a team drowning in renewals may reasonably want a higher bar than 60%. It is fixed at 60% on Pulse and Command — a default you can argue with is worth more than a dial you can quietly turn down."
     },
     {
       id: "impact",
@@ -432,7 +432,7 @@
       answer:
         "The live product has a <strong>tier switcher</strong> so you can watch entitlements move. Flip down and panels lock; flip back and they open.\n\n" +
         "Locked features are <em>rendered as locked</em>, never removed — each padlock names which tier opens it and what it would tell you. Hiding a feature you do not pay for makes a product look thin; showing it locked makes it look priced.\n\n" +
-        "One thing to be aware of, so it does not confuse you: the tier names inside the demo and the list prices attached to them are a <strong>modelling input for the cost view</strong>, not the published plans. The real commercial plans are Retain, Forecast and Enterprise — ask me about pricing and I will give you those.\n\n" +
+        "One thing to be aware of, so it does not confuse you: the tier names inside the demo (Essential, Growth, Enterprise) and the list prices attached to them are a <strong>modelling input for the cost view</strong>, not the published plans. The real commercial plans are Pulse, Command and Enterprise — ask me about pricing and I will give you those.\n\n" +
         "The ceilings are also <strong>soft</strong>. Exceeding one flags a conversation at renewal; it never blocks the product. The ceiling is measured in accounts under management, so a customer who hits it has grown their book — which is the outcome the product exists to produce."
     },
     {
@@ -450,17 +450,18 @@
     {
       id: "pricing",
       title: "pricing",
-      keys: ["pricing", "price", "cost", "how much", "expensive", "budget", "per seat", "plans", "tiers", "afford", "quote", "fee", "subscription", "what do i pay", "retain", "forecast plan"],
+      keys: ["pricing", "price", "cost", "how much", "expensive", "budget", "per seat", "plans", "tiers", "afford", "quote", "fee", "subscription", "what do i pay", "pulse plan", "command plan"],
       answer:
-        "Priced on the <strong>renewal book, never per seat</strong>. Every plan includes unlimited read-only viewers, because a renewal risk only gets acted on if the CSM, the RevOps lead and the CRO can all open it without someone buying them a licence first.\n\n" +
-        "<strong>Retain · $1,800/mo</strong> — one renewal book, getting its risks on the record for the first time. 3 signal sources, unlimited viewers, all nine detectors, the full risk feed, 12-month ledger retention, provenance and contract validation.\n\n" +
-        "<strong>Forecast · $4,500/mo</strong> — for teams whose renewal forecast gets challenged by someone outside CS. Everything in Retain, plus unlimited sources, predictive renewal scoring, 3-year ledger retention, board-ready export, SSO, RBAC and a configurable confidence floor.\n\n" +
-        "<strong>Enterprise · custom</strong> — for regulated operations. Everything in Forecast, plus data residency, private deployment, custom detectors and thresholds under review, indefinite retention and legal hold.\n\n" +
+        "Three plans, and the rule underneath them is that <strong>detection is never gated</strong>. All nine detectors, root cause, confidence scoring, the playbooks and the dollar-impact arithmetic are in the cheapest one. A Pulse customer sees the same card an Enterprise customer sees.\n\n" +
+        "<strong>Pulse · $490/mo</strong> — the whole engine, in the app. 20,000 tickets/mo, CSV upload, daily refresh, 90-day history, dashboard and drill-downs, CSV export on every chart, and a metered Copilot (5 lookup intents, 20 questions/day). Unlimited viewer seats.\n\n" +
+        "<strong>Command · $2,400/mo</strong> — everything in Pulse, plus the insight coming to <em>you</em>: scheduled brief to Slack or email, push alerts, the full 13-intent Copilot unmetered, up to 3 live connectors, 100,000 tickets/mo, hourly refresh, 13-month history, tunable thresholds, insight lifecycle and did-it-work tracking, SSO and an audit log.\n\n" +
+        "<strong>Enterprise · from $75k/yr</strong> — everything in Command, plus multi-brand and per-BU roll-up, warehouse sync, unlimited volume and history, custom detectors and KPIs, a configurable confidence floor, insight API, board pack, SOC 2 Type 2, VPC or on-prem, residency and a dedicated CSM.\n\n" +
         "<strong>Design partners pay nothing</strong> for the duration of the partnership.",
       more:
-        "The two axes are <strong>signal sources</strong> and <strong>ledger retention</strong>, and both are honest about what actually costs money to run.\n\n" +
-        "A signal source is one connected system: a ticketing platform, a telephony feed, a QA tool, a product-analytics stream, a billing system. More sources means more for the engine to reason over. Longer retention means keeping a decision record alive and queryable for years.\n\n" +
-        "What is deliberately <em>not</em> an axis is seats. Charging per seat would price the product against its own mechanism of action — the whole value is that the CRO can open the same evidence the CSM is looking at."
+        "Five axes decide what sits behind a plan, and nothing else is allowed to: <strong>freshness</strong> (daily, hourly, continuous), <strong>reach</strong> (in-app, or Slack, inbox, board pack, API), <strong>breadth</strong> (one CSV, three connectors, the warehouse), <strong>control</strong> (default thresholds, tunable, or detectors written for your operation) and <strong>assurance</strong> (SSO, audit log, SOC 2, VPC, an SLA).\n\n" +
+        "Four things are never behind a plan: <strong>viewer seats</strong> on every tier forever, <strong>the arithmetic</strong> behind every impact range, <strong>data export</strong>, and <strong>the all-clear</strong> — a quiet week still gets a health score and a summary of what was checked.\n\n" +
+        "Seats are deliberately <em>not</em> an axis. Charging per seat would price the product against its own mechanism of action — the whole value is that the CRO can open the same evidence the CSM is looking at. Volume is counted in tickets processed, because that is the input that actually costs money to run.\n\n" +
+        "One caveat I would rather you heard from me: parts of Command and Enterprise are <strong>specified but not built yet</strong> — the live connectors, the scheduled brief and alerts, insight lifecycle, and the security items. The pricing table on the site marks each of those in amber. What you can run today is the engine itself."
     },
     {
       id: "contract",
@@ -515,7 +516,7 @@
         "Honest answer, because this is exactly the kind of question a vendor should not fudge:\n\n" +
         "<strong>Today</strong>: this is a prototype. Everything on this site runs on simulated data — there is no customer data in it, and the CSV upload runs entirely in your browser without sending anything to a server.\n\n" +
         "<strong>For design partners</strong>: read-only access, scoped to what the detectors need, and we will sign whatever your security team requires before any data moves.\n\n" +
-        "<strong>On the roadmap</strong>: SSO, RBAC and configurable retention arrive with the Forecast plan; data residency, private deployment and an immutable access log are Enterprise. <strong>SOC 2 comes with productisation, and we will not claim it before it is real.</strong>\n\n" +
+        "<strong>On the roadmap</strong>: SSO, an audit log, a DPA and role-based permissions arrive with Command; SCIM, data residency, private deployment (VPC or on-prem) and custom retention are Enterprise. <strong>SOC 2 Type 2 comes with productisation, and we will not claim it before it is real.</strong>\n\n" +
         "If your security review needs a document we do not have yet, the useful answer is a call with the CTO rather than a badge on a landing page."
     },
     {
@@ -846,7 +847,7 @@
         "• <strong>The live demo.</strong> Source system on the left, decision engine on the right, one shared store so they cannot disagree. Nothing to install.\n" +
         "• <strong>Your own export.</strong> Drop a CSV into Data Upload and the same nine detectors run against your rows, in your browser, with nothing uploaded anywhere.\n" +
         "• <strong>The Trust page.</strong> Every detector's threshold, the confidence weights, and the full list of things the platform refuses to do — published so you can disagree with them.\n\n" +
-        "Commercially: <strong>Retain $1,800/mo</strong>, <strong>Forecast $4,500/mo</strong>, Enterprise custom, priced on the renewal book and never per seat — and design partners pay nothing.\n\n" +
+        "Commercially: <strong>Pulse $490/mo</strong>, <strong>Command $2,400/mo</strong>, Enterprise from $75k/yr — detection is never gated, seats are never charged for, and design partners pay nothing.\n\n" +
         "That is the course. Ask me anything from it in more depth, or say <strong>schedule a demo</strong> for thirty minutes with a founder."
     }
   ];
