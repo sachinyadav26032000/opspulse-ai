@@ -477,7 +477,7 @@
       keys: ["design partner", "partner programme", "partner program", "pilot", "beta", "early access", "founding customer", "trial", "free", "join", "apply", "how do i sign up"],
       answer:
         "We are building this with <strong>ten mid-market SaaS teams</strong>. Not a waitlist, and not a discount scheme.\n\n" +
-        "<strong>You get</strong>: the product free through the partnership, detectors tuned to your renewal motion, and direct access to the two people who build it.\n\n" +
+        "<strong>You get</strong>: the product free through the partnership, detectors tuned to your renewal motion, and direct access to the founders themselves.\n\n" +
         "<strong>We ask</strong>: an export or a read-only connection, an hour a fortnight, and honest reactions — especially when a finding is wrong. A detector nobody argues with is a detector nobody uses.\n\n" +
         "<strong>Fit</strong>: $3M–$30M ARR, a renewal book someone owns by name, and roughly twelve months of history in your tools.\n\n" +
         "First step is a thirty-minute call. If the fit is not obvious to both sides in that half hour, we will say so."
@@ -559,11 +559,12 @@
     {
       id: "team",
       title: "the team behind it",
-      keys: ["who built", "who made", "who is behind", "team", "founders", "behind this", "the company", "about you the company", "sachin", "sudharshan", "funding", "investors", "how many people", "how big is the company", "where are you based"],
+      keys: ["who built", "who made", "who is behind", "team", "founders", "behind this", "the company", "about you the company", "sachin", "sudharshan", "venkatesh", "funding", "investors", "how many people", "how big is the company", "where are you based"],
       answer:
-        "Two founders.\n\n" +
+        "Three founders.\n\n" +
         "<strong>Sudharshan — Founder &amp; CEO.</strong> Fifteen years across customer operations, customer experience and enterprise SaaS, more recently executive search.\n\n" +
         "<strong>Sachin — Co-founder &amp; CTO.</strong> Enterprise AI, architecture and engineering. Owns the decision engine: the detectors, the confidence floor, and the insight contract that stops anything reaching a screen before it can be traced back to a record.\n\n" +
+        "<strong>Venkatesh — Co-founder &amp; CBO.</strong> Go-to-market, revenue and partnerships. Owns how the product reaches the operations leaders it is built for, the partner and investor network, and expansion beyond the first market.\n\n" +
         "Small on purpose. You will not be handed to an account manager, and the person who answers your hardest technical question is the person who wrote the thing."
     },
     {
@@ -582,7 +583,7 @@
       title: "talking to a human",
       keys: ["talk to a human", "human", "contact", "speak to", "get in touch", "reach you", "email address", "call you", "sales", "real person", "someone"],
       answer:
-        "Happy to hand you over. Both founders answer everything themselves.\n\n" +
+        "Happy to hand you over. The founders answer everything themselves.\n\n" +
         "Use the <strong>Schedule a demo</strong> form on this page and it reaches them directly — thirty minutes, screen shared, your questions rather than our script.\n\n" +
         "Say <strong>schedule a demo</strong> and I will scroll you to it."
     },
@@ -747,7 +748,7 @@
       keys: ["book a meeting for me", "send me an email", "sign me up", "create an account", "reset my password", "log me in", "cancel my subscription", "give me a discount", "send a proposal", "invoice me", "call me back", "add me to the list"],
       answer:
         "I cannot do that from here — I answer questions, I do not have an account system or a mailbox behind me, and I would rather tell you than take an action you think happened and did not.\n\n" +
-        "Everything of that kind goes through one place: the <strong>Schedule a demo</strong> form on this page, which reaches both founders directly. Say <strong>schedule a demo</strong> and I will scroll you to it."
+        "Everything of that kind goes through one place: the <strong>Schedule a demo</strong> form on this page, which reaches all three founders directly. Say <strong>schedule a demo</strong> and I will scroll you to it."
     },
     {
       id: "offtopic",
@@ -941,7 +942,7 @@
     hack: ["security"], leak: ["security"], encrypt: ["security"],
     startup: ["scale"], smb: ["scale"], enterprise: ["scale"],
     demo: ["demo"], trial: ["partner"], poc: ["partner"], pilot: ["partner"],
-    founder: ["team"], ceo: ["team"], cto: ["team"], company: ["team"],
+    founder: ["team"], ceo: ["team"], cto: ["team"], cbo: ["team"], company: ["team"],
     llm: ["ai"], gpt: ["ai"], model: ["ai"], ml: ["ai"], neural: ["ai"],
     bug: ["wrong"], broken: ["wrong"], fails: ["wrong"], failure: ["wrong"],
     slow: ["performance"], fast: ["performance"], speed: ["performance"]
@@ -1416,7 +1417,7 @@
        the product's own confidence floor, applied to its own marketing. */
     return "That one is outside what I can answer with confidence, and I would rather tell you than guess. OpsPulse refuses to invent numbers, so I refuse to invent answers.\n\n" +
       "I cover the product itself — the engine, the detectors, the evidence, the ledger, pricing, security, the roadmap and the team. Say <strong>help</strong> and I will list what I know, or <strong>teach me</strong> and I will walk the whole thing from the beginning.\n\n" +
-      "If your question needs a person, both founders answer personally: use the <strong>Schedule a demo</strong> form on this page and it reaches them directly.";
+      "If your question needs a person, the founders answer personally: use the <strong>Schedule a demo</strong> form on this page and it reaches them directly.";
   }
 
   /* One lesson, plus the instruction for how to get the next one. The nudge is
@@ -1478,7 +1479,7 @@
       bubble("me", render(q));
       var target = document.getElementById("contact");
       if (target) {
-        say("Taking you to the form now. It goes straight to both founders.");
+        say("Taking you to the form now. It goes straight to the founders.");
         setTimeout(function () {
           target.scrollIntoView({ behavior: reduceMotion.matches ? "auto" : "smooth", block: "start" });
           var name = document.getElementById("cfName");

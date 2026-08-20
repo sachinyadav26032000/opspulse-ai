@@ -467,8 +467,8 @@ footer { border-top: 1px solid var(--line); margin-top: 70px; padding: 40px 0 50
 .founders { padding-bottom: 20px; }
 .founders-head { margin-bottom: 20px; }
 .founders-grid {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px; max-width: 760px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px; max-width: 1080px;
 }
 .founder {
   border: 1px solid var(--line); border-radius: var(--radius-sm);
@@ -498,6 +498,12 @@ footer { border-top: 1px solid var(--line); margin-top: 70px; padding: 40px 0 50
 .founder-link:hover { color: var(--emerald); border-bottom-color: rgba(52, 211, 153, 0.45); }
 .founder-link span { font-size: 0.9em; opacity: 0.7; }
 
+/* Three across only while each card still has room for its brief; below that
+   two, then one. A 0.87rem paragraph in a third of a 900px viewport wraps to
+   a column of two-word lines, which reads as a list rather than a sentence. */
+@media (max-width: 980px) {
+  .founders-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 760px; }
+}
 @media (max-width: 720px) {
   .founders-grid { grid-template-columns: 1fr; }
 }

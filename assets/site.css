@@ -53,7 +53,7 @@
 /* ---------- Founder titles ----------
    The base rule renders the role at 0.72rem in --text-dim, which disappears
    next to the name. Who holds which title is one of the first things a buyer
-   checks on a two-person company, so it gets brand colour, its own line and
+   checks on a company this small, so it gets brand colour, its own line and
    enough weight to be read at a glance rather than hunted for. */
 .founder h4 {
   display: block;
