@@ -487,7 +487,7 @@ import { buildModel, buildAnalytics, analyticsBounds, tickRows } from './app-dat
         if (isAnalytics && window.Analytics) {
           window.Analytics.render($("#view-analytics"));
         } else if (v !== "feed" && v !== "analytics") {
-          toast(meta[0] + " view", "Prototype focuses on Feed & Analytics");
+          toast(meta[0] + " view", "This MVP focuses on Feed & Analytics");
         }
         window.scrollTo({ top: 0, behavior: "smooth" });
       });

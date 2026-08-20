@@ -238,7 +238,7 @@
       more:
         "The floor is the part people underestimate.\n\n" +
         "Any system that surfaces findings will produce some that are weak. The question is what it does with them. Auto-actioning a 48%-confidence hypothesis is how a tool gets a reputation for crying wolf; hiding it entirely is how it misses the early one. Holding it for review does neither: it is on screen, it is labelled, and no play fires off the back of it.\n\n" +
-        "On the Forecast plan the floor is configurable, because a team drowning in renewals may reasonably want a higher bar than 60%."
+        "The floor is configurable on the higher plans, because a team drowning in renewals may reasonably want a bar above 60%. Where exactly that line falls commercially is part of what we are still working out with design partners."
     },
     {
       id: "impact",
@@ -432,7 +432,7 @@
       answer:
         "The live product has a <strong>tier switcher</strong> so you can watch entitlements move. Flip down and panels lock; flip back and they open.\n\n" +
         "Locked features are <em>rendered as locked</em>, never removed — each padlock names which tier opens it and what it would tell you. Hiding a feature you do not pay for makes a product look thin; showing it locked makes it look priced.\n\n" +
-        "One thing to be aware of, so it does not confuse you: the tier names inside the demo and the list prices attached to them are a <strong>modelling input for the cost view</strong>, not the published plans. The real commercial plans are Retain, Forecast and Enterprise — ask me about pricing and I will give you those.\n\n" +
+        "One thing to be aware of, so it does not confuse you: the tier names inside the demo and the list prices attached to them are a <strong>modelling input for the cost view</strong>, not a price list. The cost model needs a number to multiply, so it has one. We have not published commercial pricing at all yet — ask me about pricing and I will tell you exactly where that stands.\n\n" +
         "The ceilings are also <strong>soft</strong>. Exceeding one flags a conversation at renewal; it never blocks the product. The ceiling is measured in accounts under management, so a customer who hits it has grown their book — which is the outcome the product exists to produce."
     },
     {
@@ -450,13 +450,12 @@
     {
       id: "pricing",
       title: "pricing",
-      keys: ["pricing", "price", "cost", "how much", "expensive", "budget", "per seat", "plans", "tiers", "afford", "quote", "fee", "subscription", "what do i pay", "retain", "forecast plan"],
+      keys: ["pricing", "price", "cost", "how much", "expensive", "budget", "per seat", "plans", "tiers", "afford", "quote", "fee", "subscription", "what do i pay", "list price", "price list", "how much per month"],
       answer:
-        "Priced on the <strong>renewal book, never per seat</strong>. Every plan includes unlimited read-only viewers, because a renewal risk only gets acted on if the CSM, the RevOps lead and the CRO can all open it without someone buying them a licence first.\n\n" +
-        "<strong>Retain · $1,800/mo</strong> — one renewal book, getting its risks on the record for the first time. 3 signal sources, unlimited viewers, all nine detectors, the full risk feed, 12-month ledger retention, provenance and contract validation.\n\n" +
-        "<strong>Forecast · $4,500/mo</strong> — for teams whose renewal forecast gets challenged by someone outside CS. Everything in Retain, plus unlimited sources, predictive renewal scoring, 3-year ledger retention, board-ready export, SSO, RBAC and a configurable confidence floor.\n\n" +
-        "<strong>Enterprise · custom</strong> — for regulated operations. Everything in Forecast, plus data residency, private deployment, custom detectors and thresholds under review, indefinite retention and legal hold.\n\n" +
-        "<strong>Design partners pay nothing</strong> for the duration of the partnership.",
+        "Straight answer: <strong>we are not publishing list prices yet.</strong> Pricing discovery with the first design partners is still running, and a number I gave you today would be a guess in the same typeface as the engine's arithmetic.\n\n" +
+        "What <em>is</em> decided is the shape. Priced on the <strong>renewal book, never per seat</strong>. Every plan includes unlimited read-only viewers, because a renewal risk only gets acted on if the CSM, the RevOps lead and the CRO can all open it without someone buying them a licence first.\n\n" +
+        "The two axes are <strong>signal sources</strong> and <strong>ledger retention</strong> — how much the engine has to reason over, and how long the decision record has to stay queryable. Those are the two things that actually cost money to run.\n\n" +
+        "If you need a figure for a budget conversation, say <strong>schedule a demo</strong> and you will get our current thinking, the reasoning under it and an honest statement of how firm it is. That is a conversation with a founder, not a number from me.",
       more:
         "The two axes are <strong>signal sources</strong> and <strong>ledger retention</strong>, and both are honest about what actually costs money to run.\n\n" +
         "A signal source is one connected system: a ticketing platform, a telephony feed, a QA tool, a product-analytics stream, a billing system. More sources means more for the engine to reason over. Longer retention means keeping a decision record alive and queryable for years.\n\n" +
@@ -467,8 +466,8 @@
       title: "contract terms",
       keys: ["contract", "is there a contract", "sign a contract", "any contract", "commitment", "lock in", "lock-in", "cancel", "notice period", "annual", "monthly", "terms", "minimum term", "refund policy", "invoice", "billing"],
       answer:
-        "<strong>Design partners</strong>: no contract and no cost. Either side can walk away; we would just ask for the honest reason why.\n\n" +
-        "<strong>Paid plans</strong>: monthly, no minimum term. What varies by plan is how long the decision record is retained, because that is the thing that actually costs money to run.\n\n" +
+        "<strong>Design partners</strong>: scope and terms are agreed per partner on the first call, so I am not going to state a standard one here. What I can tell you is that either side can walk away, and we would just ask for the honest reason why.\n\n" +
+        "<strong>Ongoing plans</strong>: monthly, no minimum term, and no published list price yet while pricing discovery is running. What varies is how long the decision record is retained, because that is the thing that actually costs money to run.\n\n" +
         "Your data stays exportable throughout. A product whose value is a defensible record should not hold that record hostage."
     },
     {
@@ -477,10 +476,29 @@
       keys: ["design partner", "partner programme", "partner program", "pilot", "beta", "early access", "founding customer", "trial", "free", "join", "apply", "how do i sign up"],
       answer:
         "We are building this with <strong>ten mid-market SaaS teams</strong>. Not a waitlist, and not a discount scheme.\n\n" +
-        "<strong>You get</strong>: the product free through the partnership, detectors tuned to your renewal motion, and direct access to the founders themselves.\n\n" +
+        "<strong>You get</strong>: detectors tuned to your renewal motion, findings on your own book from the first week, and direct access to the founders themselves rather than a support queue.\n\n" +
         "<strong>We ask</strong>: an export or a read-only connection, an hour a fortnight, and honest reactions — especially when a finding is wrong. A detector nobody argues with is a detector nobody uses.\n\n" +
         "<strong>Fit</strong>: $3M–$30M ARR, a renewal book someone owns by name, and roughly twelve months of history in your tools.\n\n" +
-        "First step is a thirty-minute call. If the fit is not obvious to both sides in that half hour, we will say so."
+        "<strong>Terms</strong>: agreed per partner on the first call. We are not publishing a standard price for the programme while pricing discovery is still running, and I would rather tell you that than quote you something I would have to walk back.\n\n" +
+        "First step is that thirty-minute call. If the fit is not obvious to both sides in that half hour, we will say so."
+    },
+    {
+      id: "external",
+      title: "external signals",
+      keys: ["external signal", "external data", "acquisition", "acquired", "merger", "m&a", "funding round", "raised money", "down round", "insolvency", "bankrupt", "bankruptcy", "going under", "administration", "credit event", "champion left", "champion leaves", "stakeholder change", "changed jobs", "new vp", "layoffs", "redundancies", "outside signals", "third party data", "news about my customers", "company events"],
+      answer:
+        "The signal your own systems cannot contain: what is happening <em>to</em> the customer. Four types, and they are in the product today.\n\n" +
+        "• <strong>Acquisition or merger</strong> — the acquired customer inherits the acquirer's vendor stack, decided in a procurement review your champion is not in.\n" +
+        "• <strong>Financial distress</strong> — restructuring, a freeze on discretionary software spend. By the time it is a late invoice the outcome is fixed.\n" +
+        "• <strong>Stakeholder change</strong> — the person who chose you leaves. Lowest confidence of the four, and scored that way.\n" +
+        "• <strong>Funding</strong> — the one that runs the other way, flagged as a seat-expansion opportunity rather than a risk.\n\n" +
+        "Open the live product on a plan that carries External Signals and the panel is there: accounts ranked most recently detected first, each event with its type, its confidence and its source.\n\n" +
+        "Two honest limits, and ask me for more if you want them: the feed behind it is not licensed yet, and an event does not yet move the risk score.",
+      more:
+        "Taking those two limits properly, because they are the difference between what runs and what I would be overselling.\n\n" +
+        "<strong>The records are sample fixtures, and they say so.</strong> Every seeded event renders a <em>sample</em> badge and carries no source link at all. That is deliberate: a fabricated URL pointing at a real news domain is a citation that does not exist, and it is the thing that ends a demo the moment somebody clicks it. Connecting a real feed — Crunchbase, Tracxn, ZoomInfo — is a licensing and procurement decision rather than an engineering one, and the schema is built so that wiring is a swap. When it lands, the badge disappears on its own.\n\n" +
+        "<strong>Entity resolution is the hard half of that swap</strong>, not the connector. Deciding that a filing about \"Northwind Group\" concerns your account \"Northwind Ltd\" is an inference with a confidence attached, not a string comparison, and presenting a fuzzy name match as fact would put a fabricated event into a renewal forecast.\n\n" +
+        "<strong>And fusion is a roadmap item.</strong> Today an external event surfaces against the account; it does not change the renewal risk score. When it does, it will change the <em>prior</em> on an internal risk rather than becoming a second score sitting next to the first — two numbers that can disagree about the same account is the health-score failure mode with an extra step."
     },
     {
       id: "setup",
@@ -499,11 +517,12 @@
       answer:
         "A <strong>signal source</strong> is one connected system. Typically:\n\n" +
         "• <strong>Ticketing</strong> — Zendesk, Freshdesk, Intercom\n" +
-        "• <strong>Telephony</strong> — call records and transcripts\n" +
+        "• <strong>Telephony</strong> — call records and transcripts. The one on this list the build does not read yet: there is no call data in it, so the contact-centre panel renders locked on every plan rather than filled with numbers nobody measured\n" +
         "• <strong>QA</strong> — review scores and notes\n" +
         "• <strong>Surveys</strong> — NPS and CSAT with verbatims\n" +
         "• <strong>Product usage</strong> — seats, logins, feature events\n" +
-        "• <strong>Billing / CRM</strong> — contract dates and ARR\n\n" +
+        "• <strong>Billing / CRM</strong> — contract dates and ARR\n" +
+        "• <strong>External signals</strong> — acquisition, distress, stakeholder change and funding on the accounts themselves, which is the one source that is not a system you own\n\n" +
         "You need roughly <strong>twelve months of history</strong> for a baseline to mean anything. To start, a CSV export is enough — you can drop one into the live demo right now and watch the same detectors run against your rows.\n\n" +
         "You do not need all six. Three sources is a real deployment; the engine reports which detectors could not run rather than pretending the ones it did run cover everything."
     },
@@ -513,9 +532,9 @@
       keys: ["secure", "security", "safe", "privacy", "gdpr", "soc 2", "soc2", "compliance certification", "residency", "encryption", "pii", "confidential", "iso 27001", "data protection", "on premise", "on-prem", "self host", "where is data stored", "who can see", "do you store", "store my data", "keep my data", "retention of my data"],
       answer:
         "Honest answer, because this is exactly the kind of question a vendor should not fudge:\n\n" +
-        "<strong>Today</strong>: this is a prototype. Everything on this site runs on simulated data — there is no customer data in it, and the CSV upload runs entirely in your browser without sending anything to a server.\n\n" +
+        "<strong>Today</strong>: this is a functional MVP. Everything on this site runs on simulated data — there is no customer data in it, and the CSV upload runs entirely in your browser without sending anything to a server.\n\n" +
         "<strong>For design partners</strong>: read-only access, scoped to what the detectors need, and we will sign whatever your security team requires before any data moves.\n\n" +
-        "<strong>On the roadmap</strong>: SSO, RBAC and configurable retention arrive with the Forecast plan; data residency, private deployment and an immutable access log are Enterprise. <strong>SOC 2 comes with productisation, and we will not claim it before it is real.</strong>\n\n" +
+        "<strong>On the roadmap</strong>: SSO, RBAC and configurable retention, then data residency, private deployment and an immutable access log for regulated operations. Which of those sit together on which plan is part of what pricing discovery decides, so I am not going to draw the line for you today. <strong>SOC 2 comes with productisation, and we will not claim it before it is real.</strong>\n\n" +
         "If your security review needs a document we do not have yet, the useful answer is a call with the CTO rather than a badge on a landing page."
     },
     {
@@ -847,7 +866,7 @@
         "• <strong>The live demo.</strong> Source system on the left, decision engine on the right, one shared store so they cannot disagree. Nothing to install.\n" +
         "• <strong>Your own export.</strong> Drop a CSV into Data Upload and the same nine detectors run against your rows, in your browser, with nothing uploaded anywhere.\n" +
         "• <strong>The Trust page.</strong> Every detector's threshold, the confidence weights, and the full list of things the platform refuses to do — published so you can disagree with them.\n\n" +
-        "Commercially: <strong>Retain $1,800/mo</strong>, <strong>Forecast $4,500/mo</strong>, Enterprise custom, priced on the renewal book and never per seat — and design partners pay nothing.\n\n" +
+        "Commercially, the honest state of it: priced on the <strong>renewal book and never per seat</strong>, on two axes — signal sources and ledger retention. <strong>No list price published yet</strong>, because pricing discovery with the first design partners is still running and I will not invent one. Partner terms are agreed per partner on the first call.\n\n" +
         "That is the course. Ask me anything from it in more depth, or say <strong>schedule a demo</strong> for thirty minutes with a founder."
     }
   ];

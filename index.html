@@ -26,6 +26,7 @@
     </a>
     <div class="nav-links">
       <a href="#product">Product</a>
+      <a href="#external">External Signals</a>
       <a href="#solutions">Solutions</a>
       <a href="#partners">Design Partners</a>
       <a href="#about">About</a>
@@ -56,7 +57,7 @@
         spots", which describes the technology rather than the outcome the
         person reading it is accountable for.
       -->
-      <p class="lead">Connect your customer data. OpsPulse identifies the renewals most likely to churn, explains the reasons, and recommends the next best action. It reads the signals your team already generates across tickets, calls, QA, usage and billing, then tells you which renewals are in trouble while there is still time to act.</p>
+      <p class="lead">Connect your customer data. OpsPulse identifies the renewals most likely to churn, explains the reasons, and recommends the next best action. It reads the signals your team already generates — support tickets, QA reviews, survey responses, product usage and contract data — plus the external events your own systems cannot see. Telephony is the one source still to land. Then it tells you which renewals are in trouble while there is still time to act.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="#partners">Become a design partner →</a>
         <a class="btn btn-ghost" href="#contact">Schedule a demo</a>
@@ -282,6 +283,16 @@
       <span class="eyebrow">Product Overview</span>
       <h2>Four layers that produce the decision, and <span class="grad-text">one that records it.</span></h2>
       <p class="lead">Each layer constrains the next. Aggregation decides what is knowable, detection decides what is real, prioritization decides which renewal is worth today's hour, and every recommended play is bound to a named owner, never free text.</p>
+      <!--
+        Read this line before believing the four cards below it. The layers are
+        source-agnostic by design, but "designed for six sources" and "reading
+        six sources" are different sentences, and only one of them is true
+        today. Saying which is which here costs a line and buys the right to
+        make the rest of the claims in the present tense.
+      -->
+      <p class="dim" style="font-size:.82rem;max-width:78ch;margin:14px auto 0">
+        <strong style="color:var(--text)">What it reads today:</strong> support tickets and escalations, QA reviews, NPS responses, weekly active seats against contracted seats, account contract facts, and external events on the account. <strong style="color:var(--text)">What it does not:</strong> telephony — there is no call data in this build, so the contact-centre panel renders locked on every plan rather than filled with numbers nobody measured. That is the rule throughout: a detector with no source reports itself <em style="font-style:normal;color:var(--text)">unrun</em>. Note that a <a href="#demo" style="color:var(--cyan)">CSV upload</a> carries three of those streams, not all six.
+      </p>
     </div>
     <!--
       Customer-facing verbs, not internal module names. The engineering
@@ -299,12 +310,14 @@
       <button type="button" class="card c reveal layer-card" id="layer-c1" aria-expanded="false" aria-controls="layer-p1"><span class="num">01</span>
         <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Z" stroke="currentColor" stroke-width="1.8"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7" stroke="currentColor" stroke-width="1.8"/></svg></div>
         <h3>Detect</h3>
-        <p>Every ticket, call, QA review, usage event and invoice lands on one account timeline. When an account moves outside its own normal range it surfaces on its own. Nobody has to go looking for it.</p>
+        <p>Every ticket, QA review, survey response, usage event and contract fact lands on one account timeline, alongside the external events happening to the account itself. When an account moves outside its own normal range it surfaces on its own. Nobody has to go looking for it.</p>
         <span class="layer-chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </button>
       <div class="layer-panel" id="layer-p1" role="region" aria-labelledby="layer-c1" hidden>
         <dl>
-          <div><dt>Sources</dt><dd>Zendesk · Aircall · Klaus QA · NPS · product usage · billing</dd></div>
+          <div><dt>Reading today</dt><dd>Support tickets and escalations · QA review scores · NPS responses with verbatims · weekly active seats against contracted seats · account contract facts (ARR, seats, renewal date) · external events on the account</dd></div>
+          <div><dt>Not yet reading</dt><dd>Telephony. There is no call data in this build, and the contact-centre panel is rendered locked on every plan rather than filled with numbers nobody measured — a detector with no source reports itself unrun rather than scoring on nothing.</dd></div>
+          <div><dt>By CSV upload</dt><dd>Tickets, QA reviews and NPS responses. The other streams arrive by connector, not by export, which is why one support CSV exercises the arithmetic rather than the whole picture.</dd></div>
           <div><dt>Example</dt><dd>Northwind's weekly active seats fell from 240 to 158 over five weeks, 3.4σ outside its own twelve-month baseline.</dd></div>
         </dl>
       </div>
@@ -363,6 +376,80 @@
 
     <div class="center" style="margin-top:40px">
       <a class="btn btn-primary reveal" href="#demo">Run it on your own data →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EXTERNAL SIGNALS ============ -->
+<!--
+   This section was missing entirely, which was the strangest gap on the site:
+   it is the one claim a competitor cannot close by adding another integration,
+   because the data is not in the customer's stack at all.
+
+   Be precise about state here, because it is more interesting than either
+   round number. The schema, the account surface, the entitlement gate, the
+   provenance rendering and the query path are BUILT and running — open the
+   demo on a plan that carries it and the panel is there. What is not built is
+   the licensed feed behind it: today's records are seeded fixtures carrying
+   `seeded: true` and a NULL source_url, rendered with a "sample" badge rather
+   than a fabricated link to a real news domain. Crunchbase, Tracxn and
+   ZoomInfo are a procurement decision, not an engineering one.
+
+   The second honest line is that these events SURFACE against the account but
+   do not yet move the risk score — external fusion is a roadmap item, and
+   `engine/web/query.js` says as much in the code. Do not let this copy drift
+   into implying either half is further along than it is.
+-->
+<section class="block" id="external" style="background:linear-gradient(180deg,transparent,rgba(34,211,238,.035),transparent)">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow" style="color:var(--cyan);border-color:rgba(34,211,238,.25);background:rgba(34,211,238,.06)">External Signals</span>
+      <h2>The reason an account leaves is often <span class="grad-text">not in your systems at all.</span></h2>
+      <p class="lead">Every renewal tool on the market reads the customer's behaviour inside your product. None of them reads what is happening <em style="font-style:normal;color:var(--text)">to the customer</em>. An account can be healthy on tickets, usage and NPS on the Friday and be a different company by the Monday, and no amount of ticket history contains that.</p>
+    </div>
+
+    <div class="grid g4">
+      <div class="card c reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7h7v13H3zM14 4h7v16h-7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 12h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>Acquisition &amp; merger</h3>
+        <p>An acquired customer inherits the acquirer's vendor stack. The renewal is decided in a procurement review your champion is not invited to, usually months before the date on your contract.</p>
+        <span class="status-tag">Surfaced · risk</span>
+      </div>
+      <div class="card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>Financial distress</h3>
+        <p>Restructuring, credit events, a freeze on discretionary software spend. By the time this reaches your billing system as a late invoice, the outcome is fixed and the only open question is how much you collect.</p>
+        <span class="status-tag">Surfaced · risk</span>
+      </div>
+      <div class="card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.4" stroke="currentColor" stroke-width="1.8"/><path d="M15 20v-1.6A3.4 3.4 0 0 0 11.6 15H6.4A3.4 3.4 0 0 0 3 18.4V20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m17 6 4 4m0-4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>Stakeholder change</h3>
+        <p>The person who chose you leaves, or the programme sponsor is reorganised away. Their login going quiet is the <em style="font-style:normal;color:var(--text)">symptom</em>, several weeks late. This one carries the lowest confidence of the four, and is scored that way.</p>
+        <span class="status-tag">Surfaced · risk</span>
+      </div>
+      <div class="card v reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 15l3-5 3 3 4-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h3>Funding</h3>
+        <p>The one that runs the other way. A raise with a headcount plan behind it is a seat-expansion window with a deadline on it, and it is flagged as an opportunity rather than a risk — the same engine, pointed at the upside.</p>
+        <span class="status-tag ok">Surfaced · opportunity</span>
+      </div>
+    </div>
+
+    <!--
+      The honesty band. Two separate states get separated deliberately, because
+      "built" and "fed" are different claims and a prospect who conflates them
+      will find out in a meeting.
+    -->
+    <div class="cta-band reveal" style="margin-top:30px;text-align:left">
+      <span class="eyebrow" style="margin-bottom:16px">Where this actually stands</span>
+      <h2 style="font-size:clamp(1.4rem,2.8vw,1.9rem)">Built and running. Not yet fed by a live feed.</h2>
+      <p style="margin-top:12px"><strong style="color:var(--text)">What is real today:</strong> the account surface, the four event types, the entitlement gate, the query path and the provenance rendering all run in the live product. Open the demo on a plan that carries External Signals and the panel is there, ranked most recently detected first, each event carrying its type, its confidence and its source.</p>
+      <p style="margin-top:10px"><strong style="color:var(--text)">What is not:</strong> the licensed feed behind it. Today's events are sample fixtures, and they say so — each one renders a <em style="font-style:normal;color:var(--text)">sample</em> badge and carries no source link at all, because a fabricated URL pointing at a real news domain is a citation that does not exist, and that is a worse failure than no link. Connecting Crunchbase, Tracxn or ZoomInfo is a procurement decision; the schema is built so the wiring is a swap.</p>
+      <p style="margin-top:10px"><strong style="color:var(--text)">And one thing we will not overstate:</strong> an external event is surfaced against the account, but it does not yet move the renewal risk score. Fusing it in is a roadmap item, and it is deliberately not a second score sitting next to the first — two numbers that can disagree about the same account is the health-score failure mode with an extra step.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="demo.html">See the panel in the live product →</a>
+        <a class="btn btn-ghost" href="roadmap.html#external">Where the feed sits on the roadmap</a>
+      </div>
     </div>
   </div>
 </section>
@@ -466,8 +553,21 @@
         <h2 style="margin:14px 0 16px">Point it at <span class="grad-text">your own export.</span></h2>
         <p class="lead">Export tickets, QA reviews or NPS responses from the tools you already run, then drop the CSV into the Ops Floor. Your rows are parsed, mapped onto the account timeline and the same nine detectors re-run against them. The feed then changes because of your data, not ours.</p>
 
+        <!--
+          The honest caveat, placed BEFORE the steps rather than in small print
+          under them. A support export contains support signals, so a support
+          export produces support-shaped findings — real ones, on the visitor's
+          own accounts, but not the whole renewal picture the rest of the page
+          describes. A visitor who uploads tickets expecting usage decline and
+          contract risk has been mis-sold by us, not disappointed by the file,
+          and that is a much more expensive mistake to make on a first touch.
+        -->
+        <p class="src-caveat">
+          <b>What one export can and cannot tell you.</b> A support CSV carries support signals, so what comes back is escalation load, resolution decay, QA drift and detractor drivers, scored against your own baselines. The engine reads more than that — seat adoption, contract facts and external events on the account are all in the product — but those arrive by connector, not as a column in a helpdesk export. Detectors with no source in your file report themselves unrun instead of scoring on nothing. One export is a real test of the arithmetic on your own accounts; it is not the whole renewal picture, and we would rather you knew which one you were getting.
+        </p>
+
         <ol class="try-steps">
-          <li><b>Export a CSV</b> from your helpdesk, QA tool or survey platform. Twelve months of history makes the baselines meaningful.</li>
+          <li><b>Export a CSV</b> from your helpdesk, QA tool or survey platform — those are the three shapes the parser maps today. Twelve months of history makes the baselines meaningful.</li>
           <li><b>Drop it in</b> on the Data Upload screen. Columns are matched automatically, and it tells you which ones it matched.</li>
           <li><b>Read the decision feed</b> as it rebuilds. This is not a progress bar over a canned answer, the detectors genuinely re-run.</li>
         </ol>
@@ -477,10 +577,10 @@
           <ul>
             <li><b>Renewals at risk</b>, each one a named account with a renewal date rather than a category</li>
             <li><b>ARR exposed</b>, published as a range you can re-multiply from the printed inputs</li>
-            <li><b>The reasons, ranked</b>: adoption decline, champion gone quiet, escalation load, payment risk</li>
+            <li><b>The reasons, ranked</b>, from what your file actually contains — escalation load, resolution decay, QA drift, detractor drivers. Adoption decline and contract risk need their connectors, and say so rather than scoring blank.</li>
             <li><b>A named play and a named owner</b> for the risks that clear the confidence floor</li>
           </ul>
-          <p class="try-out-note">How much comes back depends entirely on what is in your file. That is the point of running it rather than watching a demo, and it is why we will not print an example count here.</p>
+          <p class="try-out-note">How much comes back depends entirely on what is in your file, and which detectors can run depends on which signals it carries. That is the point of running it rather than watching a demo, and it is why we will not print an example count here.</p>
         </div>
 
         <div class="hero-cta" style="margin-top:24px">
@@ -503,15 +603,15 @@
     </div>
     <div class="split" style="align-items:start">
       <div class="steps reveal">
-        <div class="step"><span class="idx"></span><div><h4>What you get</h4><p>The product free through the partnership, the detectors tuned to your renewal motion, and direct access to the founders themselves.</p></div></div>
+        <div class="step"><span class="idx"></span><div><h4>What you get</h4><p>The detectors tuned to your renewal motion, the findings on your own book from the first week, and direct access to the founders themselves rather than a support queue.</p></div></div>
         <div class="step"><span class="idx"></span><div><h4>What we ask</h4><p>An export or a read-only connection, an hour a fortnight, and honest reactions, especially when a finding is wrong. A detector nobody argues with is a detector nobody uses.</p></div></div>
         <div class="step"><span class="idx"></span><div><h4>Who it fits</h4><p>$3M–$30M ARR, a renewal book someone owns by name, and enough history in your tools for a baseline to mean something, roughly twelve months.</p></div></div>
-        <div class="step"><span class="idx"></span><div><h4>What happens first</h4><p>A thirty-minute call and a look at the live product. If the fit is not obvious to both sides in that half hour, we will say so.</p></div></div>
+        <div class="step"><span class="idx"></span><div><h4>What happens first</h4><p>A thirty-minute call and a look at the live product. If the fit is not obvious to both sides in that half hour, we will say so. Scope and commercial terms are agreed on that call, per partner — we are not publishing a standard price for the programme while pricing discovery is still running.</p></div></div>
       </div>
       <div class="cta-band reveal" style="text-align:left">
         <span class="eyebrow" style="margin-bottom:16px">Open now</span>
         <h2 style="font-size:clamp(1.5rem,3vw,2.1rem)">Become a design partner</h2>
-        <p style="margin-top:12px">Ten places, taken one at a time so each one actually gets attention. Tell us what your renewal book looks like and where you currently find out too late.</p>
+        <p style="margin-top:12px">Ten places, taken one at a time so each one actually gets attention. Tell us what your renewal book looks like and where you currently find out too late, and we will tell you on the call what a partnership would involve on both sides.</p>
         <div class="hero-cta">
           <!-- data-partner ticks the design-partner box on the contact form, so
                the visitor lands on a form that already reflects why they clicked. -->
@@ -523,54 +623,67 @@
   </div>
 </section>
 
-<!-- ============ PRICING ============ -->
+<!-- ============ BUSINESS MODEL ============ -->
+<!--
+   The three price cards ($1,800 / $4,500 / Custom) were removed deliberately.
+   They were published ahead of any pricing discovery, which means every number
+   on them was a guess wearing the same typeface as the engine's arithmetic —
+   on a site whose entire argument is that it does not print figures it cannot
+   defend. Publishing a made-up price is the marketing version of the fabricated
+   fine probability the cost model refuses to invent, and it is worse than the
+   engine's version because a prospect anchors on it and we then have to
+   negotiate against our own guess.
+
+   What survives is the shape of the model, because that IS defensible: the
+   axes are chosen, the anti-axis (seats) is a deliberate product decision, and
+   both can be stated without a number attached. The id stays `pricing` so the
+   nav, footer and trust-page anchors keep resolving.
+
+   When discovery is done, the cards go back here — same .price-grid markup,
+   which is why the CSS for it is left in place untouched.
+-->
 <section class="block" id="pricing" style="background:linear-gradient(180deg,transparent,rgba(139,92,246,.04),transparent)">
   <div class="wrap">
     <div class="section-head center reveal">
       <span class="eyebrow">Business Model</span>
       <h2>Priced on the renewal book, <span class="grad-text">never on the seats.</span></h2>
-      <p class="lead">Every plan includes unlimited read-only access. A renewal risk only gets acted on if the people who need to see it (the CSM, the RevOps lead, the CRO) can open it without someone buying them a licence first.</p>
+      <p class="lead">The shape of the model is decided. The numbers are not, and we would rather say so than publish a figure we picked in a room with no customers in it.</p>
     </div>
-    <div class="price-grid">
-      <div class="price reveal">
-        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Retain</span></div>
-        <div class="amt">$1,800<small> / month</small></div>
-        <p class="desc">For one renewal book, getting its risks on the record for the first time.</p>
-        <ul>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>3 signal sources · unlimited viewers</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>All 9 detectors · full renewal risk feed</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Decision ledger · 12-month retention</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Provenance &amp; contract validation</li>
-        </ul>
-        <a class="btn btn-ghost" href="#contact">Start a pilot</a>
+
+    <div class="split" style="align-items:start">
+      <div class="reveal">
+        <span class="eyebrow">What is decided</span>
+        <h2 style="margin:14px 0 16px;font-size:clamp(1.4rem,2.6vw,1.9rem)">Two axes, and one <span class="grad-text">deliberate non-axis.</span></h2>
+        <div class="feature-list">
+          <div class="fitem">
+            <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div><h4>Signal sources</h4><p>One source is one connected system: a ticketing platform, a telephony feed, a QA tool, a product-analytics stream, a billing system. More sources means more for the engine to reason over, and that is a real cost to run.</p></div>
+          </div>
+          <div class="fitem">
+            <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div><h4>Ledger retention</h4><p>How long the decision record stays alive and queryable. A renewal argument you can still reconstruct three years later is a different product from one you can reconstruct for twelve months, and it costs differently.</p></div>
+          </div>
+          <div class="fitem">
+            <span class="chk"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#04120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div><h4>Never per seat</h4><p>Unlimited read-only viewers on every plan. A renewal risk only gets acted on if the CSM, the RevOps lead and the CRO can all open the same evidence without someone buying them a licence first. Charging per seat would price the product against its own mechanism of action.</p></div>
+          </div>
+        </div>
       </div>
-      <div class="price featured reveal">
-        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Forecast</span><span class="badge">Most popular</span></div>
-        <div class="amt">$4,500<small> / month</small></div>
-        <p class="desc">For teams whose renewal forecast gets challenged by someone outside CS.</p>
-        <ul>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Retain</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Unlimited sources · predictive renewal scoring</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>3-year ledger retention · board-ready export</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>SSO · RBAC · configurable confidence floor</li>
-        </ul>
-        <a class="btn btn-primary" href="demo.html">Launch the live demo →</a>
-      </div>
-      <div class="price reveal">
-        <div style="display:flex;justify-content:space-between;align-items:center"><span class="tier">Enterprise</span></div>
-        <div class="amt">Custom</div>
-        <p class="desc">For regulated operations with their own residency, model-review and retention rules.</p>
-        <ul>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Forecast</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Data residency · private deployment</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Custom detectors &amp; thresholds under review</li>
-          <li><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Indefinite ledger retention · legal hold</li>
-        </ul>
-        <a class="btn btn-ghost" href="#contact">Talk to us</a>
+
+      <div class="cta-band reveal" style="text-align:left">
+        <span class="eyebrow" style="margin-bottom:16px">What is not decided yet</span>
+        <h2 style="font-size:clamp(1.5rem,3vw,2.1rem)">The number.</h2>
+        <p style="margin-top:12px">List prices are on hold until we have finished pricing discovery with the first design partners. We are asking them what a caught renewal is worth against what they pay for the tools that currently miss it, and we would rather arrive at a defensible figure late than anchor on a confident one now.</p>
+        <p style="margin-top:10px">If you want a number for a budget conversation, ask us directly and you will get our current thinking, the reasoning under it, and a straight answer about how firm it is.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#contact">Ask what it would cost →</a>
+          <a class="btn btn-ghost" href="#partners">See the partner programme</a>
+        </div>
       </div>
     </div>
+
     <p class="dim center" style="margin-top:22px;font-size:.82rem;max-width:76ch;margin-left:auto;margin-right:auto">
-      A signal source is one connected system: a ticketing platform, a telephony feed, a QA tool, a product-analytics stream, a billing system. Pricing scales with what the engine has to reason over and how long the decision record must survive, because those are the two things that actually cost money to run. <a href="#partners" style="color:var(--emerald)">Design partners pay none of it</a> for the duration of the partnership.
+      This is the same rule the engine runs on itself. Exposure is published as a range you can re-multiply; compliance risk is returned deliberately uncosted rather than given an invented dollar figure. A list price we have not tested would be exactly that invented figure, printed on the one page a buyer trusts most.
     </p>
   </div>
 </section>
@@ -589,7 +702,7 @@
       </div>
       <div class="tl-item reveal">
         <div class="tl-phase"><span class="tag">Phase 2</span><span class="when">In progress</span></div>
-        <div class="tl-body"><h4>Prototype development</h4><p>A working engine that detects statistically, explains by decomposition and prices exposure as a range. <em style="color:var(--cyan);font-style:normal">← you're looking at it.</em></p></div>
+        <div class="tl-body"><h4>Functional MVP</h4><p>A working engine that detects statistically, explains by decomposition and prices exposure as a range. <em style="color:var(--cyan);font-style:normal">← you're looking at it.</em></p></div>
       </div>
       <div class="tl-item reveal">
         <div class="tl-phase"><span class="tag">Phase 3</span><span class="when">Next</span></div>
@@ -697,7 +810,7 @@
           </div>
           <label class="cf-check" for="cfPartner">
             <input id="cfPartner" name="partner" type="checkbox" />
-            <span>I am interested in the <strong style="color:var(--text)">design partner programme</strong>, free through the partnership, ten places.</span>
+            <span>I am interested in the <strong style="color:var(--text)">design partner programme</strong> — ten places, terms agreed per partner.</span>
           </label>
         </div>
 
@@ -738,7 +851,8 @@
       <a href="#product">Product</a>
       <a href="#solutions">Solutions</a>
       <a href="#partners">Design Partners</a>
-      <a href="#pricing">Pricing</a>
+      <a href="#external">External Signals</a>
+      <a href="#pricing">Business model</a>
       <a href="#about">About</a>
       <a href="#contact">Contact</a>
       <a href="trust.html">Trust</a>
@@ -746,7 +860,7 @@
       <a href="demo.html">Live demo</a>
     </div>
   </div>
-  <div class="wrap"><p class="dim" style="margin-top:24px;font-size:.8rem">© 2026 OpsPulse AI · Prototype demo. All data shown is simulated.</p></div>
+  <div class="wrap"><p class="dim" style="margin-top:24px;font-size:.8rem">© 2026 OpsPulse AI · Functional MVP. All data shown is simulated.</p></div>
 </footer>
 
 <script src="assets/landing.js"></script>

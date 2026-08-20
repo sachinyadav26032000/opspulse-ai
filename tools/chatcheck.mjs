@@ -84,7 +84,9 @@ ok('the answer to the clicked opener rendered', bubbles().length === 3);
 
 await ask('what does it cost');
 ok('no chips after a typed question either', chips().length === 0);
-ok('pricing answer is the published one', /\$1,800/.test(last()) && /\$4,500/.test(last()));
+ok('pricing answer publishes no list price', !/\$[\d,]+\s*(\/|per\b|a\b)?\s*(mo|month)/i.test(last()), last().slice(0, 90));
+ok('pricing answer says why there is no number', /not publishing|no list price/i.test(last()));
+ok('pricing answer still states the decided shape', /renewal book/i.test(last()) && /per seat/i.test(last()));
 
 click('cwClose'); click('cwLaunch');
 ok('reopening does not re-offer the openers', chips().length === 0);
@@ -178,12 +180,20 @@ const CORPUS = [
   ['whats the pricing like', 'pricing'],
   ['is it expensive', 'pricing'],
   ['do you charge per seat', 'pricing'],
-  ['what is the retain plan', 'pricing'],
+  ['what is your list price', 'pricing'],
+  ['how much per month', 'pricing'],
   ['is there a contract', 'contract'],
   ['can i cancel', 'contract'],
   ['what is the design partner programme', 'partner'],
   ['is there a free trial', 'partner'],
   ['how do i join the pilot', 'partner'],
+  ['do you track external signals', 'external'],
+  ['what if my customer gets acquired', 'external'],
+  ['do you know about funding rounds', 'external'],
+  ['what happens when the champion leaves', 'external'],
+  ['can you see if a customer is going bankrupt', 'external'],
+  ['do you use news or third party data', 'external'],
+
   ['how long does setup take', 'setup'],
   ['how quickly can we go live', 'setup'],
   ['what data do you need', 'data'],
@@ -336,6 +346,34 @@ ok('no undefined or NaN leaks into an answer', !/undefined|NaN|\[object/.test(co
 ok('no unrendered markup leaks into an answer', !/&lt;|<script|<div/i.test(corpusText));
 ok('every answer is substantial', answers.every(([, t]) => t.length > 60),
   `${answers.length} answers rendered`);
+/* Pricing was pulled from the site pending discovery, and Rio is the surface
+   most likely to quietly put it back — a helpful edit to one answer is all it
+   takes. Both halves are asserted over the whole corpus, not just the pricing
+   topic, because the course lesson and the contract answer quoted it too. */
+ok('no withdrawn list price is quoted anywhere',
+  !/\$\s?(1,?800|4,?500)\b/.test(corpusText));
+ok('no monthly figure is quoted anywhere',
+  !/\$[\d,]+\s*(\/|per\b)?\s*(mo\b|month)/i.test(corpusText));
+ok('the free-partnership promise stays withdrawn',
+  !/(free through the partnership|partners pay nothing|no contract and no cost)/i.test(corpusText));
+
+/* External signals are the site's strongest claim, and the state of them is
+   genuinely two-part: the surface is built and running, the licensed feed is
+   not, and the events do not yet move the risk score. Both halves are pinned,
+   because copy drifts in both directions — toward overclaiming a feed we have
+   not licensed, and toward underclaiming a panel that demonstrably runs. */
+const ext = await ask('do you track external signals');
+ok('external signals name the four event classes',
+  /acquisition|merger/i.test(ext) && /funding/i.test(ext) && /stakeholder/i.test(ext) && /distress|insolvency|bankrupt/i.test(ext));
+ok('funding is flagged as an opportunity, not a risk', /opportunity/i.test(ext));
+ok('external signals state the two limits', /not licensed yet|feed behind it is not licensed/i.test(ext) && /does not yet move the risk score/i.test(ext));
+const extMore = await ask('tell me more');
+ok('the deeper cut keeps the sample-fixture disclosure', /sample/i.test(extMore) && /fixture/i.test(extMore));
+ok('the deeper cut names entity resolution as the hard part', /entity resolution/i.test(extMore));
+ok('the deeper cut keeps fusion on the roadmap', /roadmap item/i.test(extMore));
+ok('external signals never claim a licensed feed is connected',
+  !/\b(we|it) (now )?(use|licence|license|pull|subscribe to)s? (crunchbase|tracxn|zoominfo)\b/i.test(ext + extMore));
+
 ok('no console or window errors during the run', errors.length === 0, errors.join('; '));
 
 /* ── Summary ──────────────────────────────────────────────────────────── */

@@ -1653,7 +1653,7 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
       <em>because</em> they were flagged: nobody ran the account without the intervention, so no counterfactual exists.
       The metric is deliberately named <strong>ARR retained on flagged accounts</strong> rather than ARR saved.
       ${r.simulated_rows ? `<br><br><strong>${fmt.int(r.simulated_rows)} of ${fmt.int(r.total_rows)} rows are seeded history</strong>, dated before the current
-      analysis window so a prototype has closed decisions to show. They are marked <code>simulated</code> in the ledger.
+      analysis window so the MVP has closed decisions to show. They are marked <code>simulated</code> in the ledger.
       Rows opened in this session are real records of what the engine raised and what you did with it.` : ''}`));
 
     p.appendChild(bd);
@@ -1880,7 +1880,7 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
             <li><span><b>Audit trail</b> — decision views and actions, written on access</span></li>
             <li><span><b>Data residency</b> — region selected at provisioning</span></li>
           </ul>
-          <div class="ent-line"><strong>Not implemented in this prototype.</strong>
+          <div class="ent-line"><strong>Not implemented in this MVP.</strong>
           <span class="ent-honest">This build has no authentication of any kind and writes no audit log. The entitlement is modelled so the packaging can be reviewed; the capability is not built, and this panel says so rather than showing three ticks.</span></div>
         </div>`;
       wrap.appendChild(gov);
@@ -1914,7 +1914,7 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
 
     const note = el('p', 'muted');
     note.style.cssText = 'font-size:.78rem;margin:12px 0 0;line-height:1.55';
-    note.innerHTML = `<b>Excel (.xlsx) is not supported in this offline build</b>. A real xlsx file is a zipped XML package and parsing it needs a library this dependency-free prototype does not ship. Export the sheet as CSV and it will ingest fully. This upload is not a progress bar: rows are parsed, mapped, appended to the live dataset and the nine detectors re-run, so the Decision Feed changes because of your file.`;
+    note.innerHTML = `<b>Excel (.xlsx) is not supported in this offline build</b>. A real xlsx file is a zipped XML package and parsing it needs a library this dependency-free build does not ship. Export the sheet as CSV and it will ingest fully. This upload is not a progress bar: rows are parsed, mapped, appended to the live dataset and the nine detectors re-run, so the Decision Feed changes because of your file.`;
     bd.appendChild(note);
 
     const sample = el('div', 'act-row');

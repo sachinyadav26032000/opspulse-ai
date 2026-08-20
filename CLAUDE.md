@@ -135,6 +135,25 @@ trailing window.
 
 **MCP tools are read-only.** All seven. Do not add a mutating tool without asking.
 
+**Say what is built, in the tense it is built in.** The site calls this a **functional MVP**, not
+a prototype, because the engine, the detectors, the ingest path and the ledger all run — and the
+pitch deck says the same, so the two must not drift. Two claims are load-bearing and easy to
+overstate in either direction:
+
+- **Sources.** The engine reads tickets and escalations, QA, NPS, weekly active seats, account
+  contract facts and external events. It does **not** read telephony — there is no call data in
+  this build, `calls_transcribed` is structurally zero, and the contact-centre panel renders
+  locked on *every* tier for that reason. Separately, a **CSV upload carries three** of those
+  streams (tickets, QA, NPS); the rest arrive by connector. "What the engine reads" and "what one
+  export carries" are different sentences and the site must not merge them again.
+- **External signals** (`#external` on `index.html` and `roadmap.html`) are the strongest claim
+  on the site and the easiest to get wrong. The schema, panel, entitlement gate, query path and
+  provenance rendering are **built and running**; the licensed feed is **not** — records are
+  seeded fixtures carrying `seeded: true` and a NULL `source_url`, rendered with a *sample* badge
+  because a fabricated link to a real news domain is a citation that does not exist. And an
+  external event **surfaces against the account without moving the risk score**; fusion is a
+  roadmap item. `chatcheck` pins all three of these.
+
 **Rio (`assets/chat.js`) is the honesty rule applied to the marketing surface.** It is a
 knowledge base plus a matcher, not a model, and that is the whole point: a sales bot that
 improvises a price, an integration or a certification is the failure mode this product is sold
@@ -143,11 +162,21 @@ against. Four things must not be weakened.
 - **No model, no network, no key.** There is no backend on a static site, so an LLM call would
   ship a credential to the browser. If a real model is ever added it belongs behind a server,
   and it still may not invent a number. **Adding one is a decision to escalate, not to make.**
-- **Every answer is authored and true against the site.** Prices come from the pricing section
-  of `index.html`, thresholds and the confidence weights from `trust.html`. If you change a
-  claim on a page, change it in Rio in the same commit or the two will disagree in front of a
-  prospect. Note the in-app tier names (`config/entitlements.js`) are **not** the published
-  plans — Rio says so explicitly rather than reconciling them silently.
+- **Every answer is authored and true against the site.** Thresholds and the confidence weights
+  come from `trust.html`; the commercial position comes from the `#pricing` section of
+  `index.html`. If you change a claim on a page, change it in Rio in the same commit or the two
+  will disagree in front of a prospect. Note the in-app tier names and their
+  `list_price_usd_month` (`config/entitlements.js`) are a **modelling input for the cost view**,
+  never a price list — Rio says so explicitly rather than reconciling them silently.
+- **There are no published prices, and Rio may not invent one.** The `$1,800 / $4,500 / Custom`
+  cards were withdrawn pending pricing discovery; `#pricing` now publishes the *shape* (two axes
+  — signal sources and ledger retention — and the deliberate non-axis, seats) and says plainly
+  that the number is not set. A list price we have not tested is the marketing version of the
+  fabricated fine probability §3.2 refuses to print. `chatcheck` asserts across the whole corpus
+  that no monthly figure reappears anywhere. **Restoring prices is a decision to escalate.**
+- **Design partner terms are agreed per partner and are not published.** The site previously
+  promised the product "free through the partnership"; that promise is withdrawn, and `chatcheck`
+  guards it. Do not reintroduce a price, a discount or a free tier for the programme.
 - **The guardrails decline on purpose.** Source, infrastructure, credentials and customer data
   are refused; the published thresholds, the confidence formula and the refusal list stay open,
   because publishing those *is* the pitch. Guardrails are matched on whole phrases only —
