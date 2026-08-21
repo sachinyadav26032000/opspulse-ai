@@ -451,6 +451,44 @@ function slaRisk(ds) {
 
 /* ── Runner ──────────────────────────────────────────────────────────────── */
 
+/* ── Source coverage ──────────────────────────────────────────────────────
+   Which streams a detector NEEDS, so the engine can tell "ran and found
+   nothing" apart from "never ran, because the data was not there".
+
+   This distinction was missing and it mattered more than it looks. Every
+   detector used to run unconditionally and report `found: 0` either way, so a
+   book with no QA data produced a clean, confident feed that silently omitted
+   every coaching finding — and the run object gave no way to know. A prospect
+   uploading three of five sources would have been told less than the truth in
+   the most reassuring possible tone.
+
+   `accounts` is not listed: it is the primary object, always present, and a
+   dataset without it is not a degraded dataset but a broken one. */
+export const DETECTOR_SOURCES = {
+  escalation_spike: ['tickets', 'escalations'],
+  emerging_topic:   ['tickets'],
+  backlog_risk:     ['tickets'],
+  coaching_gap:     ['qa'],
+  nps_drop:         ['nps'],
+  csat_drop:        ['tickets'],
+  churn_risk:       ['tickets', 'escalations', 'nps'],
+  compliance_risk:  ['tickets', 'qa'],
+  sla_risk:         ['tickets'],
+};
+
+/** A stream counts as present only if it actually carries records. */
+export function sourceCoverage(ds) {
+  const present = {};
+  for (const k of ['tickets', 'escalations', 'nps', 'qa']) present[k] = (ds[k]?.length || 0) > 0;
+  /* Usage and contract facts live ON the account rather than as a stream, so
+     presence is "does any account carry one", not "is the array non-empty". */
+  present.usage = (ds.accounts || []).some((a) => Array.isArray(a.usage_weeks) && a.usage_weeks.length > 0);
+  present.contracts = (ds.accounts || []).some((a) => a.arr_usd > 0 && a.renewal_in_days != null);
+  present.billing = (ds.accounts || []).some((a) => a.billing && a.billing.invoices > 0);
+  present.external = (ds.accounts || []).some((a) => (a.external_signals || []).length > 0);
+  return present;
+}
+
 export function detect(ds) {
   const detectors = [
     ['escalation_spike', escalationSpike],
@@ -463,12 +501,34 @@ export function detect(ds) {
     ['compliance_risk', complianceRisk],
     ['sla_risk', slaRisk],
   ];
+  const present = sourceCoverage(ds);
   const anomalies = [];
   const ran = [];
   for (const [name, fn] of detectors) {
+    const needs = DETECTOR_SOURCES[name] || [];
+    const missing = needs.filter((src) => !present[src]);
+    if (missing.length) {
+      /* Skipped, not silent. Nothing is scored on absent data, and the run says
+         so — an empty feed for a missing source must never read as good news. */
+      ran.push({ detector: name, status: 'skipped', found: 0, needs, missing });
+      continue;
+    }
     const found = fn(ds) || [];
-    ran.push({ detector: name, found: found.length });
+    ran.push({ detector: name, status: 'ran', found: found.length, needs, missing: [] });
     anomalies.push(...found);
   }
-  return { anomalies, detectors_run: ran, thresholds: THRESHOLDS };
+  const skipped = ran.filter((d) => d.status === 'skipped');
+  return {
+    anomalies,
+    detectors_run: ran,
+    thresholds: THRESHOLDS,
+    sources: {
+      present,
+      missing: Object.keys(present).filter((k) => !present[k]),
+      detectors_skipped: skipped.map((d) => d.detector),
+      /* The share of detectors that could actually run. Carried into the
+         confidence cap below so coverage is priced, not merely reported. */
+      coverage: (ran.length - skipped.length) / ran.length,
+    },
+  };
 }

@@ -194,6 +194,14 @@ const CORPUS = [
   ['can you see if a customer is going bankrupt', 'external'],
   ['do you use news or third party data', 'external'],
 
+  ['do you replace zendesk', 'scope'],
+  ['can we get rid of salesforce', 'scope'],
+  ['is this a replacement for our helpdesk', 'scope'],
+  ['will you fix our slas', 'scope'],
+  ['can you clean our crm data', 'scope'],
+  ['we do not have slas defined', 'scope'],
+  ['what do you not do', 'scope'],
+
   ['how long does setup take', 'setup'],
   ['how quickly can we go live', 'setup'],
   ['what data do you need', 'data'],
@@ -373,6 +381,17 @@ ok('the deeper cut names entity resolution as the hard part', /entity resolution
 ok('the deeper cut keeps fusion on the roadmap', /roadmap item/i.test(extMore));
 ok('external signals never claim a licensed feed is connected',
   !/\b(we|it) (now )?(use|licence|license|pull|subscribe to)s? (crunchbase|tracxn|zoominfo)\b/i.test(ext + extMore));
+
+/* The boundary must stay a plain no. Every phrasing here used to land on a
+   plausible neighbour — integrations for "do you replace Zendesk", the glossary
+   for "will you fix our SLAs" — which reads as evasion to the prospect who
+   most needs a straight answer. */
+const scope = await ask('do you replace zendesk');
+ok('replacement question gets a plain no', /do not replace/i.test(scope));
+ok('the boundary names the systems it coexists with', /zendesk/i.test(scope) && /salesforce/i.test(scope));
+ok('the boundary refuses SLA and CRM remediation', /do not fix your slas/i.test(scope) && /do not clean your crm/i.test(scope));
+ok('the boundary disqualifies a prospect with no systems', /not our customer/i.test(scope));
+ok('the boundary never promises a migration', !/\b(we|it) (will |can )?(replace|migrate|rip out)s? (your|their) (zendesk|salesforce|helpdesk|crm)\b/i.test(scope));
 
 ok('no console or window errors during the run', errors.length === 0, errors.join('; '));
 

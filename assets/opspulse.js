@@ -920,6 +920,27 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     { k: 'Funding', v: 'a raise, which runs the other way — seat expansion, not churn' },
   ];
 
+  /* ── Detector coverage ────────────────────────────────────────────────────
+     A detector that could not run and a detector that ran and found nothing
+     both used to print a dim "0", which made a missing source look like a
+     clean bill of health — the most reassuring possible way to be wrong. A
+     skipped detector now says which stream it wanted, in the same place.
+
+     Defined once and used by both panels that render this list, for the same
+     reason the aggregate functions are shared: two copies of a rendering rule
+     drift, and the number they disagree about is one a customer is reading. */
+  function detectorRows(r) {
+    return r.detectors_run.map((x) => {
+      const skipped = x.status === 'skipped';
+      const label = esc(x.detector.replace(/_/g, ' '));
+      const value = skipped ? `no ${esc((x.missing || []).join(', '))}` : String(x.found);
+      const colour = skipped ? 'var(--text-dim)' : (x.found ? STATUS.warning : 'var(--text-dim)');
+      return `<div class="drv-row" style="grid-template-columns:1fr auto" title="${skipped ? 'Skipped — this detector needs ' + esc((x.needs || []).join(', ')) : 'Ran over the live dataset'}">`
+        + `<span class="n"${skipped ? ' style="opacity:.62"' : ''}>${label}</span>`
+        + `<span class="v" style="color:${colour}${skipped ? ';font-style:italic' : ''}">${value}</span></div>`;
+    }).join('');
+  }
+
   /* ── External signals ─────────────────────────────────────────────────────
      Until now these had no surface of their own: a seeded acquisition was only
      visible if a Copilot query happened to return that account. Giving the
@@ -1071,7 +1092,7 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
             .map(([k, v]) => `<div class="drv-row" style="grid-template-columns:1fr auto"><span class="n">${esc(k)}</span><span class="v">${esc(String(v))}</span></div>`).join('')}
         </div>
         <p class="muted" style="font-size:.74rem;margin:12px 0 0;line-height:1.55">Nine statistical detectors run over the live dataset; anything clearing its threshold is root-caused by decomposition and matched to a playbook. Detection is arithmetic. The language layer only explains what it found.</p>
-        <div class="drv" style="margin-top:10px">${r.detectors_run.map((x) => `<div class="drv-row" style="grid-template-columns:1fr auto"><span class="n">${esc(x.detector.replace(/_/g, ' '))}</span><span class="v" style="color:${x.found ? STATUS.warning : 'var(--text-dim)'}">${x.found}</span></div>`).join('')}</div>
+        <div class="drv" style="margin-top:10px">${detectorRows(r)}</div>
       </div>`;
     right.appendChild(stats);
     right.appendChild(tickerPanel());
@@ -1856,7 +1877,7 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
           ].map(([k, v]) => `<div class="drv-row" style="grid-template-columns:1fr auto"><span class="n">${esc(k)}</span><span class="v">${esc(String(v))}</span></div>`).join('')}
         </div>
         <p class="muted" style="font-size:.74rem;margin:12px 0 0;line-height:1.55">Anything under 60% confidence is held for review and never auto-actioned. If insight validation fails, this panel reports <code style="color:var(--cyan)">contract_valid: NO</code> rather than hiding it.</p>
-        <div class="drv" style="margin-top:10px">${r.detectors_run.map((x) => `<div class="drv-row" style="grid-template-columns:1fr auto"><span class="n">${esc(x.detector.replace(/_/g, ' '))}</span><span class="v" style="color:${x.found ? STATUS.warning : 'var(--text-dim)'}">${x.found}</span></div>`).join('')}</div>
+        <div class="drv" style="margin-top:10px">${detectorRows(r)}</div>
       </div>`;
     wrap.appendChild(integ);
 

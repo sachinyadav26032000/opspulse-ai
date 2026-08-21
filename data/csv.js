@@ -107,7 +107,51 @@ const ALIASES = {
     ticket_id: ['ticket_id', 'case_id'],
     note: ['note', 'notes', 'comment'],
   },
+
+  /* ── Account-keyed sources ──────────────────────────────────────────────
+     The three above (ticket, nps, qa) are EVENT streams: each row is a thing
+     that happened, and ingesting one means appending rows. The three below are
+     ACCOUNT streams: each row describes an account, and ingesting one means
+     joining onto an account that already exists and enriching it.
+
+     That distinction is why they cannot share a mapper. A CRM export mapped
+     through `mapTickets` does not merely lose its ARR — it fabricates a
+     support ticket per account, which then feeds the backlog and emerging-topic
+     detectors. Silently turning a renewal book into invented tickets is worse
+     than refusing the file, so `detectKind` now recognises these shapes and
+     `mapAccounts` patches accounts instead of inventing events. */
+  crm: {
+    account_id: ['account_id', 'id', 'company_id', 'organization_id', 'crm_id', 'sfdc_id'],
+    company: ['company', 'account', 'account_name', 'organization', 'customer', 'name'],
+    arr_usd: ['arr_usd', 'arr', 'annual_recurring_revenue', 'contract_value', 'acv', 'annual_value'],
+    mrr_usd: ['mrr_usd', 'mrr', 'monthly_recurring_revenue'],
+    renewal_date: ['renewal_date', 'renewal', 'renews_on', 'contract_end', 'contract_end_date', 'end_date', 'expiry_date'],
+    owner: ['owner', 'csm', 'account_owner', 'account_manager', 'success_manager', 'assigned_to', 'owner_name'],
+    plan: ['plan', 'tier', 'package', 'product_tier', 'subscription_plan'],
+    seats: ['seats', 'licenses', 'licences', 'contracted_seats', 'subscription_seats'],
+    region: ['region', 'territory', 'geo'],
+  },
+  billing: {
+    account_id: ['account_id', 'company_id', 'customer_id', 'organization_id'],
+    company: ['company', 'account', 'account_name', 'organization', 'customer'],
+    invoice_id: ['invoice_id', 'invoice', 'invoice_number', 'invoice_no', 'id'],
+    amount_usd: ['amount_usd', 'amount', 'total', 'invoice_amount', 'value', 'amount_due'],
+    due_date: ['due_date', 'due', 'due_on', 'payment_due'],
+    paid_at: ['paid_at', 'paid_on', 'payment_date', 'paid'],
+    status: ['status', 'invoice_status', 'payment_status', 'state'],
+  },
+  usage: {
+    account_id: ['account_id', 'company_id', 'customer_id', 'organization_id'],
+    company: ['company', 'account', 'account_name', 'organization', 'customer'],
+    week_of: ['week_of', 'week', 'week_start', 'week_ending', 'period', 'date'],
+    active_seats: ['active_seats', 'weekly_active_seats', 'wau', 'active_users', 'monthly_active_users', 'mau', 'active'],
+    contracted_seats: ['contracted_seats', 'seats', 'licenses', 'licences', 'entitled_seats'],
+  },
 };
+
+/** Event streams append rows; account streams join onto an existing account. */
+export const ACCOUNT_KINDS = new Set(['crm', 'billing', 'usage']);
+export const EVENT_KINDS = new Set(['ticket', 'nps', 'qa']);
 
 /** Best-effort header → field map, plus the fields that could not be found. */
 export function resolveColumns(headers, kind) {
@@ -310,11 +354,229 @@ export function mapQa(rows, colMap, ds) {
   return { rows: out, errors };
 }
 
-/** Guess which dataset a file is, from its headers. */
+/* ==========================================================================
+   Account-keyed ingestion
+   --------------------------------------------------------------------------
+   The account is the primary object. A CRM, billing or usage export does not
+   describe events — it describes accounts — so ingesting one JOINS onto the
+   book that is already loaded and enriches it, and never appends a row to an
+   event stream.
+
+   The join is deliberately conservative. An account id that matches wins; a
+   normalised company name is the fallback; anything else is reported back as
+   an unmatched key rather than being created. Inventing an account from a
+   billing row would mean a renewal book that grows every time someone uploads
+   an invoice export, and a book you cannot reconcile against your own CRM is
+   not evidence of anything.
+   ========================================================================== */
+
+/** Company names never match exactly across two systems. Strip the noise. */
+const companyKey = (s) => String(s || '')
+  .toLowerCase()
+  .replace(/[.,]/g, '')
+  .replace(/\b(inc|llc|ltd|limited|corp|corporation|co|plc|gmbh|bv|ab|sa|srl|pty|group|holdings|technologies|technology|software|systems|solutions|labs)\b/g, '')
+  .replace(/[^a-z0-9]+/g, '')
+  .trim();
+
+/** Index the loaded book by both join keys, so either column can resolve. */
+function accountIndex(ds) {
+  const byId = new Map(), byName = new Map();
+  for (const a of ds.accounts) {
+    byId.set(String(a.account_id), a);
+    const k = companyKey(a.company);
+    /* A name that is ambiguous across two accounts is not a join key. Storing
+       null rather than the first hit makes the collision explicit, so those
+       rows are reported unmatched instead of being applied to whichever
+       account happened to be generated first. */
+    if (k) byName.set(k, byName.has(k) ? null : a);
+  }
+  return { byId, byName };
+}
+
+/**
+ * Map account-keyed rows onto the loaded book.
+ *
+ * Returns the accounts it touched and the keys it could not place. Nothing is
+ * mutated here: the caller applies `patches`, so a join that resolves badly
+ * can be inspected before it changes the dataset.
+ */
+export function mapAccounts(rows, colMap, ds, kind) {
+  const DAY_MS = 86400000;
+  const get = (r, f) => (colMap[f] ? r[colMap[f]] : undefined);
+  const { byId, byName } = accountIndex(ds);
+  const errors = [], unmatched = [];
+  /* Counted rather than just listed, so the caller can say "812 rows joined on
+     account id, 40 refused because the company name was ambiguous" instead of
+     showing a truncated list and leaving the shape of the failure to guesswork. */
+  const reasons = Object.create(null);
+  const joinedVia = Object.create(null);
+  /* Keyed by account so several rows for one account (invoices, usage weeks)
+     collapse into a single patch rather than fighting each other. */
+  const patches = new Map();
+
+  /* Returns the account, or a REASON it could not resolve one. "No such
+     account" and "that name belongs to nine accounts" are different problems
+     with different fixes — the first needs the right book, the second needs an
+     account id column — and collapsing them into one "unmatched" count tells
+     the user neither. Company names are far more ambiguous than they look:
+     in the sample book 372 of 383 distinct names are shared by more than one
+     account, so the name fallback usually SHOULD refuse. */
+  const resolve = (r) => {
+    const id = get(r, 'account_id');
+    if (id && byId.has(String(id))) return { acct: byId.get(String(id)), via: 'account_id' };
+    const nm = companyKey(get(r, 'company'));
+    if (nm && byName.has(nm)) {
+      const hit = byName.get(nm);
+      if (hit) return { acct: hit, via: 'company' };
+      return { acct: null, reason: 'ambiguous_company' };
+    }
+    return { acct: null, reason: id ? 'unknown_account_id' : 'unknown_company' };
+  };
+  const patchFor = (acct) => {
+    if (!patches.has(acct.account_id)) {
+      patches.set(acct.account_id, { account_id: acct.account_id, company: acct.company, fields: {}, via: {} });
+    }
+    return patches.get(acct.account_id);
+  };
+
+  /* An account-id join outranks a company-name join, and a name row may not
+     overwrite a field an id row already set. Two systems disagreeing about one
+     account's ARR is normal; resolving that by whichever row happened to come
+     last in the file is not. Same-strength rows still last-write-wins, which is
+     the ordinary upsert and is what a corrected re-export should do. */
+  const set = (p, key, value, via) => {
+    if (p.via[key] === 'account_id' && via !== 'account_id') return;
+    p.fields[key] = value;
+    p.via[key] = via;
+  };
+
+  rows.forEach((r, i) => {
+    const { acct, reason, via } = resolve(r);
+    if (!acct) {
+      const key = get(r, 'account_id') || get(r, 'company') || `row${i + 2}`;
+      reasons[reason] = (reasons[reason] || 0) + 1;
+      if (unmatched.length < 40) unmatched.push({ key: String(key), reason });
+      return;
+    }
+    joinedVia[via] = (joinedVia[via] || 0) + 1;
+    const p = patchFor(acct);
+
+    if (kind === 'crm') {
+      /* ARR is the field this whole product hangs off, so it is taken from an
+         explicit ARR column or derived from MRR, and never guessed. */
+      const arr = num(get(r, 'arr_usd')) ?? (num(get(r, 'mrr_usd')) != null ? num(get(r, 'mrr_usd')) * 12 : null);
+      if (arr != null && arr >= 0) set(p, 'arr_usd', Math.round(arr), via);
+      const seats = num(get(r, 'seats'));
+      if (seats != null && seats > 0) set(p, 'seats', Math.round(seats), via);
+      const ren = date(get(r, 'renewal_date'));
+      if (ren != null) {
+        /* Stored as days-to-renewal because that is what every consumer reads,
+           and measured against the dataset clock rather than the wall clock so
+           an uploaded book segments into the same windows as the loaded one. */
+        set(p, 'renewal_in_days', Math.round((ren - ds.meta.as_of) / DAY_MS), via);
+      }
+      const owner = get(r, 'owner');
+      if (owner) set(p, 'csm', String(owner).trim(), via);
+      const plan = get(r, 'plan');
+      if (plan) set(p, 'plan', String(plan).trim(), via);
+      const region = get(r, 'region');
+      if (region) set(p, 'region', String(region).trim(), via);
+      return;
+    }
+
+    if (kind === 'billing') {
+      const amount = num(get(r, 'amount_usd')) ?? 0;
+      const due = date(get(r, 'due_date'));
+      const paid = date(get(r, 'paid_at'));
+      const status = String(get(r, 'status') || '').toLowerCase();
+      /* Paid is paid, whatever the status column says. Otherwise an invoice is
+         overdue only if its due date has actually passed on the dataset clock
+         — a status string alone is somebody else's opinion. */
+      const settled = paid != null || /paid|settled|closed/.test(status);
+      const overdue = !settled && ((due != null && due < ds.meta.as_of) || /overdue|past.?due|late|delinquent/.test(status));
+      const b = p.fields.billing || (p.fields.billing = { invoices: 0, overdue_invoices: 0, overdue_amount_usd: 0, max_days_overdue: 0 });
+      b.invoices += 1;
+      if (overdue) {
+        b.overdue_invoices += 1;
+        b.overdue_amount_usd += Math.round(amount);
+        if (due != null) b.max_days_overdue = Math.max(b.max_days_overdue, Math.round((ds.meta.as_of - due) / DAY_MS));
+      }
+      return;
+    }
+
+    /* usage */
+    const seats = num(get(r, 'active_seats'));
+    if (seats == null || seats < 0) {
+      if (errors.length < 8) errors.push(`row ${i + 2}: no readable active-seat count — skipped`);
+      return;
+    }
+    const contracted = num(get(r, 'contracted_seats'));
+    if (contracted != null && contracted > 0) set(p, 'seats', Math.round(contracted), via);
+    const wk = date(get(r, 'week_of'));
+    const u = p.fields._usage || (p.fields._usage = []);
+    /* Sorted by week at apply time. An export in reverse-chronological order is
+       common enough that trusting file order would invert half the trends. */
+    u.push({ at: wk ?? 0, seats: Math.round(seats) });
+  });
+
+  /* Collapse usage rows into the weekly series shape the engine already reads,
+     oldest first. Nothing else in the codebase has to learn a new shape. */
+  for (const p of patches.values()) {
+    delete p.via;                                   // join bookkeeping, not account data
+    if (!p.fields._usage) continue;
+    const weeks = p.fields._usage.sort((a, b) => a.at - b.at).map((x) => x.seats);
+    delete p.fields._usage;
+    if (weeks.length) p.fields.usage_weeks = weeks;
+  }
+
+  return { patches: [...patches.values()], errors, unmatched, reasons, joined_via: joinedVia };
+}
+
+/** Apply what `mapAccounts` resolved. Separate so the join can be inspected. */
+export function applyAccountPatches(ds, patches) {
+  const byId = new Map(ds.accounts.map((a) => [String(a.account_id), a]));
+  let applied = 0;
+  for (const p of patches) {
+    const acct = byId.get(String(p.account_id));
+    if (!acct) continue;
+    Object.assign(acct, p.fields);
+    acct.is_enriched = true;
+    applied += 1;
+  }
+  return applied;
+}
+
+/**
+ * Guess which dataset a file is, from its headers.
+ *
+ * Ordering matters and is not alphabetical. The account-keyed shapes are
+ * tested FIRST, because their signature columns (arr, invoice, active_seats)
+ * are unambiguous, whereas 'ticket' is the loosest shape in the set and used
+ * to be the unconditional fallback. That fallback was the bug: a CRM export
+ * shares `account_id` and `company` with the ticket alias table, cleared the
+ * two-column floor in store.js, and was ingested as a page of invented Open
+ * tickets with its ARR, renewal date and owner thrown away. A file we cannot
+ * place now returns 'unknown' and is refused, because a refusal a user can
+ * read beats a silent corruption of the book they are trying to analyse.
+ */
 export function detectKind(headers) {
   const h = headers.map(norm);
   const has = (...k) => k.some((x) => h.includes(x));
+
+  /* Account-keyed, most specific first. */
+  if (has('active_seats', 'weekly_active_seats', 'wau', 'active_users', 'mau')) return 'usage';
+  if (has('invoice_id', 'invoice_number', 'invoice_no')
+      || (has('amount_usd', 'amount', 'amount_due', 'invoice_amount') && has('due_date', 'due', 'paid_at', 'paid_on'))) return 'billing';
+  if (has('arr_usd', 'arr', 'annual_recurring_revenue', 'mrr', 'mrr_usd', 'acv', 'contract_value')
+      || has('renewal_date', 'renews_on', 'contract_end', 'contract_end_date')) return 'crm';
+
+  /* Event streams. */
   if (has('nps', 'nps_score') || (has('score') && has('verbatim', 'comment', 'feedback'))) return 'nps';
   if (has('qa_score', 'overall_score') || has('policy_adherence') || (has('score') && has('reviewer', 'evaluator'))) return 'qa';
-  return 'ticket';
+
+  /* Ticket is claimed only on positive evidence now, never as a fallback. */
+  if (has('ticket_id', 'case_id', 'ticket_number', 'ticket_subject', 'ticket_status', 'ticket_type', 'ticket_priority')
+      || (has('subject', 'description', 'summary') && has('status', 'state', 'priority', 'severity'))) return 'ticket';
+
+  return 'unknown';
 }
