@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>OpsPulse AI · Technical Roadmap</title>
-<meta name="description" content="The engineering build roadmap for OpsPulse AI, from prototype to a global intelligence layer for customer operations." />
+<meta name="description" content="The engineering build roadmap for OpsPulse AI, from a functional MVP to a global intelligence layer for customer operations." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -106,7 +106,7 @@
 <header class="rm-hero">
   <div class="wrap">
     <span class="eyebrow reveal">Engineering Plan</span>
-    <h1 class="reveal" style="margin:16px 0 16px;max-width:900px">The <span class="grad-text">technical roadmap</span>, from prototype to the intelligence layer for customer operations.</h1>
+    <h1 class="reveal" style="margin:16px 0 16px;max-width:900px">The <span class="grad-text">technical roadmap</span>, from a functional MVP to the intelligence layer for customer operations.</h1>
     <p class="lead reveal" style="max-width:660px">How we build OpsPulse AI in six phases: unify the data, make it intelligent, put a copilot on top, then harden and scale. Each phase has a clear goal, what we build, the stack, and the output you can point to.</p>
     <div class="rm-legend reveal">
       <span class="li"><span class="sw" style="background:#aeb9d6"></span>Done</span>
@@ -159,6 +159,55 @@
   </div>
 </section>
 
+<!-- EXTERNAL SIGNALS -->
+<!--
+   Called out separately from the phase list because it does not sit in one
+   phase: the surface is already built in Phase 0 and the feed behind it is a
+   Phase 1 procurement item. Collapsing that into a single bullet in either
+   phase would misstate it in one direction or the other.
+-->
+<section class="block" id="external" style="padding-top:20px">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="color:var(--cyan);border-color:rgba(34,211,238,.25);background:rgba(34,211,238,.06)">The differentiating column</span>
+      <h2 style="margin-top:14px">External signals: the second inbound edge.</h2>
+      <p class="lead" style="margin-top:12px">Every source in the pipeline above is a system the customer owns, reached with a credential they give us. External signals are third-party data about the customer's own business — acquisition, distress, stakeholder change, funding — which makes licensing, entity resolution and provenance the hard parts rather than the connector.</p>
+    </div>
+
+    <div class="grid g3">
+      <div class="card v reveal">
+        <h3>Built in Phase 0</h3>
+        <p style="margin-bottom:12px">The surface is running in the MVP today.</p>
+        <div class="build-list">
+          <div class="b"><span class="d"></span>Event schema on the account: type, confidence, effect, detected-at, source</div>
+          <div class="b"><span class="d"></span>External Signals panel, ranked most recently detected first, behind the entitlement gate</div>
+          <div class="b"><span class="d"></span>Provenance rendering, with a <b>sample</b> badge and a null source_url on seeded records rather than a fabricated link</div>
+          <div class="b"><span class="d"></span>Query path: filter the book by external event type</div>
+        </div>
+        <div class="p-output" style="margin-top:14px"><b>Running on sample fixtures.</b> Four event types, ~2.5% of accounts, deliberately sparse.</div>
+      </div>
+      <div class="card reveal">
+        <h3>Phase 1 · the feed</h3>
+        <p style="margin-bottom:12px">Swapping fixtures for licensed data. The schema is built so the wiring is a swap.</p>
+        <div class="build-list">
+          <div class="b"><span class="d"></span>Licensed feed integration — Crunchbase, Tracxn, ZoomInfo. A procurement decision before it is an engineering one</div>
+          <div class="b"><span class="d"></span><b>Entity resolution.</b> Matching a filing about "Northwind Group" to the account "Northwind Ltd" is an inference with a confidence, not a string comparison</div>
+          <div class="b"><span class="d"></span>Real source URLs, at which point the sample badge disappears on its own</div>
+        </div>
+      </div>
+      <div class="card c reveal">
+        <h3>Phase 2 · fusion</h3>
+        <p style="margin-bottom:12px">Today an event surfaces against the account. It does not yet move the score.</p>
+        <div class="build-list">
+          <div class="b"><span class="d"></span>External events change the <b>prior</b> on an internal renewal risk</div>
+          <div class="b"><span class="d"></span>Explicitly <b>not</b> a second score beside the first — two numbers that can disagree about one account is the health-score failure mode with an extra step</div>
+          <div class="b"><span class="d"></span>Confidence per event type carries through: an acquisition filing is not a departed VP</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- PHASES -->
 <section class="block" style="padding-top:20px">
   <div class="wrap">
@@ -170,7 +219,7 @@
     <!-- PHASE 0 -->
     <div class="phase ph-0 reveal">
       <div class="p-side">
-        <span class="p-tag">Phase 0 · Prototype</span>
+        <span class="p-tag">Phase 0 · Functional MVP</span>
         <div class="p-name">Prove the loop</div>
         <div class="p-when"><span class="dot-live"></span> Done · Now</div>
         <p class="p-goal">Validate the UX and the "signal → decision" story with stakeholders before writing backend code.</p>
@@ -179,7 +228,7 @@
         <div class="p-block">
           <div class="p-lbl"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> What we build</div>
           <div class="build-list">
-            <div class="b"><span class="d"></span>Clickable prototype: landing site + interactive Ops Copilot dashboard + analytics view</div>
+            <div class="b"><span class="d"></span>Functional MVP: landing site + interactive Ops Copilot dashboard + analytics view, running a real engine rather than a click-through</div>
             <div class="b"><span class="d"></span>Realistic mock data modelling the decision feed, root-cause drill-down and live signals</div>
           </div>
         </div>
@@ -204,6 +253,7 @@
           <div class="p-lbl"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> What we build</div>
           <div class="build-list">
             <div class="b"><span class="d"></span>Source connectors: ticketing, telephony, QA, surveys and chat (webhooks + pollers)</div>
+            <div class="b"><span class="d"></span>External signal feed: licensed M&amp;A, funding, stakeholder-change and distress data, resolved to accounts with a confidence and a real source URL (the surface for it already exists)</div>
             <div class="b"><span class="d"></span>Ingestion pipeline → normalization → a unified operational schema</div>
             <div class="b"><span class="d"></span>Multi-tenant storage, auth, and an internal API</div>
           </div>
@@ -230,6 +280,7 @@
           <div class="build-list">
             <div class="b"><span class="d"></span>NLP on tickets & transcripts: sentiment, intent, topic clustering, entity extraction</div>
             <div class="b"><span class="d"></span>Anomaly & trend detection; risk-scoring models (churn, SLA breach, coaching gap)</div>
+            <div class="b"><span class="d"></span>External-event fusion: an acquisition or a departed sponsor changes the prior on the renewal risk rather than becoming a second score</div>
             <div class="b"><span class="d"></span>LLM reasoning layer (Claude) for root-cause narratives and summaries</div>
           </div>
         </div>
@@ -358,7 +409,7 @@
   <div class="wrap">
     <div class="cta-band reveal">
       <h2>See the roadmap's first phase, already live.</h2>
-      <p>Phase 0 is built. Explore the working prototype the rest of this plan grows from.</p>
+      <p>Phase 0 is built. Explore the functional MVP the rest of this plan grows from.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="app.html">Open the live Copilot →</a>
         <a class="btn btn-ghost" href="index.html">Back to the site</a>
@@ -371,7 +422,7 @@
   <div class="wrap foot">
     <div>
       <a class="brand" href="index.html"><span class="logo"><svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4.7" width="19" height="2.6" rx="1.3" fill="#2e3b3a"/><rect x="2.5" y="8.7" width="13.8" height="2.6" rx="1.3" fill="#3d514d"/><rect x="2.5" y="12.7" width="8.9" height="2.6" rx="1.3" fill="#4f7a6b"/><rect x="2.5" y="16.7" width="4.4" height="2.6" rx="1.3" fill="#3fdd85"/></svg></span> OpsPulse AI</a>
-      <p style="margin-top:10px">Technical roadmap · from prototype to production.</p>
+      <p style="margin-top:10px">Technical roadmap · from a functional MVP to production.</p>
     </div>
     <div class="foot-links">
       <a href="index.html">Site</a>
@@ -379,7 +430,7 @@
       <a href="index.html#roadmap">Business roadmap</a>
     </div>
   </div>
-  <div class="wrap"><p class="dim" style="margin-top:24px;font-size:.8rem">© 2026 OpsPulse AI · Prototype. Timelines are indicative.</p></div>
+  <div class="wrap"><p class="dim" style="margin-top:24px;font-size:.8rem">© 2026 OpsPulse AI · Functional MVP. Timelines are indicative.</p></div>
 </footer>
 
 <script>

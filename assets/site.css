@@ -325,6 +325,25 @@
 }
 .try-steps li b { color: var(--text); font-weight: 650; }
 
+/* The scope caveat above the steps. Amber rather than emerald and ruled on the
+   leading edge, because it is a qualification of the promise directly above it,
+   not another benefit — the two must not be skimmable as the same thing. It
+   sits BEFORE .try-steps deliberately: a caveat under the call to action is a
+   disclaimer, and a disclaimer is what you write when you would rather it were
+   not read. */
+.src-caveat {
+  margin: 20px 0 0;
+  padding: 13px 15px 12px 16px;
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  border-left: 2px solid var(--amber, #fbbf24);
+  border-radius: var(--radius);
+  background: rgba(251, 191, 36, 0.045);
+  font-size: 0.815rem;
+  line-height: 1.68;
+  color: var(--text-soft);
+}
+.src-caveat b { color: var(--text); font-weight: 650; }
+
 /* The outcome block. Ruled off and tinted so it reads as the payoff of the
    three steps above it rather than a fourth step. */
 .try-out {
@@ -369,4 +388,32 @@
   font-size: 0.775rem;
   line-height: 1.6;
   color: var(--text-dim);
+}
+
+/* ---------- External-signal status tag ----------
+   A card-level "not built yet" marker. Cyan rather than emerald because every
+   emerald affordance on this site means "this runs" — reusing it for a planned
+   detector would say the opposite of what the label says. It is a plain inline
+   element inside .card, sitting after the paragraph, so it inherits the card's
+   own hover and reveal behaviour and needs no JS. */
+.status-tag {
+  display: inline-block;
+  margin-top: 13px;
+  padding: 3px 9px 4px;
+  border: 1px dashed rgba(34, 211, 238, 0.34);
+  border-radius: 999px;
+  font-size: 0.63rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 800;
+  color: var(--cyan);
+  background: rgba(34, 211, 238, 0.05);
+}
+/* Funding is the one signal that runs toward the upside, so it takes the
+   emerald that means "this is good news" everywhere else on the site rather
+   than reading as a fourth flavour of risk. */
+.status-tag.ok {
+  border-color: rgba(52, 211, 153, 0.34);
+  color: var(--emerald);
+  background: rgba(52, 211, 153, 0.05);
 }
