@@ -171,7 +171,22 @@ export function resolveColumns(headers, kind) {
 const PRIORITY = { critical: 'Critical', urgent: 'Critical', high: 'High', p1: 'Critical', p2: 'High', medium: 'Medium', normal: 'Medium', low: 'Low', p3: 'Medium', p4: 'Low' };
 const STATUS_MAP = { open: 'Open', new: 'Open', pending: 'Pending Customer Response', 'pending customer response': 'Pending Customer Response', hold: 'Pending Customer Response', solved: 'Resolved', resolved: 'Resolved', closed: 'Closed' };
 
-const num = (v) => { const n = Number(String(v).replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : null; };
+/* Returns null — not 0 — for anything that is not a number.
+   `Number('')` is 0, so the previous version turned a missing column, an empty
+   cell and the word "unknown" all into a confident zero. That made every
+   `?? fallback` in this file unreachable (`0 ?? 40` is 0) and every
+   `score == null` guard below dead code. The visible damage: an uploaded
+   ticket file with no first-response column reported a perfect 0-minute
+   response on every row, and a QA file whose score column did not resolve
+   ingested every review as 0 and manufactured a coaching gap out of nothing.
+   A value we cannot read must be absent, never zero. */
+const num = (v) => {
+  if (v == null) return null;
+  const cleaned = String(v).replace(/[^0-9.\-]/g, '');
+  if (!/\d/.test(cleaned)) return null;          // '', 'abc', '-', '.' are not numbers
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+};
 const date = (v) => { if (!v) return null; const t = Date.parse(v); return Number.isFinite(t) ? t : null; };
 
 /** Day binning must FLOOR, not round — rounding pushes anything after midday
@@ -464,7 +479,11 @@ export function mapAccounts(rows, colMap, ds, kind) {
     if (kind === 'crm') {
       /* ARR is the field this whole product hangs off, so it is taken from an
          explicit ARR column or derived from MRR, and never guessed. */
-      const arr = num(get(r, 'arr_usd')) ?? (num(get(r, 'mrr_usd')) != null ? num(get(r, 'mrr_usd')) * 12 : null);
+      /* ARR is taken from an ARR column, or derived from MRR, and never
+         guessed. With `num` fixed, a missing column is null and the `??`
+         actually falls through to the MRR branch. */
+      const mrr = num(get(r, 'mrr_usd'));
+      const arr = num(get(r, 'arr_usd')) ?? (mrr != null ? mrr * 12 : null);
       if (arr != null && arr >= 0) set(p, 'arr_usd', Math.round(arr), via);
       const seats = num(get(r, 'seats'));
       if (seats != null && seats > 0) set(p, 'seats', Math.round(seats), via);
@@ -492,8 +511,11 @@ export function mapAccounts(rows, colMap, ds, kind) {
       /* Paid is paid, whatever the status column says. Otherwise an invoice is
          overdue only if its due date has actually passed on the dataset clock
          — a status string alone is somebody else's opinion. */
-      const settled = paid != null || /paid|settled|closed/.test(status);
-      const overdue = !settled && ((due != null && due < ds.meta.as_of) || /overdue|past.?due|late|delinquent/.test(status));
+      /* Word-anchored, because "unpaid" contains "paid". Without the
+         boundaries every unpaid invoice was read as settled and dropped out of
+         the overdue count — the one number this stream exists to produce. */
+      const settled = paid != null || /\b(paid|settled|closed)\b/.test(status);
+      const overdue = !settled && ((due != null && due < ds.meta.as_of) || /\b(overdue|past.?due|late|delinquent)\b/.test(status));
       const b = p.fields.billing || (p.fields.billing = { invoices: 0, overdue_invoices: 0, overdue_amount_usd: 0, max_days_overdue: 0 });
       b.invoices += 1;
       if (overdue) {

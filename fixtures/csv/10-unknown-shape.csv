@@ -1,0 +1,4 @@
+widget_ref,colour,weight_kg,warehouse_bay,notes
+W-001,blue,2.4,B12,damaged in transit
+W-002,red,1.1,A03,
+W-003,green,3.9,C07,repack before shipping

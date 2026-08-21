@@ -1,0 +1,5 @@
+id,requester,requester_email,subject,description,status,priority,via,group,assignee,organization,created_at,closed_at,satisfaction
+88201,Grace Lim,grace.lim@quillinsurance.com,Cannot export renewal report,Export returns an empty file,open,high,email,Technical Support,agent_14,Quill Insurance,2026-03-02T09:00:00Z,,2
+88202,Hugo Marsh,hugo.marsh@pinewoodmotors.com,Duplicate charge on renewal invoice,Charged twice for the same period,pending,urgent,email,Billing Ops,agent_07,Pinewood Motors,2026-03-03T13:15:00Z,,1
+88203,Ines Rocha,ines.rocha@kestrelanalytics.com,Seat count wrong after upgrade,Shows 40 seats when 120 were purchased,solved,normal,chat,Billing Ops,agent_11,Kestrel Analytics,2026-03-04T10:45:00Z,2026-03-05T09:00:00Z,4
+88204,Jonas Wick,jonas.wick@northgatelogistics.com,Escalation — no response in 5 days,Third follow-up on the same issue,open,urgent,email,Technical Support,agent_03,Northgate Logistics,2026-03-05T08:20:00Z,,1

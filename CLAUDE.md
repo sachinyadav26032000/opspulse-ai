@@ -75,7 +75,7 @@ over insight objects, not an LLM. If an LLM is ever added it belongs in the expl
 
 ## 5. Verification is the acceptance test
 
-**After any change to `data/`, `engine/`, `assets/`, or `mcp/`, run all eight.** Not a sample.
+**After any change to `data/`, `engine/`, `assets/`, or `mcp/`, run all nine.** Not a sample.
 
 ```bash
 node tools/verify.mjs        # 67 — engine finds the patterns, 5 seeds × 4 calendar positions
@@ -87,9 +87,10 @@ node tools/browsercheck.mjs  # 29 — the real navigator.locks path, both direct
 node tools/mcpcheck.mjs      # 79 — MCP over a real pipe and over HTTP
 node tools/chatcheck.mjs     # 61 — Rio routes 140 real phrasings to the right topic
 node tools/principlecheck.mjs # 72 — the five product principles of §6b, as assertions
+node tools/csvcheck.mjs      # 59 — ten fixture files through the real store.ingestCsv
 ```
 
-Roughly **440 checks**. Seven totals are fixed; **`uicheck` floats by a few from day to day**
+Roughly **500 checks**. Eight totals are fixed; **`uicheck` floats by a few from day to day**
 because it drills into every insight the engine produced and how many clear the thresholds
 depends on where `Date.now()` falls in the window. A changed `uicheck` total is *not* by itself
 a regression — **a failure is.** Do not "fix" a count mismatch by editing the harness.
@@ -204,6 +205,10 @@ change easier** — the failure mode each prevents is named in the file.
    which **join**). `detectKind` returns `'unknown'` for anything it cannot place, and store.js
    refuses it. It must **never** fall back to `'ticket'` again: a CRM export used to clear the
    two-column floor and be ingested as invented Open tickets with its ARR thrown away.
+   `fixtures/csv/` holds ten files covering all six shapes and the four refusals;
+   `tools/csvcheck.mjs` drives them through the **real** `store.ingestCsv` rather than
+   calling the mappers, because both bugs that set has found so far lived in the seam
+   between the parts rather than in any one of them.
 
 2. **The account is the primary object, not the ticket.** ARR, renewal date and owner hang off
    the account; signals reference it. An account-shaped file must never become event rows, and
