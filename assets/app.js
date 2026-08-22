@@ -437,14 +437,38 @@ import { buildModel, buildAnalytics, analyticsBounds, tickRows } from './app-dat
   }
 
   /* ---------- tabs, search, nav ---------- */
+
+  /* These controls are <div>/<span> rather than <button> for layout reasons
+     that predate this file, which means none of the behaviour a button gives
+     for free is present: no focus, no Enter/Space, and a selected state
+     carried only by a CSS class. `role="tab"` + `tabindex` in the markup make
+     them reachable; this makes them operable and keeps aria-selected in step
+     with the class, so the selection is announced rather than only coloured. */
+  function activateOnKey(el, fn) {
+    el.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " " && e.key !== "Spacebar") return;
+      e.preventDefault();          // Space would otherwise scroll the page
+      fn();
+    });
+  }
+  function markSelected(group, chosen) {
+    group.forEach(function (x) {
+      var on = x === chosen;
+      x.classList.toggle("active", on);
+      x.setAttribute("aria-selected", on ? "true" : "false");
+    });
+  }
+
   function bindControls() {
-    $$(".tab").forEach(function (tab) {
-      tab.addEventListener("click", function () {
-        $$(".tab").forEach(function (t) { t.classList.remove("active"); });
-        tab.classList.add("active");
+    var tabs = $$(".tab");
+    tabs.forEach(function (tab) {
+      var choose = function () {
+        markSelected(tabs, tab);
         state.filter = tab.getAttribute("data-filter");
         renderFeed();
-      });
+      };
+      tab.addEventListener("click", choose);
+      activateOnKey(tab, choose);
     });
     $("#searchBox").addEventListener("input", renderFeed);
 
@@ -471,10 +495,10 @@ import { buildModel, buildAnalytics, analyticsBounds, tickRows } from './app-dat
       integrations:["Integrations", "Connect ticketing, telephony, QA & feedback"],
       settings:    ["Settings", "Workspace configuration"]
     };
-    $$(".nav-item").forEach(function (n) {
-      n.addEventListener("click", function () {
-        $$(".nav-item").forEach(function (x) { x.classList.remove("active"); });
-        n.classList.add("active");
+    var navItems = $$(".nav-item");
+    navItems.forEach(function (n) {
+      var choose = function () {
+        markSelected(navItems, n);
         var v = n.getAttribute("data-view");
         var meta = views[v] || views.feed;
         $("#viewTitle").textContent = meta[0];
@@ -490,7 +514,9 @@ import { buildModel, buildAnalytics, analyticsBounds, tickRows } from './app-dat
           toast(meta[0] + " view", "This MVP focuses on Feed & Analytics");
         }
         window.scrollTo({ top: 0, behavior: "smooth" });
-      });
+      };
+      n.addEventListener("click", choose);
+      activateOnKey(n, choose);
     });
   }
 

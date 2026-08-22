@@ -33,7 +33,8 @@
 import { generate, makeLiveTicket, resolveLiveTicket, makeLiveEscalation, makeLiveNps, makeLiveQa } from './generator.js';
 import { makeRng } from './rng.js';
 import { runEngine } from '../engine/web/index.js';
-import { parseCsv, resolveColumns, mapTickets, mapNps, mapQa, detectKind } from './csv.js';
+import { parseCsv, resolveColumns, mapTickets, mapNps, mapQa, mapAccounts, applyAccountPatches,
+         detectKind, ACCOUNT_KINDS } from './csv.js';
 import { createSync } from './sync.js';
 /* The commercial tier. It rides on the SESSION rather than the dataset: a tier
    is a fact about the contract, not about the operation, and putting it on
@@ -395,7 +396,22 @@ export function createStore(opts = {}) {
     return seed;
   }
 
-  function applyUpload({ kind, rows, counters: c, seq, engineAsOf }) {
+  function applyUpload({ kind, rows, patches, counters: c, seq, engineAsOf }) {
+    /* Account-keyed uploads travel as resolved PATCHES, not records, for the
+       same reason event uploads travel as rows: the file exists only in the
+       uploading tab, so re-parsing here is impossible and re-deriving the join
+       would let two tabs resolve the same company name differently and diverge
+       silently. The leader resolved it once; every tab applies that answer. */
+    if (patches) {
+      const applied = applyAccountPatches(dataset, patches);
+      applySeq(seq);
+      if (c) counters = { ...c };
+      pushFeed({ kind: 'upload', id: kind, text: `Enriched ${applied} accounts from ${kind} data`, meta: 'from another tab' });
+      refreshTodaySeries();
+      engine = runEngine(dataset, { asOf: engineAsOf ?? Date.now() });
+      emit({ type: 'engine', reason: 'upload', ms: 0, remote: true });
+      return;
+    }
     const target = kind === 'nps' ? dataset.nps : kind === 'qa' ? dataset.qa : dataset.tickets;
     target.push(...rows);
     applySeq(seq);
@@ -483,10 +499,40 @@ export function createStore(opts = {}) {
       const { headers, rows } = parseCsv(text);
       if (!headers.length) return { ok: false, error: 'File is empty or not valid CSV.' };
       const kind = kindHint && kindHint !== 'auto' ? kindHint : detectKind(headers);
+      if (kind === 'unknown') {
+        return { ok: false, kind, headers,
+          error: 'Could not tell what this file is. Supported exports: tickets, QA reviews, NPS responses, CRM/account, billing/invoices, product usage.' };
+      }
       const { map, missing, matched } = resolveColumns(headers, kind);
       if (matched < 2) {
         return { ok: false, kind, headers, error: `Could not recognise this as ${kind} data — only ${matched} column(s) matched a known field.` };
       }
+
+      /* Account-keyed sources join onto the book rather than appending events.
+         They take an early return because almost nothing below applies: there
+         are no rows to push, no day grid to refresh, and the thing that
+         travels to other tabs is the resolved patch, not a record. */
+      if (ACCOUNT_KINDS.has(kind)) {
+        const { patches, errors: jErrors, unmatched, reasons, joined_via } = mapAccounts(rows, map, dataset, kind);
+        if (!patches.length) {
+          return { ok: false, kind, headers, unmatched: unmatched.slice(0, 8),
+            error: `No row in this ${kind} file matched an account already in the book. Rows are joined on account id, then on company name; accounts are never created from an upload.` };
+        }
+        const applied = applyAccountPatches(dataset, patches);
+        counters.enriched = (counters.enriched || 0) + applied;
+        pushFeed({ kind: 'upload', id: kind, text: `Enriched ${applied} accounts from ${kind} data`, meta: `${matched} columns mapped` });
+        const at = Date.now();
+        sync.post({ type: 'upload', kind, patches, counters: { ...counters }, seq: seqOf(), engineAsOf: at });
+        recompute('upload', at);
+        return {
+          ok: true, kind, headers, mapped_columns: map, unmatched_fields: missing,
+          joined: true, accounts_matched: applied, added: 0,
+          skipped: rows.length - patches.length, unmatched: unmatched.slice(0, 8),
+          unmatched_count: unmatched.length, unmatched_reasons: reasons, joined_via,
+          errors: jErrors.slice(0, 8), total_rows: rows.length,
+        };
+      }
+
       const mapper = kind === 'nps' ? mapNps : kind === 'qa' ? mapQa : mapTickets;
       const { rows: mapped, errors } = mapper(rows, map, dataset);
       // Tagged so a tab joining later can tell an uploaded row from the

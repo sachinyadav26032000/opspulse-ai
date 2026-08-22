@@ -1,0 +1,7 @@
+account_id,company,arr_usd,renewal_date,owner,plan,seats,region
+AC0001,Harbor Studios,265000,2026-09-30,Priya Raman,Enterprise,180,EMEA
+AC0002,Quill Insurance,180000,2026-06-15,Sam Ochieng,Growth,120,North America
+AC0003,Pinewood Motors,161200,2026-07-01,Priya Raman,Growth,95,EMEA
+AC0004,Kestrel Analytics,152900,2026-05-20,Dev Kapoor,Growth,88,APAC
+AC0005,Northgate Logistics,135100,2026-08-12,Sam Ochieng,Essential,60,North America
+AC0006,Marlowe Retail,98000,2026-11-04,Dev Kapoor,Essential,45,EMEA

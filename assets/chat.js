@@ -501,11 +501,43 @@
         "<strong>And fusion is a roadmap item.</strong> Today an external event surfaces against the account; it does not change the renewal risk score. When it does, it will change the <em>prior</em> on an internal risk rather than becoming a second score sitting next to the first — two numbers that can disagree about the same account is the health-score failure mode with an extra step."
     },
     {
+      /* The boundary topic. It exists because every phrasing below used to land
+         somewhere plausible and wrong: "do you replace Zendesk" got the
+         integrations answer, and "will you fix our SLAs" got the glossary
+         definition of an SLA. Both read as evasion to the one prospect who most
+         needs a straight no — and a deal that dies in month three because we let
+         a replacement assumption stand is more expensive than the one we lose
+         today by saying it plainly.
+
+         Keys are whole phrases about replacing, fixing, cleaning or lacking a
+         system. Nothing here is a bare product name: "zendesk" on its own stays
+         with `data`, where someone asking which tools we read belongs. */
+      id: "scope",
+      title: "what we do not do",
+      keys: ["replace zendesk", "replace salesforce", "replace our helpdesk", "replacement for", "replace our",
+             "get rid of zendesk", "get rid of salesforce", "rip out", "instead of zendesk", "instead of salesforce",
+             "do you replace", "does it replace", "still need zendesk", "still need salesforce", "keep zendesk",
+             "fix our sla", "fix our slas", "fix my sla", "improve our slas", "set our slas", "define our slas",
+             "clean our crm", "clean our data", "fix our data", "data cleanup", "data hygiene", "migrate our data",
+             "no ticketing system", "do not have slas", "dont have slas", "no slas", "we have no systems",
+             "what do you not do", "what does it not do", "what is out of scope", "limitations"],
+      answer:
+        "The honest boundary, because assuming otherwise gets expensive in month three:\n\n" +
+        "<strong>We do not replace your systems.</strong> Zendesk, Salesforce, your QA tool and your survey platform all stay exactly where they are. OpsPulse is a layer that reads across them and tells you which renewal is moving. If you rip one out, we lose a source.\n\n" +
+        "<strong>We do not fix your SLAs.</strong> We will tell you which breaches are costing you a renewal and which are merely noisy. Setting the targets, staffing the queue and changing the process is your operation, not our product.\n\n" +
+        "<strong>We do not clean your CRM.</strong> We join to it. If your ARR and renewal dates are wrong in the CRM, they are wrong in our output too — and we would rather show you the join and let you argue with it than quietly repair your book and call the result intelligence.\n\n" +
+        "<strong>And if you have no systems to read, you are not our customer.</strong> No ticketing platform, or no defined SLAs, and there is no baseline for anything here to work against. We will tell you that on the first call rather than sell you a pilot that cannot succeed.",
+      more:
+        "Two things follow from that boundary, and both are product decisions rather than modesty.\n\n" +
+        "<strong>We are a read layer, so we are additive rather than a migration.</strong> There is no data to move, no workflow to retrain and nothing to switch off, which is why a first look can be a CSV rather than a project. The flip side is that we inherit your data quality: a renewal date nobody maintains produces a renewal risk nobody should trust, and the product will show you the join it made rather than hide it.\n\n" +
+        "<strong>And the qualification is real.</strong> Roughly twelve months of history in at least a ticketing system is the floor. Below that the engine still runs, but its first weeks are calibration rather than insight — and I would rather say so now than let you find out after you have signed."
+    },
+    {
       id: "setup",
       title: "setup and time to value",
       keys: ["how long", "setup", "set up", "onboarding", "implementation", "time to value", "get started", "deploy", "install", "how quickly", "ramp", "go live", "first value"],
       answer:
-        "Start with a <strong>CSV export</strong>: no integration work, and you see real findings on your own accounts the same day.\n\n" +
+        "Start with <strong>CSV exports</strong>: no integration work, and you see real findings on your own accounts the same day. A helpdesk export alone gives you support-shaped findings; add a CRM export and those findings acquire ARR, a renewal date and a named owner, which is the difference between a statistic and a decision.\n\n" +
         "A read-only connection to your ticketing system is the next step, and it is the one that makes findings arrive without anyone remembering to re-export. Native connectors are on the roadmap; during the design partner programme we build the one you need.\n\n" +
         "There is nothing to install. It runs in the browser.\n\n" +
         "The honest constraint is not the setup, it is the <strong>history</strong>: baselines need roughly twelve months behind them to mean anything. With less than that the product still runs, but its first few weeks are calibration rather than insight, and I would rather tell you that up front."
@@ -523,7 +555,7 @@
         "• <strong>Product usage</strong> — seats, logins, feature events\n" +
         "• <strong>Billing / CRM</strong> — contract dates and ARR\n" +
         "• <strong>External signals</strong> — acquisition, distress, stakeholder change and funding on the accounts themselves, which is the one source that is not a system you own\n\n" +
-        "You need roughly <strong>twelve months of history</strong> for a baseline to mean anything. To start, a CSV export is enough — you can drop one into the live demo right now and watch the same detectors run against your rows.\n\n" +
+        "You need roughly <strong>twelve months of history</strong> for a baseline to mean anything. To start, CSV exports are enough — the upload reads six shapes (tickets, QA, NPS, CRM/account, billing, product usage). Event files append; a CRM, billing or usage file <strong>joins onto the accounts already loaded</strong>, on account id first and company name second, and never invents an account that was not there.\n\n" +
         "You do not need all six. Three sources is a real deployment; the engine reports which detectors could not run rather than pretending the ones it did run cover everything."
     },
     {

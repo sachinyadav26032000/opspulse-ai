@@ -8,27 +8,55 @@
    ========================================================================== */
 
 .op-root, .sd-root { container-type: inline-size; display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; }
-/* The toolbar is a fixed band, never a flex child that grows. Stating it here
+/* The header is a fixed band, never a flex child that grows. Stating it here
    means a host page's own `> *` sizing rule can't stretch it. */
-.op-root > .lv-top, .sd-root > .lv-top { flex: 0 0 auto; }
+.op-root > .lv-head, .sd-root > .lv-head { flex: 0 0 auto; }
 
-/* ── Shared chrome ───────────────────────────────────────────────────────── */
+/* ── Shared chrome ───────────────────────────────────────────────────────────
+   Two bands, not one row. The toolbar used to be a single `flex-wrap: wrap`
+   line carrying identity, seven nav tabs, the tier switcher, live status and
+   two buttons. `.lv-spacer`'s `margin-left:auto` only pushes within its OWN
+   flex line, so the moment that row wrapped — at any realistic width, and
+   always inside the half-width panes on demo.html — the controls landed at
+   ragged offsets across two or three lines with nothing aligned to anything.
+
+   An application shell has a title bar and a tab strip. This is that: identity
+   and global state on top, navigation beneath, one hairline between them and
+   the strong rule under the whole header. */
+.lv-head {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(9, 13, 24, .82); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line-strong);
+}
 .lv-top {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-  padding: 12px 20px; border-bottom: 1px solid var(--line);
-  background: rgba(9, 13, 24, .82); backdrop-filter: blur(12px);
-  position: sticky; top: 0; z-index: 20;
+  padding: 11px 20px;
+  /* Only when a tab strip follows. NorthDesk has no nav, so its single row
+     carries the header's own bottom rule and gains no second line. */
+  min-height: 46px;
 }
+.lv-head > .lv-nav { border-top: 1px solid var(--line); }
 .lv-top .lv-brand { display: flex; align-items: center; gap: 9px; font-weight: 800; letter-spacing: -.01em; font-size: .98rem; }
 .lv-top .lv-brand .dot { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; flex: none; }
 .lv-top .lv-brand .dot svg { width: 16px; height: 16px; }
 .lv-spacer { margin-left: auto; }
 
-.lv-nav { display: flex; gap: 4px; flex-wrap: wrap; }
+/* Scrolls sideways rather than wrapping. A tab strip that reflows onto a
+   second line moves every tab under the reader's cursor when a badge count
+   changes; one that scrolls keeps them where they were put. `scrollbar-width:
+   none` because the strip is short enough to swipe or drag and a visible bar
+   under seven tabs reads as a defect. */
+.lv-nav {
+  display: flex; gap: 4px; flex-wrap: nowrap;
+  padding: 7px 20px; overflow-x: auto; overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.lv-nav::-webkit-scrollbar { display: none; }
 .lv-nav button {
   background: transparent; border: 1px solid transparent; color: var(--text-soft);
   font: inherit; font-size: .84rem; font-weight: 500; padding: 6px 11px; border-radius: 8px; cursor: pointer;
   display: flex; align-items: center; gap: 7px; transition: background .15s, color .15s;
+  white-space: nowrap; flex: none;
 }
 .lv-nav button svg { width: 15px; height: 15px; }
 .lv-nav button:hover { background: rgba(255,255,255,.05); color: var(--text); }
@@ -444,7 +472,8 @@
   .sd-table .subj { max-width: 24ch; }
   .sd-table td, .sd-table th { padding-left: 9px; padding-right: 9px; }
   .lv-body { padding: 14px 13px 50px; }
-  .lv-top { padding: 10px 13px; }
+  .lv-top { padding: 9px 13px; }
+  .lv-nav { padding: 6px 13px; }
   .op-hero { grid-template-columns: 1fr; }
   .op-hero h2 { font-size: 1.1rem; }
 }

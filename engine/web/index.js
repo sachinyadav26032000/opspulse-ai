@@ -183,15 +183,73 @@ function buildBrief(insights, health, ds, opts) {
 
 /* ── Public entry point ──────────────────────────────────────────────────── */
 
+/* ── Naming the accounts a finding is about ───────────────────────────────
+   Ranked by ARR and then by proximity to renewal, because that is the order in
+   which a CSM should work them: the biggest number that is closest to being
+   decided. Capped at five — the contract carries the list a human will act on
+   this week, not the full cohort, which stays available on `_meta.affected_ids`
+   for anything that needs to re-derive the whole set.
+
+   `owner` is the account's own CSM, which is a real person's name once a CRM
+   export has been joined and the generator's placeholder before that. It is
+   deliberately separate from `recommended_action.owner_role`: the role says who
+   should run the play, the owner says whose account it is, and on a book with a
+   named owner per account those are frequently not the same person. */
+const NAMED_ACCOUNT_LIMIT = 5;
+
+function namedAccountsFor(a, ds) {
+  const ids = a.affected_ids;
+  if (!Array.isArray(ids) || !ids.length) return [];
+  const byId = new Map(ds.accounts.map((x) => [x.account_id, x]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter(Boolean)
+    .sort((x, y) => (y.arr_usd - x.arr_usd) || ((x.renewal_in_days ?? 9e9) - (y.renewal_in_days ?? 9e9)))
+    .slice(0, NAMED_ACCOUNT_LIMIT)
+    .map((x) => ({
+      account_id: x.account_id,
+      company: x.company,
+      arr_usd: x.arr_usd ?? null,
+      renewal_in_days: x.renewal_in_days ?? null,
+      owner: x.csm || null,
+    }));
+}
+
 export function runEngine(ds, { asOf = ds.meta.as_of } = {}) {
   const t = {};
   const mark = (k, fn) => { const s = Date.now(); const r = fn(); t[k] = Date.now() - s; return r; };
 
-  const { anomalies, detectors_run, thresholds } = mark('detection', () => detect(ds));
+  const { anomalies, detectors_run, thresholds, sources } = mark('detection', () => detect(ds));
   const churn = mark('impact_model', () => empiricalChurnLift(ds));
 
+  /* ── Coverage ceiling ───────────────────────────────────────────────────
+     Confidence is built inside `rootCause` from the three declared weights
+     (45% statistical / 30% explained / 25% corroborated) and those weights are
+     not touched here. What this adds is a CEILING on the result when the book
+     is missing sources.
+
+     The reason is that the three terms are all computed from data that IS
+     present, so they cannot see what is absent. A book with no usage and no
+     NPS can still produce a 0.95 escalation finding — internally consistent,
+     and overconfident, because two of the signals that would corroborate or
+     contradict it were never read. Before this, dropping an entire stream
+     moved peak confidence by nothing at all: it stayed at 0.95.
+
+     The ceiling only ever LOWERS a score. Nothing here can lift a finding over
+     the 60% floor that holds it for review, which is the one direction the
+     confidence rule must never move. */
+  const coverageCeiling = clamp(0.60 + 0.35 * sources.coverage, 0.60, 0.95);
+
   const insights = mark('reasoning', () => anomalies.map((a) => {
-    const rc = rootCause(a, ds);
+    const rcRaw = rootCause(a, ds);
+    /* Capped, with the uncapped figure kept alongside it. A number that moved
+       has to show why it moved, so the card can say "78%, capped from 91% —
+       two of five sources are not connected" rather than quietly presenting a
+       lower score as though it were the arithmetic's own answer. */
+    const capped = Math.min(rcRaw.confidence, coverageCeiling);
+    const rc = capped < rcRaw.confidence
+      ? { ...rcRaw, confidence: capped, confidence_uncapped: rcRaw.confidence, confidence_capped_by: 'source_coverage' }
+      : rcRaw;
     const rec = recommend(a, rc);
     const imp = impact(a, ds, churn);
     const sev = severityOf(a, imp);
@@ -203,6 +261,8 @@ export function runEngine(ds, { asOf = ds.meta.as_of } = {}) {
       signal_type: a.signal_type,
       severity_score: sev.score,
       what_happened: whatHappened(a, ds),
+      affected_accounts: a.affected_accounts ?? null,
+      named_accounts: namedAccountsFor(a, ds),
       why: { root_cause: rc.root_cause, contributing_signals: rc.contributing_signals, confidence: rc.confidence },
       recommended_action: rec,
       expected_impact: {
@@ -239,6 +299,8 @@ export function runEngine(ds, { asOf = ds.meta.as_of } = {}) {
         steps: rec.steps,
         impact: imp,
         confidence_parts: rc.confidence_parts,
+        confidence_uncapped: rc.confidence_uncapped ?? null,
+        confidence_capped_by: rc.confidence_capped_by ?? null,
         decomposition: rc.decomposition,
         decomposition_dimension: rc.dimension,
         correlated_event: rc.correlated_event,
@@ -271,6 +333,12 @@ export function runEngine(ds, { asOf = ds.meta.as_of } = {}) {
       timings_ms: t,
       detectors_run,
       thresholds,
+      /* Which streams the book actually carries, which detectors were skipped
+         for want of one, and the ceiling that coverage put on confidence. On
+         the run object rather than buried per-insight, because "what could not
+         be looked at" is a property of the analysis, not of any one finding. */
+      sources,
+      confidence_ceiling: coverageCeiling,
       contract_valid: errors.length === 0,
       contract_errors: errors,
       stats: {

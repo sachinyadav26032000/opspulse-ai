@@ -1,0 +1,7 @@
+response_id,account,score,comment,theme,response_date
+NPS-7001,Harbor Studios,3,Refund policy changed with no notice and support could not explain it,refund-policy,2026-03-02
+NPS-7002,Quill Insurance,2,Still locked out after the SSO migration. Three weeks.,product-bug,2026-03-03
+NPS-7003,Pinewood Motors,6,Product is fine. Billing is a mess every single quarter.,pricing,2026-03-04
+NPS-7004,Kestrel Analytics,9,Onboarding was genuinely good this time,onboarding,2026-03-05
+NPS-7005,Northgate Logistics,1,Nobody has replied to our escalation. We are evaluating alternatives.,wait-time,2026-03-06
+NPS-7006,Harbor Studios,4,Slow responses since the new policy,wait-time,2026-03-07

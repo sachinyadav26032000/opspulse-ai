@@ -75,7 +75,7 @@ over insight objects, not an LLM. If an LLM is ever added it belongs in the expl
 
 ## 5. Verification is the acceptance test
 
-**After any change to `data/`, `engine/`, `assets/`, or `mcp/`, run all seven.** Not a sample.
+**After any change to `data/`, `engine/`, `assets/`, or `mcp/`, run all nine.** Not a sample.
 
 ```bash
 node tools/verify.mjs        # 67 — engine finds the patterns, 5 seeds × 4 calendar positions
@@ -85,10 +85,12 @@ node tools/synccheck.mjs     # 36 — three stores, one real BroadcastChannel
 node tools/appcheck.mjs      # 34 — app.html reads the store, not a mock
 node tools/browsercheck.mjs  # 29 — the real navigator.locks path, both directions
 node tools/mcpcheck.mjs      # 79 — MCP over a real pipe and over HTTP
-node tools/chatcheck.mjs     # 44 — Rio routes 126 real phrasings to the right topic
+node tools/chatcheck.mjs     # 61 — Rio routes 140 real phrasings to the right topic
+node tools/principlecheck.mjs # 72 — the five product principles of §6b, as assertions
+node tools/csvcheck.mjs      # 59 — ten fixture files through the real store.ingestCsv
 ```
 
-Roughly **370 checks**. Six totals are fixed; **`uicheck` floats by a few from day to day**
+Roughly **500 checks**. Eight totals are fixed; **`uicheck` floats by a few from day to day**
 because it drills into every insight the engine produced and how many clear the thresholds
 depends on where `Date.now()` falls in the window. A changed `uicheck` total is *not* by itself
 a regression — **a failure is.** Do not "fix" a count mismatch by editing the harness.
@@ -143,9 +145,10 @@ overstate in either direction:
 - **Sources.** The engine reads tickets and escalations, QA, NPS, weekly active seats, account
   contract facts and external events. It does **not** read telephony — there is no call data in
   this build, `calls_transcribed` is structurally zero, and the contact-centre panel renders
-  locked on *every* tier for that reason. Separately, a **CSV upload carries three** of those
-  streams (tickets, QA, NPS); the rest arrive by connector. "What the engine reads" and "what one
-  export carries" are different sentences and the site must not merge them again.
+  locked on *every* tier for that reason. The **CSV upload reads six shapes** — tickets, QA, NPS,
+  CRM/account, billing and product usage. "What the engine reads" and "what one export carries"
+  are still different sentences: one helpdesk file gives support-shaped findings, and it takes a
+  CRM file to put ARR, a renewal date and an owner on them.
 - **External signals** (`#external` on `index.html` and `roadmap.html`) are the strongest claim
   on the site and the easiest to get wrong. The schema, panel, entitlement gate, query path and
   provenance rendering are **built and running**; the licensed feed is **not** — records are
@@ -187,6 +190,53 @@ against. Four things must not be weakened.
 Below the acceptance bar Rio names the nearest topics instead of guessing, and below *that* it
 says it does not know and hands off to a human. **Do not lower the bar to reduce fallbacks** —
 that trade is exactly the one the confidence floor in the engine refuses to make.
+
+---
+
+## 6b. The five product principles
+
+These define what the product **is**, not how it is built, and each one is enforced by
+`tools/principlecheck.mjs`. Each was written against a real defect found by probing the engine,
+so the harness is a regression test, not a statement of intent. **Do not weaken one to make a
+change easier** — the failure mode each prevents is named in the file.
+
+1. **The upload path accepts multiple sources, joined on an account key.** Six shapes:
+   tickets, QA, NPS (event streams, which append) and CRM, billing, usage (account streams,
+   which **join**). `detectKind` returns `'unknown'` for anything it cannot place, and store.js
+   refuses it. It must **never** fall back to `'ticket'` again: a CRM export used to clear the
+   two-column floor and be ingested as invented Open tickets with its ARR thrown away.
+   `fixtures/csv/` holds ten files covering all six shapes and the four refusals;
+   `tools/csvcheck.mjs` drives them through the **real** `store.ingestCsv` rather than
+   calling the mappers, because both bugs that set has found so far lived in the seam
+   between the parts rather than in any one of them.
+
+2. **The account is the primary object, not the ticket.** ARR, renewal date and owner hang off
+   the account; signals reference it. An account-shaped file must never become event rows, and
+   an upload must never **create** an account — it joins on `account_id`, then on a normalised
+   company name, and reports why a row did not match. An id join outranks a name join. Company
+   name is a weak key by design: in the sample book 372 of 383 distinct names are shared by more
+   than one account, so the name fallback usually *should* refuse.
+
+3. **Every decision carries money and a name.** `expected_impact` is a range (§3.1) and
+   `named_accounts` carries the top accounts by ARR with their renewal date and owner, **in the
+   contract** — not in `_meta`, which is stripped when the wire contract is displayed. The one
+   deliberate exception is compliance, which stays uncosted (§3.2) and outranks this rule.
+   "47 tickets in the billing category" is a statistic; "six accounts worth $271k, owned by
+   Priya" is a decision.
+
+4. **Missing sources degrade, they never break.** `DETECTOR_SOURCES` declares what each detector
+   needs; one with a missing source is reported `status: 'skipped'` with the stream named, never
+   as a silent `found: 0`. Coverage sets a **ceiling** on confidence (`0.60 + 0.35 × coverage`).
+   The ceiling only ever *lowers* a score — it can never lift a finding over the 60% floor. Note
+   the three declared weights (45/30/25) are untouched by this and must stay untouched: they are
+   computed from data that is present, which is exactly why they cannot see what is absent.
+
+5. **What we do NOT build.** We do not fix their SLAs, clean their CRM, or replace Zendesk or
+   Salesforce. We are a read layer that coexists with those tools. A prospect with no systems or
+   no defined SLAs is not a customer, and we say so on the first call. Rio's `scope` topic is
+   this rule on the marketing surface, and it must stay a plain no — before it existed, "do you
+   replace Zendesk" reached the integrations answer and "will you fix our SLAs" reached the
+   glossary definition of an SLA, both of which read as evasion.
 
 ---
 

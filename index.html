@@ -57,7 +57,7 @@
         spots", which describes the technology rather than the outcome the
         person reading it is accountable for.
       -->
-      <p class="lead">Connect your customer data. OpsPulse identifies the renewals most likely to churn, explains the reasons, and recommends the next best action. It reads the signals your team already generates — support tickets, QA reviews, survey responses, product usage and contract data — plus the external events your own systems cannot see. Telephony is the one source still to land. Then it tells you which renewals are in trouble while there is still time to act.</p>
+      <p class="lead">Connect your customer data. OpsPulse identifies the renewals most likely to churn, explains the reasons, and recommends the next best action. It reads the signals your team already generates — support tickets, QA reviews, survey responses, product usage, and CRM and billing data — plus the external events your own systems cannot see. Telephony is the one source still to land. Then it tells you which renewals are in trouble while there is still time to act.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="#partners">Become a design partner →</a>
         <a class="btn btn-ghost" href="#contact">Schedule a demo</a>
@@ -291,7 +291,7 @@
         make the rest of the claims in the present tense.
       -->
       <p class="dim" style="font-size:.82rem;max-width:78ch;margin:14px auto 0">
-        <strong style="color:var(--text)">What it reads today:</strong> support tickets and escalations, QA reviews, NPS responses, weekly active seats against contracted seats, account contract facts, and external events on the account. <strong style="color:var(--text)">What it does not:</strong> telephony — there is no call data in this build, so the contact-centre panel renders locked on every plan rather than filled with numbers nobody measured. That is the rule throughout: a detector with no source reports itself <em style="font-style:normal;color:var(--text)">unrun</em>. Note that a <a href="#demo" style="color:var(--cyan)">CSV upload</a> carries three of those streams, not all six.
+        <strong style="color:var(--text)">What it reads today:</strong> support tickets and escalations, QA reviews, NPS responses, weekly active seats against contracted seats, account contract facts, and external events on the account. <strong style="color:var(--text)">What it does not:</strong> telephony — there is no call data in this build, so the contact-centre panel renders locked on every plan rather than filled with numbers nobody measured. That is the rule throughout: a detector with no source reports itself <em style="font-style:normal;color:var(--text)">unrun</em>, and confidence is capped by how much of the book the engine could actually read.
       </p>
     </div>
     <!--
@@ -317,7 +317,7 @@
         <dl>
           <div><dt>Reading today</dt><dd>Support tickets and escalations · QA review scores · NPS responses with verbatims · weekly active seats against contracted seats · account contract facts (ARR, seats, renewal date) · external events on the account</dd></div>
           <div><dt>Not yet reading</dt><dd>Telephony. There is no call data in this build, and the contact-centre panel is rendered locked on every plan rather than filled with numbers nobody measured — a detector with no source reports itself unrun rather than scoring on nothing.</dd></div>
-          <div><dt>By CSV upload</dt><dd>Tickets, QA reviews and NPS responses. The other streams arrive by connector, not by export, which is why one support CSV exercises the arithmetic rather than the whole picture.</dd></div>
+          <div><dt>By CSV upload</dt><dd>Six shapes: tickets, QA reviews, NPS responses, a CRM or account export, a billing or invoice export, and a product-usage export. Event files append; account files join onto the book on account id, then on company name. An account is never created by an upload.</dd></div>
           <div><dt>Example</dt><dd>Northwind's weekly active seats fell from 240 to 158 over five weeks, 3.4σ outside its own twelve-month baseline.</dd></div>
         </dl>
       </div>
@@ -563,12 +563,12 @@
           and that is a much more expensive mistake to make on a first touch.
         -->
         <p class="src-caveat">
-          <b>What one export can and cannot tell you.</b> A support CSV carries support signals, so what comes back is escalation load, resolution decay, QA drift and detractor drivers, scored against your own baselines. The engine reads more than that — seat adoption, contract facts and external events on the account are all in the product — but those arrive by connector, not as a column in a helpdesk export. Detectors with no source in your file report themselves unrun instead of scoring on nothing. One export is a real test of the arithmetic on your own accounts; it is not the whole renewal picture, and we would rather you knew which one you were getting.
+          <b>One file is a test. Several is the picture.</b> A support CSV on its own carries support signals, so what comes back is escalation load, resolution decay, QA drift and detractor drivers — real findings on your accounts, but not a renewal view. Add a CRM export and the same findings acquire ARR, a renewal date and an owner; add billing and usage and the detectors that need them start running. Every detector that still has no source says so rather than scoring on nothing, and the engine caps its own confidence by how much of the book it could read. You will always be told which half you are looking at.
         </p>
 
         <ol class="try-steps">
-          <li><b>Export a CSV</b> from your helpdesk, QA tool or survey platform — those are the three shapes the parser maps today. Twelve months of history makes the baselines meaningful.</li>
-          <li><b>Drop it in</b> on the Data Upload screen. Columns are matched automatically, and it tells you which ones it matched.</li>
+          <li><b>Export a CSV</b> from your helpdesk, QA tool or survey platform — and, if you can, your CRM, billing system and product analytics too. Twelve months of history makes the baselines meaningful.</li>
+          <li><b>Drop them in</b> on the Data Upload screen, one file at a time. Columns are matched automatically, the file's shape is detected, and it tells you what it matched — and, for an account file, how many accounts joined and why any row did not.</li>
           <li><b>Read the decision feed</b> as it rebuilds. This is not a progress bar over a canned answer, the detectors genuinely re-run.</li>
         </ol>
 

@@ -40,6 +40,22 @@ export function createInsight(p) {
       owner_role: p.recommended_action.owner_role,
       playbook_id: p.recommended_action.playbook_id,
     },
+    /* ── Who, by name ─────────────────────────────────────────────────────
+       The contract used to carry money without names: an insight said
+       "$378k–$680k at risk" and the only identity on it was an owner ROLE.
+       The account ids existed, but in `_meta` — the debug half of the object,
+       explicitly stripped when the wire contract is displayed — so the
+       auditable part of a decision could not tell you which accounts it was
+       about.
+
+       That is the difference between a decision and a statistic. "47 tickets
+       in the billing category" is a number; "six accounts worth $271k renew
+       inside 90 days, owned by Priya" is something a person can act on before
+       lunch. `affected_accounts` is the count, `named_accounts` the top few by
+       ARR with the owner attached, and both are part of the contract now
+       rather than a rendering convenience. */
+    affected_accounts: p.affected_accounts ?? null,
+    named_accounts: p.named_accounts || [],
     expected_impact: {
       revenue_at_risk_usd: p.expected_impact.revenue_at_risk_usd,
       range_low_usd: p.expected_impact.range_low_usd,
@@ -78,6 +94,19 @@ export function validateInsight(o, i = 0) {
     if (!str(ra.owner_role)) e.push(at('recommended_action.owner_role') + ' required');
     if (!str(ra.playbook_id)) e.push(at('recommended_action.playbook_id') + ' required');
   }
+
+  /* An insight may legitimately name no accounts — a backlog finding is about
+     a queue, not a book — but if it names any, each one must carry the two
+     things that make it actionable, or it is decoration. */
+  if (!Array.isArray(o.named_accounts)) e.push(at('named_accounts') + ' must be array');
+  else {
+    o.named_accounts.forEach((a, n) => {
+      if (!str(a.account_id)) e.push(at(`named_accounts[${n}].account_id`) + ' required');
+      if (!str(a.company)) e.push(at(`named_accounts[${n}].company`) + ' required');
+      if (a.arr_usd !== null && !num(a.arr_usd)) e.push(at(`named_accounts[${n}].arr_usd`) + ' must be number or null');
+    });
+  }
+  if (o.affected_accounts !== null && !num(o.affected_accounts)) e.push(at('affected_accounts') + ' must be number or null');
 
   const ei = o.expected_impact;
   if (!ei || typeof ei !== 'object') e.push(at('expected_impact') + ' block required');

@@ -1,0 +1,6 @@
+review_id,agent,reviewer,review_date,qa_score,notes
+QA-9001,agent_03,Lead — Enablement,2026-03-02,68,Missed the policy disclosure on a refund contact
+QA-9002,agent_07,Lead — Enablement,2026-03-03,71,Tone fine; escalation path not followed
+QA-9003,agent_11,Lead — Quality,2026-03-04,64,Did not verify identity before account change
+QA-9004,agent_14,Lead — Quality,2026-03-05,88,Solid handling of a difficult refund
+QA-9005,agent_03,Lead — Enablement,2026-03-06,66,Repeat of the policy disclosure gap
