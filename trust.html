@@ -64,20 +64,28 @@
       <span class="logo">
         <svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4.7" width="19" height="2.6" rx="1.3" fill="#2e3b3a"/><rect x="2.5" y="8.7" width="13.8" height="2.6" rx="1.3" fill="#3d514d"/><rect x="2.5" y="12.7" width="8.9" height="2.6" rx="1.3" fill="#4f7a6b"/><rect x="2.5" y="16.7" width="4.4" height="2.6" rx="1.3" fill="#3fdd85"/></svg>
       </span>
-      OpsPulse<span style="opacity:.55;font-weight:600"> AI</span>
+      OpsPulse<span class="brand-ai">AI</span>
     </a>
     <div class="nav-links">
       <a href="index.html#product">Product</a>
       <a href="index.html#solutions">Solutions</a>
       <a href="index.html#partners">Design Partners</a>
       <a href="index.html#about">About</a>
-      <a href="index.html#contact">Contact</a>
     </div>
     <div class="nav-cta">
       <a class="nav-tab" href="demo.html"><span class="dot-live"></span><span class="nav-tab-label">Ops Floor</span></a>
-      <a class="btn btn-ghost nav-login" href="app.html">Log in</a>
+      <a class="nav-login" href="app.html">Log in</a>
       <a class="btn btn-primary" href="index.html#contact">Schedule a demo →</a>
+      <!--
+        The menu button is styled display:none until 1180px and its panel is
+        filled by nav.js from the .nav-links markup above, so the section links
+        exist once in this file and are never hand-copied into a second list.
+      -->
+      <button class="nav-toggle" type="button" id="navToggle" aria-label="Menu" aria-expanded="false" aria-controls="navMenu"><span class="nav-toggle-bars" aria-hidden="true"></span></button>
     </div>
+  </div>
+  <div class="nav-menu" id="navMenu" hidden>
+    <div class="wrap nav-menu-inner"></div>
   </div>
 </nav>
 
@@ -331,6 +339,7 @@
   <div class="wrap"><p class="dim" style="margin-top:24px;font-size:.8rem">© 2026 OpsPulse AI · Functional MVP. All data shown is simulated.</p></div>
 </footer>
 
+<script src="assets/nav.js"></script>
 <script src="assets/landing.js"></script>
 <script src="assets/chat.js"></script>
 </body>

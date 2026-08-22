@@ -12,7 +12,7 @@
 
 /* ---------- Nav: Ops Floor tab ----------
    This lives in .nav-cta rather than .nav-links deliberately. .nav-links is
-   display:none below 860px, so a link placed there would vanish on exactly
+   display:none below 1180px, so a link placed there would vanish on exactly
    the screens where hunting for the demo is most annoying. .nav-cta stays
    visible at every width. */
 .nav-tab {
@@ -37,17 +37,212 @@
 }
 .nav-tab .dot-live { width: 6px; height: 6px; }
 
-/* Below 860px the section links are already gone, so the corner carries the
-   whole nav. Drop "Log in" first — it is the least used of the three and the
-   footer still carries it — then tighten the remaining two. */
+/* ---------- Nav: layout ----------
+   styles.css lays the bar out as three flex groups under
+   `justify-content: space-between` with no `gap`. space-between only
+   distributes *slack*, and there was none: at full desktop width the three
+   groups measured roughly 1195px inside an 1132px content column. So the
+   groups butted straight into each other — the wordmark ran into "Product",
+   "Contact" ran into the Ops Floor tab — and the two labels containing a
+   space, "External Signals" and "Design Partners", broke onto a second line
+   inside a 68px bar.
+
+   Spacing alone could not fix a row that does not fit. Three things gave, in
+   the markup rather than here:
+
+     - "Contact" left the link row. It pointed at #contact, which is where the
+       "Schedule a demo →" button 40px to its right already goes.
+     - "Log in" stopped being a third pill. Three buttons of near-equal weight
+       in one corner read as a toolbar rather than a hierarchy; it is now a
+       quiet text link next to the one primary CTA and the live Ops Floor tab.
+     - The section links collapse into a menu below 1180px — the width at
+       which .wrap stops being at its maximum — rather than staying crammed
+       in down to 860px and then disappearing with nowhere to go.
+
+   The rules below then make a collision structurally impossible rather than
+   merely unlikely: a floor under the gap between the groups, no wrapping
+   inside a label, and no shrinking of the two groups that anchor the ends. */
+.nav-inner { gap: clamp(18px, 3vw, 44px); }
+.nav-inner > .brand,
+.nav-inner > .nav-cta { flex: 0 0 auto; }
+.nav-links {
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: clamp(20px, 2.3vw, 32px);
+  min-width: 0;
+}
+.nav-links a { position: relative; padding: 6px 0; white-space: nowrap; }
+
+/* The hover underline is drawn on a ::after rather than with text-decoration
+   so it can animate and so it sits clear of the descenders in "Design". */
+.nav-links a::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1.5px;
+  border-radius: 2px;
+  background: var(--emerald);
+  transform: scaleX(0);
+  transition: transform 0.22s var(--ease);
+}
+.nav-links a:hover::after,
+.nav-links a:focus-visible::after { transform: scaleX(1); }
+
+/* The wordmark carries the page, so it gets the tighter tracking a logotype
+   wants and its own no-wrap. " AI" was an inline style with a leading space
+   inside the span, which put the gap at the mercy of whitespace collapsing;
+   it is a margin now, so the suffix cannot end up touching the word. */
+.brand { font-size: 1.15rem; letter-spacing: -0.015em; white-space: nowrap; }
+.brand-ai {
+  margin-left: 0.32em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  opacity: 0.55;
+}
+
+.nav-login {
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+.nav-login:hover { color: var(--text); }
+
+/* ---------- Nav: compact menu ----------
+   The button is hidden at desktop width and the panel is built by nav.js from
+   the .nav-links markup, so there is exactly one list of section links in the
+   page. Without JS the button never appears and the panel is never populated,
+   which leaves the pre-existing behaviour below the breakpoint rather than an
+   empty control. */
+.nav-toggle {
+  display: none;
+  width: 40px; height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 11px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.nav-toggle:hover { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.22); }
+
+/* Three bars from one element plus its two pseudo-elements, so the close X is
+   a transform of the same shape rather than a second icon swapped in. */
+.nav-toggle-bars,
+.nav-toggle-bars::before,
+.nav-toggle-bars::after {
+  display: block;
+  width: 17px; height: 1.8px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform 0.22s var(--ease), background 0.16s;
+}
+.nav-toggle-bars { position: relative; }
+.nav-toggle-bars::before,
+.nav-toggle-bars::after { content: ""; position: absolute; left: 0; }
+.nav-toggle-bars::before { top: -5.5px; }
+.nav-toggle-bars::after { top: 5.5px; }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars { background: transparent; }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars::before { transform: translateY(5.5px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars::after { transform: translateY(-5.5px) rotate(-45deg); }
+
+/* Absolute rather than in the bar's flow: .nav is sticky, so it is already a
+   containing block, and a panel that took up flow space would push the hero
+   down by its own height every time it opened. */
+.nav-menu {
+  position: absolute;
+  top: 100%;
+  left: 0; right: 0;
+  max-height: calc(100vh - 68px);
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  /* Opaque, not the translucent-plus-blur the bar uses. .nav already sets a
+     backdrop-filter, which makes it a backdrop root: a nested backdrop-filter
+     samples only inside that root, so the panel's blur silently did nothing
+     and the hero mock read straight through it at 6% alpha. A menu you can
+     read the page through is not a menu. */
+  background: var(--bg);
+  box-shadow: 0 22px 44px -26px rgba(0, 0, 0, 0.95);
+  animation: navMenuIn 0.18s var(--ease);
+}
+.nav-menu[hidden] { display: none; }
+.nav-menu-inner { display: flex; flex-direction: column; padding-top: 6px; padding-bottom: 14px; }
+
+/* Scoped to the plain rows by :not([class]) rather than to every anchor in the
+   panel. nav.js strips the class off a link it demotes to a row and leaves it
+   on the tab and the button, so this selector separates the two cases exactly.
+   Matching every `a` instead was a real bug and not only a tidiness one: at
+   (0,1,1) it outranks .btn-primary at (0,1,0), so the demo CTA rendered in
+   --text-soft on its own bright gradient. */
+.nav-menu a:not([class]) {
+  padding: 14px 2px;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  border-bottom: 1px solid var(--line);
+  transition: color 0.2s;
+}
+.nav-menu a:not([class]):last-child { border-bottom: 0; }
+.nav-menu a:not([class]):hover { color: var(--text); }
+
+/* What the bar could not fit, in the order a visitor wants it: the section
+   links, then the quiet ones, then the CTA as a full-width button — the one
+   place in the panel with enough room to look like the primary action it is. */
+.nav-menu .nav-tab {
+  align-self: flex-start;
+  margin-top: 14px;
+  padding: 8px 14px;
+}
+.nav-menu .nav-tab .nav-tab-label { display: inline; }
+.nav-menu .btn {
+  justify-content: center;
+  margin-top: 14px;
+}
+/* The lift on hover is for a button sitting in a row of its own, not for one
+   filling the width of a panel. */
+.nav-menu .btn:hover { transform: none; }
+
+@keyframes navMenuIn {
+  from { opacity: 0; transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-menu { animation: none; }
+  .nav-links a::after { transition: none; }
+  .nav-toggle-bars,
+  .nav-toggle-bars::before,
+  .nav-toggle-bars::after { transition: none; }
+}
+
+/* 1180px is --maxw: above it .wrap is at its maximum and the full row fits
+   with room to spare; below it the column starts shrinking and the links are
+   the part that can move somewhere else. */
+@media (max-width: 1180px) {
+  .nav-links { display: none; }
+  .nav-toggle { display: inline-flex; }
+}
+
+/* Below 720px the corner carries the whole nav. Drop "Log in" first — it is
+   the least used of the three and both the footer and the menu still carry it
+   — then tighten what is left. */
 @media (max-width: 720px) {
   .nav-cta .nav-login { display: none; }
 }
-@media (max-width: 560px) {
-  .nav-cta { gap: 8px; }
-  .nav-tab { padding: 7px 10px; }
-  .nav-tab .nav-tab-label { display: none; }
-  .nav-cta .btn { padding: 9px 14px; font-size: 0.82rem; }
+/* On a phone the bar is the wordmark and the button, and nothing else. The
+   corner previously tried to hold the Ops Floor tab, a login button and the
+   demo CTA at 390px inside a 342px column, which overflowed by 54px and gave
+   the whole page a horizontal scrollbar. Those three are not dropped: nav.js
+   moves whichever of them the stylesheet has hidden into the panel, where the
+   demo CTA gets a full-width button instead of a squeezed pill. */
+@media (max-width: 620px) {
+  .nav-cta { gap: 9px; }
+  .nav-cta .nav-tab,
+  .nav-cta .btn { display: none; }
+  .nav-toggle { width: 38px; height: 38px; }
 }
 
 /* ---------- Founder titles ----------
@@ -417,3 +612,9 @@
   color: var(--emerald);
   background: rgba(52, 211, 153, 0.05);
 }
+
+/* ---------- Footer link row ----------
+   The base rule is a flex row with no wrap, so on a phone the five links ran
+   straight off the side and gave the page a 692px scroll width inside a 390px
+   viewport — the horizontal scrollbar was the footer's, not the nav's. */
+.foot-links { flex-wrap: wrap; row-gap: 10px; }
