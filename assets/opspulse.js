@@ -48,7 +48,13 @@ const IC = {
   feed: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   radar: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M12 12 19 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
   chat: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-5 4V5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  /* `up` is the UPLOAD glyph — an arrow rising into a tray — and belongs to
+     Data Upload alone. Impact used to share it, which made the two tabs read
+     as one destination: at 15px the eye takes the glyph before the word. */
   up: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  /* Impact is measurement after the fact: a trend line that ends above where
+     it started, which is the one thing the ledger exists to demonstrate. */
+  impact: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 18.5 9.5 13l3.4 3.4L20 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 9h5v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 4v16.2h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".45"/></svg>',
   pause: '<svg viewBox="0 0 24 24" fill="none"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>',
   play: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 4.5 19 12 7 19.5v-15Z" fill="currentColor"/></svg>',
   dice: '<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/><circle cx="15" cy="9" r="1.3" fill="currentColor"/><circle cx="9" cy="15" r="1.3" fill="currentColor"/></svg>',
@@ -92,23 +98,25 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
   let seededOnce = false;
 
   /* ── Chrome ───────────────────────────────────────────────────────────── */
-  const top = el('div', 'lv-top');
-  top.innerHTML = `
-    <div class="lv-brand">
-      <span class="dot" style="background:#0d1211;border:1px solid rgba(255,255,255,.09)">
-        <svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4.7" width="19" height="2.6" rx="1.3" fill="#2e3b3a"/><rect x="2.5" y="8.7" width="13.8" height="2.6" rx="1.3" fill="#3d514d"/><rect x="2.5" y="12.7" width="8.9" height="2.6" rx="1.3" fill="#4f7a6b"/><rect x="2.5" y="16.7" width="4.4" height="2.6" rx="1.3" fill="#3fdd85"/></svg>
-      </span>OpsPulse<span class="muted" style="font-weight:600"> AI</span>
+  const head = el('header', 'lv-head');
+  head.innerHTML = `
+    <div class="lv-top">
+      <div class="lv-brand">
+        <span class="dot" style="background:#0d1211;border:1px solid rgba(255,255,255,.09)">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4.7" width="19" height="2.6" rx="1.3" fill="#2e3b3a"/><rect x="2.5" y="8.7" width="13.8" height="2.6" rx="1.3" fill="#3d514d"/><rect x="2.5" y="12.7" width="8.9" height="2.6" rx="1.3" fill="#4f7a6b"/><rect x="2.5" y="16.7" width="4.4" height="2.6" rx="1.3" fill="#3fdd85"/></svg>
+        </span>OpsPulse<span class="muted" style="font-weight:600"> AI</span>
+      </div>
+      <div class="lv-spacer"></div>
+      <div class="ent-switch" id="opTier">
+        <span class="ent-switch-k" title="A demo control. No upgrade is purchased and nothing is charged.">demo tier</span>
+        <div class="ent-seg" id="opTierSeg"></div>
+      </div>
+      <span class="lv-live"><span class="lv-dot" id="opDot"></span><span id="opLive">live</span></span>
+      <button class="lv-btn" id="opToggle">${IC.pause}<span>Pause</span></button>
+      <button class="lv-btn" id="opReseed" title="Generate a different random operation with the same four patterns">${IC.dice}<span>New data</span></button>
     </div>
-    <nav class="lv-nav" id="opNav"></nav>
-    <div class="lv-spacer"></div>
-    <div class="ent-switch" id="opTier">
-      <span class="ent-switch-k" title="A demo control. No upgrade is purchased and nothing is charged.">demo tier</span>
-      <div class="ent-seg" id="opTierSeg"></div>
-    </div>
-    <span class="lv-live"><span class="lv-dot" id="opDot"></span><span id="opLive">live</span></span>
-    <button class="lv-btn" id="opToggle">${IC.pause}<span>Pause</span></button>
-    <button class="lv-btn" id="opReseed" title="Generate a different random operation with the same four patterns">${IC.dice}<span>New data</span></button>`;
-  root.appendChild(top);
+    <nav class="lv-nav" id="opNav" aria-label="Sections"></nav>`;
+  root.appendChild(head);
 
   const body = el('div', 'lv-body');
   root.appendChild(body);
@@ -123,7 +131,7 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     { id: 'feed', label: 'Decision Feed', icon: IC.feed, badge: () => store.engine.insights.length },
     { id: 'radar', label: 'Risk Radar', icon: IC.radar },
     { id: 'copilot', label: 'Executive Copilot', icon: IC.chat, feature: 'executive_copilot' },
-    { id: 'impact', label: 'Impact', icon: IC.up, feature: 'impact_verification' },
+    { id: 'impact', label: 'Impact', icon: IC.impact, feature: 'impact_verification' },
     { id: 'assurance', label: 'Assurance', icon: IC.shield },
     { id: 'upload', label: 'Data Upload', icon: IC.up },
   ];
@@ -136,7 +144,13 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
          off data this plan does not open, and a number next to a padlock is
          exactly the thing someone screenshots and quotes back. */
       const badge = locked ? entBadge(n.feature) : n.badge ? `<span class="badge">${n.badge()}</span>` : '';
-      const b = el('button', state.view === n.id ? 'on' : '', `${n.icon}<span>${esc(n.label)}</span>${badge}`);
+      const on = state.view === n.id;
+      const b = el('button', on ? 'on' : '', `${n.icon}<span>${esc(n.label)}</span>${badge}`);
+      /* The active tab is signalled by colour alone otherwise, which a screen
+         reader cannot see and a colourblind reader may not either. `page` is
+         the correct token for a tab that swaps the main region. */
+      if (on) b.setAttribute('aria-current', 'page');
+      if (locked) b.setAttribute('aria-describedby', 'opTier');
       b.addEventListener('click', () => { state.view = n.id; render(); body.scrollTop = 0; });
       nav.appendChild(b);
     }
@@ -1916,13 +1930,21 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     const wrap = el('div', 'lv-view');
 
     const p = el('div', 'panel');
-    p.innerHTML = '<div class="panel-hd"><h3>Data upload</h3><span class="hint">CSV · support tickets, QA reviews, NPS</span></div>';
+    p.innerHTML = '<div class="panel-hd"><h3>Data upload</h3><span class="hint">CSV · six shapes · event files append, account files join</span></div>';
     const bd = el('div', 'panel-bd');
 
     const drop = el('div', 'drop');
+    /* The two groups are named separately because they behave differently and
+       the difference is the thing a first-time uploader gets wrong: an event
+       file adds rows to a stream, an account file joins onto the book that is
+       already loaded and never creates an account. */
     drop.innerHTML = `${IC.up}<h4>Drop a CSV here, or click to choose a file</h4>
-      <p>Support tickets · QA reviews · NPS responses. Columns are matched automatically. The Kaggle
-      <code style="color:var(--cyan)">customer_support_tickets.csv</code> header works as-is, and so do most Zendesk / Freshdesk exports.</p>`;
+      <p><b style="color:var(--text)">Event files</b> (these append): support tickets · QA reviews · NPS responses.
+      <br><b style="color:var(--text)">Account files</b> (these join on account id, then company name):
+      CRM / account export · billing or invoices · product usage.</p>
+      <p style="margin-top:7px">Columns are matched automatically. The Kaggle
+      <code style="color:var(--cyan)">customer_support_tickets.csv</code> header works as-is, and so do most
+      Zendesk / Freshdesk exports. A file we cannot place is refused rather than guessed at.</p>`;
     const input = el('input');
     input.type = 'file'; input.accept = '.csv,text/csv'; input.hidden = true;
     drop.appendChild(input);
@@ -1964,7 +1986,10 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
       { t: 'Escalations', c: d.escalations.length, s: `${d.escalations.filter((x) => x.status !== 'Closed').length} open` },
       { t: 'NPS responses', c: d.nps.length, s: `${d.nps.filter((x) => x.is_uploaded).length} uploaded` },
       { t: 'QA reviews', c: d.qa.length, s: `${d.qa.filter((x) => x.is_uploaded).length} uploaded` },
-      { t: 'Accounts', c: d.accounts.length, s: 'customer master' },
+      { t: 'Accounts', c: d.accounts.length, s: `${d.accounts.filter((a) => a.is_enriched).length} enriched by upload` },
+      { t: 'Contract facts', c: d.accounts.filter((a) => a.arr_usd > 0 && a.renewal_in_days != null).length, s: 'ARR + renewal date' },
+      { t: 'Usage series', c: d.accounts.filter((a) => (a.usage_weeks || []).length).length, s: 'weekly active seats' },
+      { t: 'Billing', c: d.accounts.filter((a) => a.billing && a.billing.invoices).length, s: `${d.accounts.filter((a) => a.billing && a.billing.overdue_invoices).length} with overdue` },
       { t: 'Agents', c: d.agents.length, s: `${d.agents.filter((a) => a.cohort === 'new_hire').length} new hires` },
     ];
     for (const s of srcs) grid.appendChild(el('div', 'src-card', `<div class="t">${esc(s.t)}</div><div class="c">${fmt.int(s.c)}</div><div class="s">${esc(s.s)}</div>`));
@@ -1975,19 +2000,42 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
     if (state.lastUpload) {
       const r = state.lastUpload;
       const rp = el('div', 'panel');
-      rp.innerHTML = `<div class="panel-hd"><h3>Last ingest · ${esc(r.file)}</h3><span class="hint">${r.ok ? `detected as ${esc(r.kind)} data` : 'rejected'}</span></div>`;
+      rp.innerHTML = `<div class="panel-hd"><h3>Last ingest · ${esc(r.file)}</h3><span class="hint">${r.ok ? `detected as ${esc(r.kind)} data${r.joined ? ' · joined onto accounts' : ''}` : 'rejected'}</span></div>`;
       const rbd = el('div', 'panel-bd');
       if (!r.ok) {
         rbd.innerHTML = `<p style="color:var(--danger);font-size:.86rem;margin:0">${esc(r.error)}</p>
           <p class="muted" style="font-size:.78rem;margin-top:8px">Headers found: ${(r.headers || []).map((h) => `<code>${esc(h)}</code>`).join(', ') || '—'}</p>`;
       } else {
+        /* An account file appends nothing, so "Ingested 0 rows" was both the
+           headline figure and a lie about a join that worked. The two kinds of
+           file get the two different sets of numbers they actually produce. */
+        const kpis = r.joined
+          ? `<div><div class="k">Rows in file</div><div class="v">${fmt.int(r.total_rows)}</div></div>
+             <div><div class="k">Accounts matched</div><div class="v" style="color:${STATUS.good}">${fmt.int(r.accounts_matched)}</div></div>
+             <div><div class="k">Rows unmatched</div><div class="v" style="color:${r.unmatched_count ? STATUS.warning : 'inherit'}">${fmt.int(r.unmatched_count || 0)}</div></div>
+             <div><div class="k">Columns mapped</div><div class="v">${Object.keys(r.mapped_columns).length}</div></div>`
+          : `<div><div class="k">Rows in file</div><div class="v">${fmt.int(r.total_rows)}</div></div>
+             <div><div class="k">Ingested</div><div class="v" style="color:${STATUS.good}">${fmt.int(r.added)}</div></div>
+             <div><div class="k">Skipped</div><div class="v" style="color:${r.skipped ? STATUS.warning : 'inherit'}">${fmt.int(r.skipped)}</div></div>
+             <div><div class="k">Columns mapped</div><div class="v">${Object.keys(r.mapped_columns).length}</div></div>`;
+        /* How rows resolved, and why the rest did not. "Unmatched" alone tells
+           a user nothing they can act on: an unknown id means the wrong book,
+           an ambiguous name means the file needs an id column. */
+        const JOIN_LABEL = { account_id: 'matched on account id', company: 'matched on company name' };
+        const WHY = {
+          unknown_account_id: 'account id not in this book',
+          unknown_company: 'no account id and no company column',
+          ambiguous_company: 'that company name belongs to more than one account — an account id column would resolve it',
+        };
+        const joinNote = r.joined ? `
+          <p class="muted" style="font-size:.78rem;margin-top:10px">
+            ${Object.entries(r.joined_via || {}).map(([k, v]) => `${fmt.int(v)} ${JOIN_LABEL[k] || k}`).join(' · ') || 'no rows joined'}.
+            An account id join outranks a company-name join, and an upload never creates an account.
+          </p>
+          ${Object.keys(r.unmatched_reasons || {}).length ? `<p class="muted" style="font-size:.76rem;margin-top:6px">Not applied: ${
+            Object.entries(r.unmatched_reasons).map(([k, v]) => `${fmt.int(v)} × ${esc(WHY[k] || k)}`).join(' · ')}</p>` : ''}` : '';
         rbd.innerHTML = `
-          <div class="drill-kpis">
-            <div><div class="k">Rows in file</div><div class="v">${fmt.int(r.total_rows)}</div></div>
-            <div><div class="k">Ingested</div><div class="v" style="color:${STATUS.good}">${fmt.int(r.added)}</div></div>
-            <div><div class="k">Skipped</div><div class="v" style="color:${r.skipped ? STATUS.warning : 'inherit'}">${fmt.int(r.skipped)}</div></div>
-            <div><div class="k">Columns mapped</div><div class="v">${Object.keys(r.mapped_columns).length}</div></div>
-          </div>
+          <div class="drill-kpis">${kpis}</div>${joinNote}
           <table class="map-table"><thead><tr><th>Your column</th><th>Mapped to</th></tr></thead><tbody>
             ${Object.entries(r.mapped_columns).map(([f, h]) => `<tr><td><code>${esc(h)}</code></td><td>${esc(f.replace(/_/g, ' '))}</td></tr>`).join('')}
           </tbody></table>
@@ -2008,7 +2056,8 @@ export function mountOpsPulse(container, store, { onOpenTicket, freshLedger = fa
       state.lastUpload = { ...res, file: file.name };
       state.view = 'upload';
       render();
-      if (res.ok) toast(`Ingested ${res.added} rows`, `${file.name} → ${res.kind} data · engine re-ran`);
+      if (res.ok && res.joined) toast(`Joined ${res.accounts_matched} accounts`, `${file.name} → ${res.kind} data · engine re-ran`);
+      else if (res.ok) toast(`Ingested ${res.added} rows`, `${file.name} → ${res.kind} data · engine re-ran`);
       else toast('Could not ingest that file', res.error);
     };
     reader.readAsText(file);

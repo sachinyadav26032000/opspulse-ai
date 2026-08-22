@@ -23,30 +23,30 @@
     </a>
 
     <div class="side-label">Workspace</div>
-    <div class="nav-item active" data-view="feed">
+    <div class="nav-item active" role="tab" tabindex="0" aria-selected="true" data-view="feed">
       <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       Decision Feed
       <span class="badge-n" id="navBadge">0</span>
     </div>
-    <div class="nav-item" data-view="signals">
+    <div class="nav-item" role="tab" tabindex="0" aria-selected="false" data-view="signals">
       <svg viewBox="0 0 24 24" fill="none"><path d="M3 12h3l2-7 4 14 3-9 2 4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Signals
     </div>
-    <div class="nav-item" data-view="analytics">
+    <div class="nav-item" role="tab" tabindex="0" aria-selected="false" data-view="analytics">
       <svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M10 20V4M16 20v-7M20 20H2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       Analytics
     </div>
-    <div class="nav-item" data-view="team">
+    <div class="nav-item" role="tab" tabindex="0" aria-selected="false" data-view="team">
       <svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.5a3 3 0 0 1 0 5M21 20c0-2.5-1.5-4.6-3.6-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       Team
     </div>
 
     <div class="side-label">Configure</div>
-    <div class="nav-item" data-view="integrations">
+    <div class="nav-item" role="tab" tabindex="0" aria-selected="false" data-view="integrations">
       <svg viewBox="0 0 24 24" fill="none"><path d="M10 3v4M14 3v4M7 7h10v4a5 5 0 0 1-10 0V7ZM12 16v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Integrations
     </div>
-    <div class="nav-item" data-view="settings">
+    <div class="nav-item" role="tab" tabindex="0" aria-selected="false" data-view="settings">
       <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.5-2.4 1a7 7 0 0 0-2.3-1.3L13.8 2h-3.6l-.4 2.4a7 7 0 0 0-2.3 1.3l-2.4-1-2 3.5 2 1.5A7 7 0 0 0 5 12c0 .5 0 .9.1 1.3l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 2.3 1.3l.4 2.4h3.6l.4-2.4a7 7 0 0 0 2.3-1.3l2.4 1 2-3.5-2-1.5c.1-.4.1-.8.1-1.3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
       Settings
     </div>
@@ -94,11 +94,11 @@
           <div class="panel">
             <div class="panel-head">
               <h3>Decision Feed</h3>
-              <div class="tabs" id="tabs">
-                <span class="tab active" data-filter="all">All</span>
-                <span class="tab" data-filter="high">High</span>
-                <span class="tab" data-filter="medium">Medium</span>
-                <span class="tab" data-filter="resolved">Resolved</span>
+              <div class="tabs" id="tabs" role="tablist" aria-label="Filter risks by severity">
+                <span class="tab active" role="tab" tabindex="0" aria-selected="true" data-filter="all">All</span>
+                <span class="tab" role="tab" tabindex="0" aria-selected="false" data-filter="high">High</span>
+                <span class="tab" role="tab" tabindex="0" aria-selected="false" data-filter="medium">Medium</span>
+                <span class="tab" role="tab" tabindex="0" aria-selected="false" data-filter="resolved">Resolved</span>
               </div>
             </div>
             <div class="panel-body">

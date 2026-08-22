@@ -189,6 +189,54 @@ ok('clearing returns to the 30-day preset',
   && av.querySelector('#rangeSeg button[data-v="30"]')?.classList.contains('on'));
 ok('the charts still render after all that', !/undefined|NaN/.test(av.textContent));
 
+/* ── Keyboard operability ─────────────────────────────────────────────────
+   The sidebar items and the severity tabs are <div>/<span> rather than
+   <button>, for layout reasons that predate this file. That means none of the
+   behaviour a button gives for free is inherited, and all of it had to be
+   added by hand: focusability, Enter/Space, and a selected state something
+   other than a CSS class can read. A regression here is silent — the mouse
+   path keeps working perfectly while the app becomes unusable by keyboard. */
+console.log('\n— Keyboard operability —');
+const press = (el, key) => {
+  const e = new window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+  el.dispatchEvent(e);
+  return e.defaultPrevented;
+};
+const tabs = $$('.tab'), navItems = $$('.nav-item');
+
+ok('every tab and sidebar item is focusable', [...tabs, ...navItems].every((e) => e.hasAttribute('tabindex')),
+  `${tabs.length} tabs + ${navItems.length} nav items`);
+ok('they carry a role and a selected state',
+  [...tabs, ...navItems].every((e) => e.hasAttribute('role') && e.hasAttribute('aria-selected')));
+
+press(tabs[1], 'Enter');
+ok('Enter activates a severity tab', tabs[1].classList.contains('active'), tabs[1].textContent.trim());
+ok('aria-selected follows the class', tabs[1].getAttribute('aria-selected') === 'true'
+  && tabs[0].getAttribute('aria-selected') === 'false');
+const prevented = press(tabs[2], ' ');
+ok('Space activates a tab and does not scroll the page',
+  tabs[2].classList.contains('active') && prevented);
+ok('exactly one tab is selected', tabs.filter((t) => t.getAttribute('aria-selected') === 'true').length === 1);
+
+press(navItems[2], 'Enter');
+ok('Enter activates a sidebar view', $('#viewTitle').textContent === 'Analytics', $('#viewTitle').textContent);
+ok('exactly one sidebar item is selected',
+  navItems.filter((n) => n.getAttribute('aria-selected') === 'true').length === 1);
+
+/* Same class of defect as the two apps: an icon reused inside one menu makes
+   two destinations read as one. */
+const iconOf = (e) => { const svg = e.querySelector('svg'); return svg ? svg.innerHTML.replace(/\s+/g, '') : null; };
+const seenIcons = new Map(); const dupeIcons = [];
+for (const n of navItems) {
+  const k = iconOf(n); if (!k) continue;
+  const label = (n.textContent || '').replace(/\s+/g, ' ').trim();
+  if (seenIcons.has(k)) dupeIcons.push(`"${label}" = "${seenIcons.get(k)}"`); else seenIcons.set(k, label);
+}
+ok('every sidebar item has its own icon', dupeIcons.length === 0, dupeIcons.join('; ') || `${seenIcons.size} distinct`);
+
+const allIds = $$('[id]').map((e) => e.id);
+ok('no duplicate element ids', [...new Set(allIds.filter((x, i) => allIds.indexOf(x) !== i))].length === 0);
+
 ok('no console errors during boot', errors.length === 0, errors.slice(0, 2).join(' | '));
 
 console.log(`\n${fails ? r(`${fails} CHECK(S) FAILED`) : g('ALL APP CHECKS PASSED')}  (${checks - fails}/${checks})\n`);

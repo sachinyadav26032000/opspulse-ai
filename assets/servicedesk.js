@@ -22,6 +22,14 @@ const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls)
 const IC = {
   inbox: '<svg viewBox="0 0 24 24" fill="none"><path d="M3 12h5l2 3h4l2-3h5M3 12l2.5-7h13L21 12v7H3v-7Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
   fire: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3s5 3.6 5 9a5 5 0 0 1-10 0c0-1.7.6-2.9 1.2-3.7C9 10 10 11 10 12c1-1 1.5-3 1-5 .6.4 1 .9 1-4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  /* All tickets is the whole archive rather than the live queue — stacked
+     planes, not the inbox tray that belongs to Open queue alone. */
+  layers: '<svg viewBox="0 0 24 24" fill="none"><path d="m12 3 9 5-9 5-9-5 9-5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m3.5 12.5 8.5 4.7 8.5-4.7M3.5 16.7l8.5 4.7 8.5-4.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".6"/></svg>',
+  /* Aged is a time problem, not a severity one: a clock, not a flame. */
+  clock: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.6" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.2V12l3.2 2.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  /* An escalation is a ticket raised to a higher tier — the glyph is the
+     movement upward, which is the one thing it has that a breach does not. */
+  escalate: '<svg viewBox="0 0 24 24" fill="none"><path d="m7 13.5 5-5 5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="m7 18 5-5 5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/><path d="M12 8.5V4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   qa: '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="m8.5 12 2.2 2.2L15.5 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   star: '<svg viewBox="0 0 24 24" fill="none"><path d="m12 3.5 2.5 5.6 6.1.6-4.6 4.1 1.3 6-5.3-3.1L6.7 20l1.3-6-4.6-4.1 6.1-.6L12 3.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
   users: '<svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.5a3 3 0 0 1 0 5M21 20c0-2.5-1.5-4.6-3.6-5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
@@ -51,20 +59,26 @@ export function mountServiceDesk(container, store, { compact = false } = {}) {
 
   const state = { view: 'open', q: '', page: 0, selected: null, freshIds: new Set() };
 
-  /* ── Chrome ── */
-  const top = el('div', 'lv-top');
-  top.innerHTML = `
-    <div class="lv-brand">
-      <span class="dot" style="background:linear-gradient(135deg,#3987e5,#256abf)">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M3 12h5l2 3h4l2-3h5M3 12l2.5-7h13L21 12v7H3v-7Z" stroke="#04120c" stroke-width="1.9" stroke-linejoin="round"/></svg>
-      </span>
-      NorthDesk<span class="muted" style="font-weight:600"> · Service Cloud</span>
-    </div>
-    <span class="chip info" id="sdOrg">Northwind Cloud</span>
-    <div class="lv-spacer"></div>
-    <span class="lv-live"><span class="lv-dot" id="sdDot"></span><span id="sdLive">live · 0 today</span></span>
-    <button class="lv-btn" id="sdToggle" title="Pause or resume the live feed">${IC.pause}<span>Pause</span></button>`;
-  root.appendChild(top);
+  /* ── Chrome ──
+     Wrapped in the same `.lv-head` band OpsPulse uses. NorthDesk has no tab
+     strip — it navigates from the sidebar — so the head holds one row here,
+     but both apps sharing a shell means the two panes on demo.html line up
+     rather than each finding their own height. */
+  const head = el('header', 'lv-head');
+  head.innerHTML = `
+    <div class="lv-top">
+      <div class="lv-brand">
+        <span class="dot" style="background:linear-gradient(135deg,#3987e5,#256abf)">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 12h5l2 3h4l2-3h5M3 12l2.5-7h13L21 12v7H3v-7Z" stroke="#04120c" stroke-width="1.9" stroke-linejoin="round"/></svg>
+        </span>
+        NorthDesk<span class="muted" style="font-weight:600"> · Service Cloud</span>
+      </div>
+      <span class="chip info" id="sdOrg">Northwind Cloud</span>
+      <div class="lv-spacer"></div>
+      <span class="lv-live"><span class="lv-dot" id="sdDot"></span><span id="sdLive">live · 0 today</span></span>
+      <button class="lv-btn" id="sdToggle" title="Pause or resume the live feed">${IC.pause}<span>Pause</span></button>
+    </div>`;
+  root.appendChild(head);
 
   const layout = el('div', 'sd-layout');
   const side = el('nav', 'sd-side');
@@ -89,10 +103,10 @@ export function mountServiceDesk(container, store, { compact = false } = {}) {
   /* ── Views ── */
   const VIEWS = [
     { id: 'open', group: 'Tickets', label: 'Open queue', icon: IC.inbox, count: (d) => d.tickets.filter((t) => !t.resolved_at).length },
-    { id: 'all', group: 'Tickets', label: 'All tickets', icon: IC.inbox, count: (d) => d.tickets.length },
+    { id: 'all', group: 'Tickets', label: 'All tickets', icon: IC.layers, count: (d) => d.tickets.length },
     { id: 'breached', group: 'Tickets', label: 'SLA breached', icon: IC.fire, count: (d) => d.tickets.filter((t) => !t.resolved_at && t.sla_breached).length },
-    { id: 'aged', group: 'Tickets', label: 'Aged > 72h', icon: IC.fire, count: (d, now) => d.tickets.filter((t) => !t.resolved_at && (now - t.created_at) / 3600000 > 72).length },
-    { id: 'escalations', group: 'Escalations', label: 'Escalations', icon: IC.fire, count: (d) => d.escalations.filter((e) => e.status !== 'Closed').length },
+    { id: 'aged', group: 'Tickets', label: 'Aged > 72h', icon: IC.clock, count: (d, now) => d.tickets.filter((t) => !t.resolved_at && (now - t.created_at) / 3600000 > 72).length },
+    { id: 'escalations', group: 'Escalations', label: 'Escalations', icon: IC.escalate, count: (d) => d.escalations.filter((e) => e.status !== 'Closed').length },
     { id: 'qa', group: 'Quality', label: 'QA reviews', icon: IC.qa, count: (d) => d.qa.length },
     { id: 'nps', group: 'Feedback', label: 'NPS inbox', icon: IC.star, count: (d) => d.nps.length },
     { id: 'agents', group: 'Team', label: 'Agent roster', icon: IC.users, count: (d) => d.agents.length },
@@ -104,7 +118,11 @@ export function mountServiceDesk(container, store, { compact = false } = {}) {
     let group = null;
     for (const v of VIEWS) {
       if (v.group !== group) { group = v.group; side.appendChild(el('div', 'lbl', esc(group))); }
-      const b = el('button', state.view === v.id ? 'on' : '', `${v.icon}<span class="t">${esc(v.label)}</span><span class="n">${fmt.int(v.count(d, now))}</span>`);
+      const on = state.view === v.id;
+      const b = el('button', on ? 'on' : '', `${v.icon}<span class="t">${esc(v.label)}</span><span class="n">${fmt.int(v.count(d, now))}</span>`);
+      /* Same reason as the OpsPulse tab strip: the selected queue is otherwise
+         distinguished by colour alone. */
+      if (on) b.setAttribute('aria-current', 'page');
       b.title = `${v.label} · ${fmt.int(v.count(d, now))}`;
       b.addEventListener('click', () => { state.view = v.id; state.page = 0; state.selected = null; detail.hidden = true; render(); });
       side.appendChild(b);

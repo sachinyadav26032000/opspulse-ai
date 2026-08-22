@@ -79,7 +79,7 @@ ok('OpsPulse mounts exactly one root child', pulseEl.children.length === 1, `${p
 ok('ServiceDesk root carries .sd-root', deskEl.firstElementChild?.classList.contains('sd-root'));
 ok('OpsPulse root carries .op-root', pulseEl.firstElementChild?.classList.contains('op-root'));
 ok('toolbar is nested inside the app root, not a sibling',
-  !!deskEl.querySelector('.sd-root > .lv-top') && !!pulseEl.querySelector('.op-root > .lv-top'));
+  !!deskEl.querySelector('.sd-root > .lv-head > .lv-top') && !!pulseEl.querySelector('.op-root > .lv-head > .lv-top'));
 ok('dashboard leads with the top-3 headline',
   /top \d+ operational risks/i.test(pulseEl.querySelector('.op-hero h2')?.textContent || ''),
   pulseEl.querySelector('.op-hero h2')?.textContent.trim());
@@ -368,6 +368,63 @@ run('Enterprise opens the Copilot and leaves nothing locked but unbuilt features
   if (!locked.includes('Contact centre')) throw new Error('contact centre should still declare itself unconnected');
   return `locked on Enterprise: ${locked.join(', ') || 'none'}`;
 });
+
+/* ── Chrome integrity ──────────────────────────────────────────────────────
+   Cheap structural checks over the finished chrome, added after a review found
+   four defects of a kind no other assertion here could see. They are all the
+   same shape: something rendered fine and MEANT the wrong thing.
+
+     · Impact and Data Upload shared one icon, so two tabs read as one
+       destination — at 15px the glyph is read before the label.
+     · Four of NorthDesk's eight queues rendered two glyphs between them
+       (Open/All both inbox; SLA breached / Aged / Escalations all flame).
+     · The active tab was signalled by colour alone, which a screen reader
+       cannot see and a colourblind reader may not either.
+
+   Icon uniqueness is asserted per NAV GROUP rather than globally: a glyph
+   reused across two different apps is fine, twice inside one menu is not. */
+console.log('\n— Chrome integrity —');
+
+const iconOf = (b) => { const svg = b.querySelector('svg'); return svg ? svg.innerHTML.replace(/\s+/g, '') : null; };
+for (const [name, sel, root] of [['OpsPulse tab strip', '#opNav button', pulseEl], ['NorthDesk sidebar', '.sd-side button', deskEl]]) {
+  const seen = new Map(); const dupes = [];
+  for (const b of root.querySelectorAll(sel)) {
+    const k = iconOf(b); if (!k) continue;
+    const label = b.textContent.replace(/\s+/g, ' ').trim();
+    if (seen.has(k)) dupes.push(`"${label}" = "${seen.get(k)}"`); else seen.set(k, label);
+  }
+  ok(`${name}: every item has its own icon`, dupes.length === 0, dupes.join('; ') || `${seen.size} distinct`);
+}
+
+for (const [name, root] of [['OpsPulse', pulseEl], ['NorthDesk', deskEl]]) {
+  const ids = [...root.querySelectorAll('[id]')].map((e) => e.id);
+  const dupes = [...new Set(ids.filter((x, i) => ids.indexOf(x) !== i))];
+  ok(`${name}: no duplicate element ids`, dupes.length === 0, dupes.join(', ') || `${ids.length} ids`);
+
+  /* An icon-only control with no accessible name is a button a screen reader
+     announces as "button". */
+  const unnamed = [...root.querySelectorAll('button')]
+    .filter((b) => !(b.textContent || '').trim() && !b.getAttribute('aria-label') && !b.getAttribute('title'));
+  ok(`${name}: every button has an accessible name`, unnamed.length === 0,
+    unnamed.map((b) => b.outerHTML.slice(0, 60)).join(' | ') || 'all named');
+}
+
+const navBtns = [...pulseEl.querySelectorAll('#opNav button')];
+const active = navBtns.filter((b) => b.classList.contains('on'));
+ok('exactly one tab is active', active.length === 1, `${active.length} active`);
+ok('the active tab is announced, not just coloured',
+  active.every((b) => b.getAttribute('aria-current') === 'page'));
+ok('inactive tabs carry no aria-current',
+  navBtns.filter((b) => !b.classList.contains('on')).every((b) => !b.hasAttribute('aria-current')));
+
+/* The header is two bands — title bar and tab strip — so that neither can
+   wrap into the other. A single wrapping row put the tier switcher and the
+   live indicator at ragged offsets the moment the pane narrowed. */
+ok('the OpsPulse header is a two-band shell',
+  !!pulseEl.querySelector('.op-root > .lv-head > .lv-top') && !!pulseEl.querySelector('.op-root > .lv-head > #opNav'));
+ok('the tab strip scrolls rather than wrapping',
+  !!pulseEl.querySelector('#opNav') && !pulseEl.querySelector('#opNav')?.className.includes('wrap'));
+ok('NorthDesk uses the same shell', !!deskEl.querySelector('.sd-root > .lv-head > .lv-top'));
 
 console.log(`\n${fails === 0 && !errors.length ? g('ALL UI CHECKS PASSED') : r(`${fails} CHECK(S) FAILED`)}  (${checks - fails}/${checks})`);
 if (errors.length) { console.log('\nRuntime errors captured:'); errors.slice(0, 10).forEach((e) => console.log('  ! ' + e)); }
